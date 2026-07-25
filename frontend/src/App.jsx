@@ -24,6 +24,7 @@ import ProviderProfile from './pages/provider/Profile';
 import MyBookings from './pages/provider/MyBookings';
 import MyEarnings from './pages/provider/Earnings';
 import FindJobs from './pages/provider/FindJobs';
+import ProviderSchedule from './pages/provider/Schedule';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
@@ -91,6 +92,7 @@ const AppRoutes = () => {
               <Route path="/profile" element={<ProviderProfile />} />
               <Route path="/bookings" element={<MyBookings />} />
               <Route path="/bookings/:bookingId" element={<BookingDetails />} />
+              <Route path="/schedule" element={<ProviderSchedule />} />
               <Route path="/earnings" element={<MyEarnings />} />
               <Route path="/find-jobs" element={<FindJobs />} />
             </Routes>

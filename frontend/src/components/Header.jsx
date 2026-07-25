@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Bell, LogOut, Home, Search, Calendar, User, ChevronDown, Shield, BarChart2, LayoutGrid } from 'lucide-react';
+import { Menu, X, Bell, LogOut, Home, Search, Calendar, User, ChevronDown, Shield, BarChart2, LayoutGrid, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { notificationAPI } from '../services/api';
 import { onNotification } from '../services/socket';
@@ -121,15 +121,6 @@ export const Header = () => {
                   <span>Dashboard</span>
                 </Link>
                 <Link
-                  to="/provider/find-jobs"
-                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
-                    location.pathname === '/provider/find-jobs' ? 'text-[#07535f] font-semibold' : ''
-                  }`}
-                >
-                  <Search className="w-4 h-4" />
-                  <span>Browse</span>
-                </Link>
-                <Link
                   to="/provider/bookings"
                   className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
                     location.pathname === '/provider/bookings' ? 'text-[#07535f] font-semibold' : ''
@@ -139,12 +130,21 @@ export const Header = () => {
                   <span>My Bookings</span>
                 </Link>
                 <Link
+                  to="/provider/schedule"
+                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
+                    location.pathname === '/provider/schedule' ? 'text-[#07535f] font-semibold' : ''
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Schedule</span>
+                </Link>
+                <Link
                   to="/provider/earnings"
                   className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
                     location.pathname === '/provider/earnings' ? 'text-[#07535f] font-semibold' : ''
                   }`}
                 >
-                  <User className="w-4 h-4" />
+                  <TrendingUp className="w-4 h-4" />
                   <span>Earnings</span>
                 </Link>
               </>
@@ -269,16 +269,6 @@ export const Header = () => {
 
           {/* Right Section */}
           <div className="flex items-center gap-3">
-
-            {/* Role Badge — only shown when logged in */}
-            {isAuthenticated && roleBadge && (
-              <span
-                className="hidden md:inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border"
-                style={{ background: roleBadge.bg, color: roleBadge.color, border: `1px solid ${roleBadge.color}30` }}
-              >
-                {roleBadge.label}
-              </span>
-            )}
 
             {/* Notifications */}
             <div className="relative">
@@ -414,16 +404,16 @@ export const Header = () => {
               ) : user?.role === 'provider' ? (
                 <>
                   <Link to="/provider" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <Home className="w-4 h-4" /> Dashboard
-                  </Link>
-                  <Link to="/provider/find-jobs" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <Search className="w-4 h-4" /> Browse Jobs
+                    <LayoutGrid className="w-4 h-4" /> Dashboard
                   </Link>
                   <Link to="/provider/bookings" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
                     <Calendar className="w-4 h-4" /> My Bookings
                   </Link>
+                  <Link to="/provider/schedule" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                    <Clock className="w-4 h-4" /> Work Schedule
+                  </Link>
                   <Link to="/provider/earnings" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <User className="w-4 h-4" /> Earnings
+                    <TrendingUp className="w-4 h-4" /> Earnings & Payouts
                   </Link>
                 </>
               ) : user?.role === 'customer' ? (
