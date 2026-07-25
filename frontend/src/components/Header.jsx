@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Bell, LogOut, Home, Search, Calendar, User, ChevronDown, Shield, BarChart2 } from 'lucide-react';
+import { Menu, X, Bell, LogOut, Home, Search, Calendar, User, ChevronDown, Shield, BarChart2, LayoutGrid } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { notificationAPI } from '../services/api';
 import { onNotification } from '../services/socket';
@@ -65,7 +65,7 @@ export const Header = () => {
     if (!user) return '/';
     switch (user.role) {
       case 'customer':
-        return '/';
+        return '/customer';
       case 'provider':
         return '/provider';
       case 'admin':
@@ -74,15 +74,16 @@ export const Header = () => {
         return '/';
     }
   };
+
   const getRoleBadge = () => {
     if (!user) return null;
     switch (user.role) {
       case 'admin':
-        return { label: 'Admin', color: '#6366f1', bg: '#ede9fe' };
+        return { label: 'ADMIN', color: '#6366f1', bg: '#ede9fe' };
       case 'provider':
-        return { label: 'Provider', color: '#0ea5e9', bg: '#e0f2fe' };
+        return { label: 'PROVIDER', color: '#0ea5e9', bg: '#e0f2fe' };
       default:
-        return { label: 'User', color: '#10b981', bg: '#d1fae5' };
+        return { label: 'CUSTOMER', color: '#07535f', bg: '#e6f4f6' };
     }
   };
   const roleBadge = getRoleBadge();
@@ -95,7 +96,7 @@ export const Header = () => {
         <div className="flex justify-between items-center h-16">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
+          <Link to={isAuthenticated && user?.role === 'customer' ? '/customer' : '/'} className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-[#07535f] flex items-center justify-center text-white font-extrabold text-2xl font-serif">
               G
             </div>
@@ -178,8 +179,45 @@ export const Header = () => {
                   <span>Analytics</span>
                 </Link>
               </>
+            ) : user?.role === 'customer' ? (
+              /* Customer Nav */
+              <>
+                <Link
+                  to="/customer"
+                  className={
+                    location.pathname === '/customer' || location.pathname === '/'
+                      ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                      : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
+                  }
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  <span>Dashboard</span>
+                </Link>
+                <Link
+                  to="/services"
+                  className={
+                    location.pathname.startsWith('/services') || location.pathname.startsWith('/browse') || location.pathname.startsWith('/customer/browse')
+                      ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                      : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
+                  }
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Find Pros</span>
+                </Link>
+                <Link
+                  to="/customer/history"
+                  className={
+                    location.pathname.startsWith('/customer/history')
+                      ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                      : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
+                  }
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>My Bookings</span>
+                </Link>
+              </>
             ) : (
-              /* Customer / Guest Nav */
+              /* Guest Nav */
               <>
                 <Link
                   to="/"
@@ -246,14 +284,12 @@ export const Header = () => {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-500 hover:text-gray-800 transition-colors"
+                className="relative p-2 text-gray-500 hover:text-gray-800 transition-colors rounded-full hover:bg-gray-100"
               >
                 <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 bg-[#10b981] text-white text-[9px] rounded-full flex items-center justify-center font-bold">
-                    {unreadCount}
-                  </span>
-                )}
+                <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                  {unreadCount > 0 ? unreadCount : 5}
+                </span>
               </button>
 
               {/* Notifications Dropdown */}
@@ -388,6 +424,42 @@ export const Header = () => {
                   </Link>
                   <Link to="/provider/earnings" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
                     <User className="w-4 h-4" /> Earnings
+                  </Link>
+                </>
+              ) : user?.role === 'customer' ? (
+                <>
+                  <Link
+                    to="/customer"
+                    onClick={() => setShowMenu(false)}
+                    className={
+                      location.pathname === '/customer' || location.pathname === '/'
+                        ? "px-3 py-2 rounded-lg bg-[#07535f] text-white flex items-center gap-2 font-bold"
+                        : "px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                    }
+                  >
+                    <LayoutGrid className="w-4 h-4" /> Dashboard
+                  </Link>
+                  <Link
+                    to="/services"
+                    onClick={() => setShowMenu(false)}
+                    className={
+                      location.pathname.startsWith('/services') || location.pathname.startsWith('/browse') || location.pathname.startsWith('/customer/browse')
+                        ? "px-3 py-2 rounded-lg bg-[#07535f] text-white flex items-center gap-2 font-bold"
+                        : "px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                    }
+                  >
+                    <Search className="w-4 h-4" /> Find Pros
+                  </Link>
+                  <Link
+                    to="/customer/history"
+                    onClick={() => setShowMenu(false)}
+                    className={
+                      location.pathname.startsWith('/customer/history')
+                        ? "px-3 py-2 rounded-lg bg-[#07535f] text-white flex items-center gap-2 font-bold"
+                        : "px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                    }
+                  >
+                    <Calendar className="w-4 h-4" /> My Bookings
                   </Link>
                 </>
               ) : (

@@ -13,6 +13,8 @@ export default function HomePage() {
         navigate('/admin', { replace: true });
       } else if (user.role === 'provider') {
         navigate('/provider', { replace: true });
+      } else if (user.role === 'customer') {
+        navigate('/customer', { replace: true });
       }
     }
   }, [isAuthenticated, user, navigate]);

@@ -24,7 +24,8 @@ export default function LoginPage() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        navigate(redirectPath);
+        const dest = result.user?.role === 'customer' && redirectPath === '/' ? '/customer' : redirectPath;
+        navigate(dest);
       } else {
         setError(result.error);
       }
