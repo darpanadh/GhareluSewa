@@ -153,48 +153,47 @@ export const Header = () => {
               <>
                 <Link
                   to="/admin"
-                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
-                    location.pathname === '/admin' ? 'text-[#07535f] font-semibold' : ''
-                  }`}
+                  className={
+                    location.pathname === '/admin'
+                      ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                      : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
+                  }
                 >
-                  <Home className="w-4 h-4" />
+                  <LayoutGrid className="w-4 h-4" />
                   <span>Dashboard</span>
                 </Link>
                 <Link
-                  to="/admin/providers"
-                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
-                    location.pathname === '/admin/providers' ? 'text-[#07535f] font-semibold' : ''
-                  }`}
+                  to="/admin/users"
+                  className={
+                    location.pathname.startsWith('/admin/users')
+                      ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                      : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
+                  }
                 >
-                  <Shield className="w-4 h-4" />
-                  <span>Professionals & KYC</span>
+                  <User className="w-4 h-4" />
+                  <span>Users</span>
                 </Link>
                 <Link
                   to="/admin/bookings"
-                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
-                    location.pathname === '/admin/bookings' ? 'text-[#07535f] font-semibold' : ''
-                  }`}
+                  className={
+                    location.pathname.startsWith('/admin/bookings')
+                      ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                      : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
+                  }
                 >
                   <Calendar className="w-4 h-4" />
-                  <span>Active Jobs</span>
+                  <span>Bookings</span>
                 </Link>
                 <Link
                   to="/admin/payments"
-                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
-                    location.pathname === '/admin/payments' ? 'text-[#07535f] font-semibold' : ''
-                  }`}
+                  className={
+                    location.pathname.startsWith('/admin/payments')
+                      ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                      : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
+                  }
                 >
                   <CreditCard className="w-4 h-4" />
                   <span>Payments & Revenue</span>
-                </Link>
-                <Link
-                  to="/admin/analytics"
-                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
-                    location.pathname === '/admin/analytics' ? 'text-[#07535f] font-semibold' : ''
-                  }`}
-                >
-                  <BarChart2 className="w-4 h-4" />
-                  <span>Analytics</span>
                 </Link>
               </>
             ) : user?.role === 'customer' ? (
@@ -407,22 +406,16 @@ export const Header = () => {
               {user?.role === 'admin' ? (
                 <>
                   <Link to="/admin" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <Home className="w-4 h-4" /> Dashboard
+                    <LayoutGrid className="w-4 h-4" /> Dashboard
                   </Link>
-                  <Link to="/admin/providers" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <Shield className="w-4 h-4" /> Professionals & KYC
+                  <Link to="/admin/users" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                    <User className="w-4 h-4" /> Users
                   </Link>
                   <Link to="/admin/bookings" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <Calendar className="w-4 h-4" /> Active Jobs
+                    <Calendar className="w-4 h-4" /> Bookings
                   </Link>
                   <Link to="/admin/payments" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
                     <CreditCard className="w-4 h-4" /> Payments & Revenue
-                  </Link>
-                  <Link to="/admin/users" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <User className="w-4 h-4" /> User Database
-                  </Link>
-                  <Link to="/admin/analytics" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <BarChart2 className="w-4 h-4" /> Analytics
                   </Link>
                 </>
               ) : user?.role === 'provider' ? (

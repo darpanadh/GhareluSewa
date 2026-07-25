@@ -23,14 +23,7 @@ export default function ManageUsers() {
       setUsers(data);
     } catch (err) {
       console.error('Failed to fetch users', err);
-      // Fallback mock if backend is offline
-      setUsers([
-        { id: 1, name: 'Priya Sharma', email: 'priya@gmail.com', role: 'customer', is_active: true, ward: 'Lakeside, Pokhara', created_at: '2024-01-15' },
-        { id: 2, name: 'Rajesh Kumar', email: 'rajesh@gmail.com', role: 'provider', is_active: true, is_verified: true, ward: 'Baneshwor, KTM', created_at: '2024-02-10' },
-        { id: 3, name: 'Bikash Karki', email: 'bikash@gmail.com', role: 'customer', is_active: false, ward: 'Thamel, KTM', created_at: '2024-03-05' },
-        { id: 4, name: 'Sunita Thapa', email: 'sunita@gmail.com', role: 'customer', is_active: true, ward: 'Patan', created_at: '2024-03-20' },
-        { id: 5, name: 'CleanNest Services', email: 'cleannest@gmail.com', role: 'provider', is_active: true, is_verified: false, ward: 'Koteshwor', created_at: '2024-04-01' },
-      ]);
+      setUsers([]);
     } finally {
       setLoading(false);
     }

@@ -29,13 +29,7 @@ export default function ManageBookings() {
       setBookings(data);
     } catch (err) {
       console.error('Failed to fetch bookings', err);
-      // Fallback mock data
-      setBookings([
-        { id: 1, service_category: 'Plumbing', customer_name: 'Priya Sharma', provider_name: 'Rajesh Kumar', status: 'completed', booking_date: '2024-07-10T10:00:00', location: 'Lakeside, Pokhara' },
-        { id: 2, service_category: 'Electrical', customer_name: 'Bikash Karki', provider_name: 'BrightSpark Electricals', status: 'in_progress', booking_date: '2024-07-11T14:00:00', location: 'Baneshwor, KTM' },
-        { id: 3, service_category: 'Cleaning', customer_name: 'Sunita Thapa', provider_name: 'CleanNest Services', status: 'pending', booking_date: '2024-07-12T09:00:00', location: 'Thamel, KTM' },
-        { id: 4, service_category: 'AC Service', customer_name: 'Ramesh Poudel', provider_name: null, status: 'cancelled', booking_date: '2024-07-09T11:00:00', location: 'Patan' },
-      ]);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
