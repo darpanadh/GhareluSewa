@@ -4,7 +4,7 @@ import Card from '../../components/Card';
 import Chat from '../../components/Chat';
 import { bookingAPI, reviewAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { MapPin, Calendar, Wrench, CheckCircle, XCircle, PlayCircle, AlertCircle, Star } from 'lucide-react';
+import { MapPin, Calendar, Wrench, CheckCircle, XCircle, PlayCircle, AlertCircle, Star, Navigation } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_COLORS = {
@@ -196,13 +196,13 @@ export default function BookingDetails() {
           {/* Customer Action Buttons */}
           {!isProvider && (
             <div className="flex gap-3">
-              {booking.status === 'in_progress' && (
-                <Link to="/track" state={{ booking }} className="bg-[#10b981] hover:bg-[#0ea572] text-white px-6 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm flex items-center gap-1.5">
-                  🗺 Live Track Provider
+              {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                <Link to="/track" state={{ booking }} className="bg-[#07535f] hover:bg-[#06424b] text-white px-5 py-2.5 rounded-full font-bold shadow-sm transition-all text-sm flex items-center gap-1.5">
+                  <Navigation className="w-4 h-4" /> Track Job
                 </Link>
               )}
               {booking.status === 'completed' && (
-                <Link to={`/customer/invoice/${booking.id}`} className="bg-[#60bb46] hover:bg-[#52a83b] text-white px-6 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm flex items-center gap-1.5">
+                <Link to={`/customer/invoice/${booking.id}`} className="bg-[#60bb46] hover:bg-[#52a83b] text-white px-5 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm flex items-center gap-1.5">
                   💳 Pay Invoice (eSewa)
                 </Link>
               )}

@@ -5,7 +5,7 @@ import Card from '../../components/Card';
 import {
   Calendar, Clock, MapPin, Star, Search, Filter,
   ChevronRight, ArrowRight, CheckCircle, XCircle,
-  AlertCircle, Loader, RefreshCw, FileText
+  AlertCircle, Loader, RefreshCw, FileText, Navigation, MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -225,7 +225,16 @@ export default function BookingHistory() {
                 )}
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap' }}>
+                  {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                    <Link
+                      to="/track"
+                      state={{ booking }}
+                      style={{ padding: '0.375rem 0.75rem', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Navigation style={{ width: 14, height: 14 }} /> Track Job
+                    </Link>
+                  )}
                   {booking.status === 'completed' && (
                     <>
                       <Link
@@ -244,9 +253,9 @@ export default function BookingHistory() {
                   )}
                   <Link
                     to={`/customer/bookings/${booking.id}`}
-                    style={{ padding: '0.375rem 0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.8rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+                    style={{ padding: '0.375rem 0.75rem', background: '#07535f', color: '#ffffff', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
                   >
-                    View <ChevronRight style={{ width: 14, height: 14 }} />
+                    <MessageSquare style={{ width: 14, height: 14 }} /> Chat
                   </Link>
                 </div>
               </div>

@@ -78,6 +78,8 @@ const AppRoutes = () => {
               <Route path="/bookings/:bookingId" element={<BookingDetails />} />
               <Route path="/invoice/:bookingId" element={<InvoicePage />} />
               <Route path="/history" element={<BookingHistory />} />
+              <Route path="/track" element={<LiveTracking />} />
+              <Route path="/track/:bookingId" element={<LiveTracking />} />
             </Routes>
           </ProtectedRoute>
         }
