@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Bell, LogOut, Home, Search, Calendar, User, ChevronDown, Shield, BarChart2, LayoutGrid, Clock, TrendingUp } from 'lucide-react';
+import { Menu, X, Bell, LogOut, Home, Search, Calendar, User, ChevronDown, Shield, BarChart2, LayoutGrid, Clock, TrendingUp, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { notificationAPI } from '../services/api';
 import { onNotification } from '../services/socket';
@@ -158,7 +158,7 @@ export const Header = () => {
                   }`}
                 >
                   <Home className="w-4 h-4" />
-                  <span>Admin Dashboard</span>
+                  <span>Dashboard</span>
                 </Link>
                 <Link
                   to="/admin/providers"
@@ -167,7 +167,25 @@ export const Header = () => {
                   }`}
                 >
                   <Shield className="w-4 h-4" />
-                  <span>KYC Verifications</span>
+                  <span>Professionals & KYC</span>
+                </Link>
+                <Link
+                  to="/admin/bookings"
+                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
+                    location.pathname === '/admin/bookings' ? 'text-[#07535f] font-semibold' : ''
+                  }`}
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>Active Jobs</span>
+                </Link>
+                <Link
+                  to="/admin/payments"
+                  className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${
+                    location.pathname === '/admin/payments' ? 'text-[#07535f] font-semibold' : ''
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>Payments & Revenue</span>
                 </Link>
                 <Link
                   to="/admin/analytics"
@@ -389,10 +407,16 @@ export const Header = () => {
               {user?.role === 'admin' ? (
                 <>
                   <Link to="/admin" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <Home className="w-4 h-4" /> Admin Dashboard
+                    <Home className="w-4 h-4" /> Dashboard
                   </Link>
                   <Link to="/admin/providers" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                    <Shield className="w-4 h-4" /> KYC Verifications
+                    <Shield className="w-4 h-4" /> Professionals & KYC
+                  </Link>
+                  <Link to="/admin/bookings" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" /> Active Jobs
+                  </Link>
+                  <Link to="/admin/payments" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" /> Payments & Revenue
                   </Link>
                   <Link to="/admin/users" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
                     <User className="w-4 h-4" /> User Database

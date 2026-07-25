@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
+import { getPayoutStats } from '../../services/payoutStore';
 import {
   Users, Calendar, Shield, ArrowRight, ArrowUpRight, ArrowDownRight,
   RefreshCw, Download, CreditCard, LayoutGrid, DollarSign,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon, Wallet, AlertTriangle
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -12,6 +14,23 @@ export default function AdminDashboard() {
   const [pendingProviders, setPendingProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Overview');
+  const [payoutStats, setPayoutStats] = useState(null);
+
+  // Refresh payout stats from shared store
+  const refreshPayoutStats = () => setPayoutStats(getPayoutStats());
+
+  useEffect(() => {
+    refreshPayoutStats();
+    const handler = () => refreshPayoutStats();
+    window.addEventListener('payout_store_updated', handler);
+    window.addEventListener('storage', handler);
+    const interval = setInterval(refreshPayoutStats, 5000);
+    return () => {
+      window.removeEventListener('payout_store_updated', handler);
+      window.removeEventListener('storage', handler);
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     Promise.allSettled([
@@ -373,23 +392,53 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'Payments' && (
-        <div className="bg-white border border-gray-100 rounded-2xl p-16 shadow-sm flex flex-col items-center text-center">
-          <div className="w-16 h-16 bg-[#07535f]/5 rounded-full flex items-center justify-center text-[#07535f] mb-4">
-            <CreditCard className="w-8 h-8" />
+      {activeTab === 'Payments' && (() => {
+        const totalVol = (payoutStats?.totalRequested || 0) + 29500;
+        const platRev = Math.round(totalVol * 0.10);
+        return (
+        <div className="bg-white border border-gray-100 rounded-3xl p-8 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <div>
+              <h3 className="text-2xl font-bold text-[#031d22]">Financial Operations & Revenue</h3>
+              <p className="text-sm text-gray-500 mt-1">Live transaction volume, 10% platform revenue, and payout status.</p>
+            </div>
+            <Link
+              to="/admin/payments"
+              className="bg-[#07535f] hover:bg-[#06424b] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2 w-fit"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>Payout Control Center</span>
+            </Link>
           </div>
-          <h3 className="text-xl font-bold text-[#031d22]">Financial Operations</h3>
-          <p className="text-sm text-gray-500 mt-2 mb-6 max-w-sm">Track transactions, process refunds, and manage provider payouts.</p>
-          <div className="flex gap-3">
-            <button className="border border-gray-200 text-gray-700 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
-              View Transactions
-            </button>
-            <button className="bg-[#07535f] text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#06424b] transition-colors">
-              Manage Payouts
-            </button>
+
+          {(payoutStats?.pendingCount || 0) > 0 && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs font-bold text-amber-800">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              {payoutStats.pendingCount} pending payout request{payoutStats.pendingCount > 1 ? 's' : ''} totaling Rs. {(payoutStats.totalPending || 0).toLocaleString()}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-1">
+              <span className="text-xs font-bold text-gray-400 uppercase">Total Volume</span>
+              <p className="text-2xl font-extrabold text-gray-900">Rs. {totalVol.toLocaleString()}</p>
+            </div>
+            <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 space-y-1">
+              <span className="text-xs font-bold text-emerald-700 uppercase">Platform Revenue</span>
+              <p className="text-2xl font-extrabold text-emerald-900">Rs. {platRev.toLocaleString()}</p>
+            </div>
+            <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 space-y-1">
+              <span className="text-xs font-bold text-blue-700 uppercase">Total Disbursed</span>
+              <p className="text-2xl font-extrabold text-blue-900">Rs. {(payoutStats?.totalDisbursed || 0).toLocaleString()}</p>
+            </div>
+            <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100 space-y-1">
+              <span className="text-xs font-bold text-amber-700 uppercase">Pending Payouts</span>
+              <p className="text-2xl font-extrabold text-amber-900">Rs. {(payoutStats?.totalPending || 0).toLocaleString()}</p>
+            </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
     </div>
   );

@@ -32,6 +32,7 @@ import ManageProviders from './pages/admin/ManageProviders';
 import Analytics from './pages/admin/Analytics';
 import ManageUsers from './pages/admin/ManageUsers';
 import ManageBookings from './pages/admin/ManageBookings';
+import ManagePayments from './pages/admin/ManagePayments';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole }) => {
@@ -109,9 +110,10 @@ const AppRoutes = () => {
               <Routes>
                 <Route path="/" element={<AdminDashboard />} />
                 <Route path="/providers" element={<ManageProviders />} />
+                <Route path="/bookings" element={<ManageBookings />} />
+                <Route path="/payments" element={<ManagePayments />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/users" element={<ManageUsers />} />
-                <Route path="/bookings" element={<ManageBookings />} />
               </Routes>
             </AdminLayout>
           </ProtectedRoute>

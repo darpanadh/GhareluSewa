@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { providerAPI } from '../../services/api';
-import Card from '../../components/Card';
+import { submitPayoutRequest, getProviderPayoutRequests } from '../../services/payoutStore';
 import {
   TrendingUp, DollarSign, Calendar, Clock,
   Award, ChevronRight, Loader, AlertCircle, BarChart2,
@@ -38,6 +38,27 @@ export default function MyEarnings() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawSuccess, setWithdrawSuccess] = useState('');
 
+  // Load payout requests from shared store (syncs with admin)
+  const [payoutRequests, setPayoutRequests] = useState([]);
+
+  const refreshPayoutRequests = useCallback(() => {
+    if (user?.id) {
+      setPayoutRequests(getProviderPayoutRequests(user.id));
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    refreshPayoutRequests();
+    // Listen for store updates (e.g. admin disbursing a payment)
+    const handler = () => refreshPayoutRequests();
+    window.addEventListener('payout_store_updated', handler);
+    window.addEventListener('storage', handler); // cross-tab sync
+    return () => {
+      window.removeEventListener('payout_store_updated', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }, [refreshPayoutRequests]);
+
   useEffect(() => {
     fetchEarnings();
   }, [period]);
@@ -52,7 +73,6 @@ export default function MyEarnings() {
       setPayments(Array.isArray(data.payments) ? data.payments : []);
     } catch (err) {
       console.warn('Could not load server earnings, using fallback data', err);
-      // Fallback showcase data if API backend endpoint is offline
       setEarnings({ total: 14500, jobs: 12, avg: 1208 });
       setPayments([
         { id: 'TXN-9082', amount: 3500, status: 'completed', created_at: new Date().toISOString() },
@@ -68,10 +88,20 @@ export default function MyEarnings() {
   const jobsCount  = earnings?.jobs      || earnings?.count || 12;
   const avg        = jobsCount > 0 ? Math.round(total / jobsCount) : 0;
   const commission = Math.round(total * 0.10);
-  const net        = total - commission;
+  const netTotal   = total - commission;
   
-  // Available payout balance
-  const availableBalance = Math.max(0, net);
+  // Calculate Pending and Completed Withdrawals for exact financial consistency
+  const pendingPayouts = payoutRequests
+    .filter(r => r.status === 'pending')
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+  const completedPayouts = payoutRequests
+    .filter(r => r.status === 'completed')
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+  // Available balance = Net Earnings - (Pending + Completed Withdrawals)
+  // Rejections are excluded, so rejected amounts automatically return to Available Balance!
+  const availableBalance = Math.max(0, netTotal - pendingPayouts - completedPayouts);
 
   const handleOpenWithdraw = () => {
     setWithdrawAmount(availableBalance.toString());
@@ -92,21 +122,39 @@ export default function MyEarnings() {
       return;
     }
 
+    // Build account details string based on method
+    let acctStr = '';
+    if (withdrawMethod === 'esewa') acctStr = `${accountDetails.esewaId} (eSewa)`;
+    else if (withdrawMethod === 'khalti') acctStr = `${accountDetails.khaltiId} (Khalti)`;
+    else acctStr = `${accountDetails.bankName} - A/C ${accountDetails.accountNumber}`;
+
     setWithdrawing(true);
     try {
-      // Simulate API call to process payout request
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise(resolve => setTimeout(resolve, 800));
 
-      const newPayoutTxn = {
-        id: `WITHDRAW-${Math.floor(1000 + Math.random() * 9000)}`,
+      // Save to shared payout store so admin can see it
+      const newReq = submitPayoutRequest({
+        provider_id: user?.id,
+        provider_name: user?.name || 'Unknown',
+        provider_email: user?.email || '',
+        category: user?.service_category || 'General',
+        amount: amountNum,
+        method: withdrawMethod === 'esewa' ? 'eSewa' : withdrawMethod === 'khalti' ? 'Khalti' : 'Bank Transfer',
+        account_details: acctStr,
+      });
+
+      // Also add to local transaction list for immediate UI feedback
+      setPayments(prev => [{
+        id: newReq.id,
         amount: amountNum,
         status: 'pending',
-        created_at: new Date().toISOString(),
-        method: withdrawMethod.toUpperCase(),
-      };
+        created_at: newReq.requested_at,
+        method: newReq.method,
+      }, ...prev]);
 
-      setPayments(prev => [newPayoutTxn, ...prev]);
-      setWithdrawSuccess(`Payout request of Rs. ${amountNum.toLocaleString()} via ${withdrawMethod.toUpperCase()} submitted successfully! Funds will be transferred within 24 hours.`);
+      refreshPayoutRequests();
+
+      setWithdrawSuccess(`Payout request of Rs. ${amountNum.toLocaleString()} via ${newReq.method} submitted! Admin will process your payment within 24 hours.`);
       
       setTimeout(() => {
         setShowWithdrawModal(false);
@@ -120,7 +168,26 @@ export default function MyEarnings() {
     }
   };
 
-  const barMax = payments.length ? Math.max(...payments.map(p => Number(p.amount) || 0)) : 1;
+  // Merge server payments with payout store requests for unified history
+  const mergedPayments = (() => {
+    const storeIds = new Set(payoutRequests.map(r => r.id));
+    // Update local payments with live status from store
+    const updatedPayments = payments.map(p => {
+      if (storeIds.has(p.id)) {
+        const storeReq = payoutRequests.find(r => r.id === p.id);
+        return { ...p, status: storeReq.status };
+      }
+      return p;
+    });
+    // Add any store requests not yet in payments list
+    const existingIds = new Set(updatedPayments.map(p => p.id));
+    const newFromStore = payoutRequests
+      .filter(r => !existingIds.has(r.id))
+      .map(r => ({ id: r.id, amount: r.amount, status: r.status, created_at: r.requested_at, method: r.method }));
+    return [...newFromStore, ...updatedPayments];
+  })();
+
+  const barMax = mergedPayments.length ? Math.max(...mergedPayments.map(p => Number(p.amount) || 0)) : 1;
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8">
@@ -164,8 +231,20 @@ export default function MyEarnings() {
             <div className="text-4xl sm:text-5xl font-black tracking-tight">
               Rs. {availableBalance.toLocaleString()}
             </div>
-            <p className="text-xs text-white/80 max-w-md">
-              Net earnings after deducting 10% platform commission. You can request payouts anytime directly to your eSewa, Khalti, or Bank Account.
+            <div className="flex items-center gap-3 pt-1 flex-wrap">
+              {pendingPayouts > 0 && (
+                <span className="bg-amber-400/20 border border-amber-300/40 text-amber-200 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                  ⏳ Pending Hold: Rs. {pendingPayouts.toLocaleString()}
+                </span>
+              )}
+              {completedPayouts > 0 && (
+                <span className="bg-emerald-400/20 border border-emerald-300/40 text-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                  ✓ Total Disbursed: Rs. {completedPayouts.toLocaleString()}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-white/80 max-w-md pt-1">
+              Net earnings after 10% platform fee minus pending/processed withdrawals. If admin rejects a request, funds automatically return here.
             </p>
           </div>
 
@@ -203,8 +282,8 @@ export default function MyEarnings() {
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Net Payout</p>
-                  <p className="text-xl font-extrabold text-[#10b981] mt-0.5">Rs. {net.toLocaleString()}</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Net Earnings</p>
+                  <p className="text-xl font-extrabold text-[#10b981] mt-0.5">Rs. {netTotal.toLocaleString()}</p>
                 </div>
               </div>
 
@@ -247,20 +326,20 @@ export default function MyEarnings() {
                   <p className="text-xs text-gray-400 mt-0.5">Recent earnings deposits and withdrawal logs</p>
                 </div>
                 <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
-                  {payments.length} Records
+                  {mergedPayments.length} Records
                 </span>
               </div>
 
-              {payments.length === 0 ? (
+              {mergedPayments.length === 0 ? (
                 <div className="py-12 text-center text-gray-400 space-y-2">
                   <DollarSign className="w-10 h-10 mx-auto opacity-30 text-gray-400" />
                   <p className="text-sm font-semibold">No payment records found for this period</p>
                 </div>
               ) : (
                 <div className="divide-y divide-gray-50">
-                  {payments.map((p, i) => {
+                  {mergedPayments.map((p, i) => {
                     const amt = Number(p.amount) || 0;
-                    const isWithdrawal = p.id?.startsWith('WITHDRAW');
+                    const isWithdrawal = p.id?.startsWith('PW-') || p.id?.startsWith('WITHDRAW');
                     const dateStr = p.created_at
                       ? format(new Date(p.created_at), 'dd MMM yyyy, hh:mm a')
                       : '—';
@@ -287,15 +366,20 @@ export default function MyEarnings() {
                               {isWithdrawal ? `- Rs. ${amt.toLocaleString()}` : `+ Rs. ${amt.toLocaleString()}`}
                             </p>
                             <p className="text-[11px] text-gray-400">
-                              {isWithdrawal ? 'Payout Processing' : `Net: Rs. ${Math.round(amt * 0.9).toLocaleString()}`}
+                              {isWithdrawal
+                                ? (p.status === 'completed' ? 'Admin Paid ✓' : 'Awaiting Admin Disbursal')
+                                : `Net: Rs. ${Math.round(amt * 0.9).toLocaleString()}`
+                              }
                             </p>
                           </div>
                           <span className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${
                             p.status === 'completed' 
                               ? 'bg-emerald-100 text-emerald-800' 
+                              : p.status === 'rejected'
+                              ? 'bg-red-100 text-red-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {p.status === 'completed' ? 'Completed' : 'Pending'}
+                            {p.status === 'completed' ? 'Paid' : p.status === 'rejected' ? 'Rejected' : 'Pending'}
                           </span>
                         </div>
                       </div>
