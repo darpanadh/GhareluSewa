@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -7,15 +7,23 @@ import Card from '../components/Card';
 import { AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
+  const [searchParams] = useSearchParams();
+  const roleParam = searchParams.get('role') === 'provider' ? 'provider' : 'customer';
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     password: '',
     confirmPassword: '',
-    role: 'customer',
+    role: roleParam,
     ward: '',
   });
+
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, role: roleParam }));
+  }, [roleParam]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { register } = useAuth();
@@ -62,8 +70,12 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Join Gharelu Sewa</h1>
-          <p className="text-gray-600 mt-2">Create your account in minutes</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {formData.role === 'provider' ? 'Become a Tasker' : 'Join Gharelu Sewa'}
+          </h1>
+          <p className="text-gray-600 mt-2">
+            {formData.role === 'provider' ? 'Register your skills and start earning' : 'Create your account in minutes'}
+          </p>
         </div>
 
         {error && (
@@ -102,22 +114,6 @@ export default function RegisterPage() {
             onChange={handleChange}
             placeholder="Enter your phone number"
           />
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              I am a...
-            </label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="input-field"
-              required
-            >
-              <option value="customer">Customer (Looking for services)</option>
-              <option value="provider">Service Provider (Offering services)</option>
-            </select>
-          </div>
 
           <Input
             label="Ward/Area"
