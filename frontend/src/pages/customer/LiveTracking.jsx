@@ -70,6 +70,16 @@ export default function LiveTracking() {
     if (reviewRating === 0) { setReviewError('Please select a rating'); return; }
     setReviewSubmitting(true);
     setReviewError('');
+
+    // If it's a demo booking without a database ID, simulate success
+    if (!booking.id) {
+      setTimeout(() => {
+        setReviewSubmitted(true);
+        setReviewSubmitting(false);
+      }, 800);
+      return;
+    }
+
     try {
       await reviewAPI.createReview({
         booking_id: booking.id,
@@ -392,13 +402,20 @@ export default function LiveTracking() {
                 </div>
 
                 {/* Pay Invoice Link */}
-                {booking.id && (
+                {booking.id ? (
                   <Link
                     to={`/customer/invoice/${booking.id}`}
                     className="w-full flex items-center justify-center gap-2 bg-[#60bb46] hover:bg-[#52a83b] text-white px-6 py-3.5 rounded-full font-bold shadow-sm transition-colors text-sm"
                   >
                     <DollarSign className="w-4 h-4" /> Pay Invoice (eSewa)
                   </Link>
+                ) : (
+                  <button
+                    onClick={() => alert('eSewa Payment Simulation: In a real flow, this redirects to the payment page. For this demo, payment is simulated successfully!')}
+                    className="w-full flex items-center justify-center gap-2 bg-[#60bb46] hover:bg-[#52a83b] text-white px-6 py-3.5 rounded-full font-bold shadow-sm transition-colors text-sm"
+                  >
+                    <DollarSign className="w-4 h-4" /> Pay Invoice (eSewa - Demo)
+                  </button>
                 )}
               </div>
             )}

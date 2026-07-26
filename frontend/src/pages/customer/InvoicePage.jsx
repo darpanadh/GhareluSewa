@@ -5,7 +5,7 @@ import { CheckCircle, CreditCard, Shield, ArrowRight, Loader2, Receipt } from 'l
 import Card from '../../components/Card';
 import { format } from 'date-fns';
 
-const ESEWA_PAYMENT_URL = 'https://rc-epay.esewa.com.np/api/epay/main/v2/form'; // sandbox
+const ESEWA_PAYMENT_URL = import.meta.env.VITE_ESEWA_PAYMENT_URL || 'https://rc-epay.esewa.com.np/api/epay/main/v2/form';
 
 export default function InvoicePage() {
   const { bookingId } = useParams();

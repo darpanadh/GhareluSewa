@@ -3,7 +3,7 @@ import { sendNotification, notifyAllAdmins } from '../config/socketHelper.js';
 import crypto from 'crypto';
 
 const COMMISSION_RATE = 0.10; // 10% platform commission
-const ESEWA_MERCHANT_CODE = 'EPAYTEST'; // eSewa sandbox merchant code
+const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE || 'EPAYTEST'; // configurable merchant code
 const ESEWA_SUCCESS_URL = process.env.FRONTEND_URL
   ? `${process.env.FRONTEND_URL}/payment/success`
   : 'http://localhost:5173/payment/success';
@@ -242,6 +242,6 @@ export const getAllPayments = async (req, res) => {
 // HMAC-SHA256 signature for eSewa v2 API
 function generateEsewaSignature(amount, transactionUuid) {
   const secret = process.env.ESEWA_SECRET || '8gBm/:&EnhH.1/q'; // eSewa sandbox secret
-  const message = `total_amount=${amount},transaction_uuid=${transactionUuid},product_code=EPAYTEST`;
+  const message = `total_amount=${amount},transaction_uuid=${transactionUuid},product_code=${ESEWA_MERCHANT_CODE}`;
   return crypto.createHmac('sha256', secret).update(message).digest('base64');
 }
