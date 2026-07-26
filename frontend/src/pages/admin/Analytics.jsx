@@ -9,26 +9,23 @@ import {
 import { format } from 'date-fns';
 
 // Simple inline bar chart component
-function MiniBar({ data, color = '#6366f1', labelKey = 'label', valueKey = 'value' }) {
-  if (!data || data.length === 0) return <div style={{ color: '#94a3b8', textAlign: 'center', padding: '2rem' }}>No data available</div>;
+function MiniBar({ data, color = 'bg-[#07535f]', labelKey = 'label', valueKey = 'value' }) {
+  if (!data || data.length === 0) return <div className="text-gray-400 text-center py-8">No data available</div>;
   const max = Math.max(...data.map(d => Number(d[valueKey]) || 0)) || 1;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '120px', padding: '0 4px' }}>
+    <div className="flex items-end gap-2 h-32 px-1">
       {data.map((d, i) => {
         const h = Math.max(4, Math.round(((Number(d[valueKey]) || 0) / max) * 100));
         return (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>{d[valueKey] || 0}</span>
+          <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+            <span className="text-[11px] text-gray-500 font-bold group-hover:text-gray-700 transition-colors">{d[valueKey] || 0}</span>
             <div
               title={`${d[labelKey]}: ${d[valueKey]}`}
-              style={{
-                width: '100%', height: `${h}%`, background: color,
-                borderRadius: '4px 4px 0 0', transition: 'height 0.5s ease',
-                opacity: 0.85, cursor: 'pointer',
-              }}
+              className={`w-full ${color} rounded-t-md opacity-85 group-hover:opacity-100 transition-all duration-500 cursor-pointer shadow-sm`}
+              style={{ height: `${h}%` }}
             />
-            <span style={{ fontSize: '0.62rem', color: '#94a3b8', textAlign: 'center', maxWidth: '100%', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+            <span className="text-[10px] text-gray-400 text-center max-w-full overflow-hidden whitespace-nowrap text-ellipsis group-hover:text-gray-600">
               {d[labelKey]}
             </span>
           </div>
@@ -85,159 +82,152 @@ export default function Analytics() {
       { label: 'Carpentry', value: stats?.carpentry_count || 0 },
     ].filter(d => d.value > 0);
 
-  const recentSignups = analytics?.recentSignups || [];
-
   const kpis = [
     {
       label: 'Total Users',
       value: stats?.total_users || stats?.users || 0,
       icon: Users,
-      color: '#6366f1',
-      bg: 'linear-gradient(135deg, #6366f1, #818cf8)',
+      gradient: 'from-blue-600 to-indigo-600',
       sub: `${stats?.total_customers || stats?.customers || 0} customers · ${stats?.total_providers || stats?.providers || 0} providers`,
     },
     {
       label: 'Total Bookings',
       value: stats?.total_bookings || stats?.bookings || 0,
       icon: Calendar,
-      color: '#0ea5e9',
-      bg: 'linear-gradient(135deg, #0ea5e9, #38bdf8)',
+      gradient: 'from-[#07535f] to-[#0a7a8a]',
       sub: `${stats?.active_bookings || stats?.pending_bookings || 0} active`,
     },
     {
       label: 'Platform Revenue',
       value: `Rs ${totalCommission.toLocaleString()}`,
       icon: DollarSign,
-      color: '#16a34a',
-      bg: 'linear-gradient(135deg, #16a34a, #22c55e)',
+      gradient: 'from-[#10b981] to-emerald-600',
       sub: `From Rs ${totalRevenue.toLocaleString()} total payments`,
     },
     {
       label: 'Pending KYC',
       value: stats?.pending_providers || stats?.pending_verifications || 0,
       icon: Shield,
-      color: '#ca8a04',
-      bg: 'linear-gradient(135deg, #ca8a04, #eab308)',
+      gradient: 'from-amber-500 to-orange-500',
       sub: 'Providers awaiting review',
     },
     {
       label: 'Avg Rating',
       value: stats?.avg_platform_rating ? Number(stats.avg_platform_rating).toFixed(1) : '—',
       icon: Star,
-      color: '#f59e0b',
-      bg: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+      gradient: 'from-yellow-400 to-amber-500',
       sub: `Platform-wide`,
     },
     {
       label: 'Completed Jobs',
       value: stats?.completed_bookings || stats?.completed || 0,
       icon: Activity,
-      color: '#db2777',
-      bg: 'linear-gradient(135deg, #db2777, #ec4899)',
+      gradient: 'from-pink-500 to-rose-500',
       sub: 'All time',
     },
   ];
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '5rem 0', color: '#94a3b8' }}>
-        <Loader style={{ width: 32, height: 32, margin: '0 auto 1rem' }} />
-        <p>Loading analytics…</p>
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <Loader className="w-8 h-8 mb-4 animate-spin text-[#07535f]" />
+        <p className="font-medium text-gray-500">Loading analytics...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
+    <div className="space-y-6">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.25rem' }}>
-            Platform Analytics
-          </h1>
-          <p style={{ color: '#64748b' }}>Monitor performance, revenue, and activity</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <TrendingUp className="w-8 h-8 text-[#07535f]" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Platform Analytics</h1>
+            <p className="text-sm text-gray-500">Monitor performance, revenue, and activity</p>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', borderRadius: '10px', padding: '4px' }}>
+        
+        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
           {['week', 'month', 'year', 'all'].map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              style={{
-                padding: '0.375rem 0.75rem',
-                borderRadius: '7px', border: 'none',
-                background: period === p ? 'white' : 'transparent',
-                color: period === p ? '#1e293b' : '#64748b',
-                fontWeight: period === p ? 600 : 400,
-                fontSize: '0.8rem', cursor: 'pointer',
-                boxShadow: period === p ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                textTransform: 'capitalize',
-              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all capitalize ${
+                period === p 
+                  ? 'bg-[#07535f] text-white shadow-md' 
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+              }`}
             >
-              {p === 'all' ? 'All Time' : `This ${p.charAt(0).toUpperCase() + p.slice(1)}`}
+              {p === 'all' ? 'All Time' : p}
             </button>
           ))}
         </div>
       </div>
 
       {error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '1rem', marginBottom: '1.5rem', color: '#b91c1c', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <AlertCircle style={{ width: 18, height: 18, flexShrink: 0 }} /> {error}
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-semibold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
         </div>
       )}
 
       {/* KPI Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {kpis.map(kpi => {
           const Icon = kpi.icon;
           return (
-            <div key={kpi.label} style={{ background: kpi.bg, borderRadius: '14px', padding: '1.25rem', color: 'white', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ opacity: 0.12, position: 'absolute', right: '-8px', bottom: '-8px' }}>
-                <Icon style={{ width: 64, height: 64 }} />
+            <div key={kpi.label} className={`bg-gradient-to-br ${kpi.gradient} rounded-2xl p-5 text-white relative overflow-hidden shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 group`}>
+              <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500">
+                <Icon className="w-24 h-24" />
               </div>
-              <Icon style={{ width: 20, height: 20, marginBottom: '0.625rem' }} />
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '2px', lineHeight: 1.1 }}>{kpi.value}</div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 600, opacity: 0.95, marginBottom: '2px' }}>{kpi.label}</div>
-              <div style={{ fontSize: '0.7rem', opacity: 0.75 }}>{kpi.sub}</div>
+              <div className="bg-white/20 w-8 h-8 rounded-lg flex items-center justify-center mb-4 backdrop-blur-sm">
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-extrabold mb-1 tracking-tight">{kpi.value}</div>
+              <div className="text-sm font-bold opacity-95 mb-0.5">{kpi.label}</div>
+              <div className="text-[11px] opacity-75 font-medium">{kpi.sub}</div>
             </div>
           );
         })}
       </div>
 
       {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <div className="grid md:grid-cols-2 gap-4">
         {/* Bookings by Category */}
-        <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #f1f5f9', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          <h3 style={{ fontWeight: 700, color: '#1e293b', marginBottom: '1.25rem', fontSize: '0.95rem' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+          <h3 className="font-bold text-gray-800 mb-5 flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-[#07535f]" />
             Bookings by Category
           </h3>
           {bookingsByCategory.length > 0 ? (
-            <MiniBar data={bookingsByCategory} color="#6366f1" labelKey="label" valueKey="value" />
+            <MiniBar data={bookingsByCategory} color="bg-[#07535f]" />
           ) : (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-              <BarChart2 style={{ width: 32, height: 32, margin: '0 auto 0.75rem', opacity: 0.3 }} />
-              <p style={{ fontSize: '0.875rem' }}>No booking data yet</p>
+            <div className="text-center py-10 text-gray-400">
+              <BarChart2 className="w-10 h-10 mx-auto mb-3 opacity-20" />
+              <p className="text-sm">No booking data yet</p>
             </div>
           )}
         </div>
 
         {/* Payment Summary */}
-        <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #f1f5f9', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          <h3 style={{ fontWeight: 700, color: '#1e293b', marginBottom: '1.25rem', fontSize: '0.95rem' }}>
+        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+          <h3 className="font-bold text-gray-800 mb-5 flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-[#10b981]" />
             Revenue Summary
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="space-y-5">
             {[
-              { label: 'Total Payments Collected', value: `Rs ${totalRevenue.toLocaleString()}`, color: '#1e293b', bar: 100 },
-              { label: 'Platform Commission (10%)', value: `Rs ${totalCommission.toLocaleString()}`, color: '#6366f1', bar: 10 },
-              { label: 'Paid to Providers (90%)', value: `Rs ${Math.round(totalRevenue * 0.9).toLocaleString()}`, color: '#16a34a', bar: 90 },
+              { label: 'Total Payments Collected', value: `Rs ${totalRevenue.toLocaleString()}`, color: 'bg-gray-800', bar: 100, textCol: 'text-gray-800' },
+              { label: 'Platform Commission (10%)', value: `Rs ${totalCommission.toLocaleString()}`, color: 'bg-[#07535f]', bar: 10, textCol: 'text-[#07535f]' },
+              { label: 'Paid to Providers (90%)', value: `Rs ${Math.round(totalRevenue * 0.9).toLocaleString()}`, color: 'bg-[#10b981]', bar: 90, textCol: 'text-[#10b981]' },
             ].map(row => (
-              <div key={row.label}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{row.label}</span>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: row.color }}>{row.value}</span>
+              <div key={row.label} className="group">
+                <div className="flex justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-gray-500">{row.label}</span>
+                  <span className={`text-sm font-bold ${row.textCol}`}>{row.value}</span>
                 </div>
-                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${row.bar}%`, background: row.color, borderRadius: 3 }} />
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${row.color} rounded-full group-hover:brightness-110 transition-all`} style={{ width: `${row.bar}%` }} />
                 </div>
               </div>
             ))}
@@ -246,71 +236,85 @@ export default function Analytics() {
       </div>
 
       {/* Recent Payments Table */}
-      <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #f1f5f9', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', marginBottom: '1.5rem' }}>
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem' }}>Recent Payments</h2>
-          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Last {payments.length} transactions</span>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+          <h2 className="font-bold text-gray-800">Recent Transactions</h2>
+          <span className="text-xs font-bold text-[#07535f] bg-[#07535f]/10 px-3 py-1 rounded-full">Last {payments.length}</span>
         </div>
+        
         {payments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-            <DollarSign style={{ width: 36, height: 36, margin: '0 auto 0.75rem', opacity: 0.3 }} />
-            <p>No payments recorded yet</p>
+          <div className="text-center py-12 text-gray-400">
+            <DollarSign className="w-12 h-12 mx-auto mb-3 opacity-20" />
+            <p className="font-medium text-sm">No payments recorded yet</p>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                {['Booking #', 'Customer', 'Provider', 'Amount', 'Commission', 'Date', 'Status'].map(h => (
-                  <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: '#64748b', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((p, i) => {
-                const amt = Number(p.amount) || 0;
-                const comm = Math.round(amt * 0.1);
-                const dateStr = p.paid_at ? format(new Date(p.paid_at), 'dd MMM yy') : p.created_at ? format(new Date(p.created_at), 'dd MMM yy') : '—';
-                return (
-                  <tr key={p.id || i} style={{ borderBottom: i < payments.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                    <td style={{ padding: '0.875rem 1rem', color: '#6366f1', fontWeight: 600 }}>#{p.booking_id || p.id}</td>
-                    <td style={{ padding: '0.875rem 1rem', color: '#1e293b' }}>{p.customer_name || '—'}</td>
-                    <td style={{ padding: '0.875rem 1rem', color: '#1e293b' }}>{p.provider_name || '—'}</td>
-                    <td style={{ padding: '0.875rem 1rem', fontWeight: 700, color: '#1e293b' }}>Rs {amt.toLocaleString()}</td>
-                    <td style={{ padding: '0.875rem 1rem', color: '#6366f1' }}>Rs {comm.toLocaleString()}</td>
-                    <td style={{ padding: '0.875rem 1rem', color: '#94a3b8' }}>{dateStr}</td>
-                    <td style={{ padding: '0.875rem 1rem' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: '0.73rem', fontWeight: 600, background: p.status === 'completed' ? '#dcfce7' : '#fef9c3', color: p.status === 'completed' ? '#15803d' : '#92400e' }}>
-                        {p.status === 'completed' ? 'Paid' : 'Pending'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  {['Booking ID', 'Customer', 'Provider', 'Amount', 'Commission', 'Date', 'Status'].map(h => (
+                    <th key={h} className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {payments.map((p, i) => {
+                  const amt = Number(p.amount) || 0;
+                  const comm = Math.round(amt * 0.1);
+                  const dateStr = p.paid_at ? format(new Date(p.paid_at), 'MMM d, yyyy') : p.created_at ? format(new Date(p.created_at), 'MMM d, yyyy') : '—';
+                  return (
+                    <tr key={p.id || i} className="hover:bg-gray-50/30 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-[#07535f]">#{p.booking_id || p.id}</td>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">{p.customer_name || '—'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">{p.provider_name || '—'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap font-extrabold text-gray-900">Rs {amt.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap font-bold text-[#10b981]">Rs {comm.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500 font-medium">{dateStr}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                          p.status === 'completed' 
+                            ? 'bg-green-50 text-green-700 border border-green-200' 
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
+                          {p.status === 'completed' ? 'Paid' : 'Pending'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* Quick Links */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <Link to="/admin/providers" style={{ textDecoration: 'none' }}>
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: 'box-shadow 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Shield style={{ width: 20, height: 20, color: '#6366f1' }} />
+      <div className="grid md:grid-cols-2 gap-4">
+        <Link to="/admin/providers" className="block">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center justify-between hover:border-[#07535f]/30 hover:shadow-md transition-all group cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-[#07535f]/10 flex items-center justify-center text-[#07535f] group-hover:scale-110 transition-transform">
+                <Shield className="w-6 h-6" />
+              </div>
               <div>
-                <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem' }}>Manage Providers</div>
-                <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>KYC approvals & management</div>
+                <h3 className="font-bold text-gray-800 group-hover:text-[#07535f] transition-colors">Manage Providers</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Approve KYC & manage accounts</p>
               </div>
             </div>
-            <ChevronRight style={{ width: 18, height: 18, color: '#94a3b8' }} />
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-[#07535f] group-hover:translate-x-1 transition-all" />
           </div>
         </Link>
-        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Activity style={{ width: 20, height: 20, color: '#16a34a' }} />
+        
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center text-green-500">
+              <Activity className="w-6 h-6" />
+            </div>
             <div>
-              <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem' }}>Platform Health</div>
-              <div style={{ fontSize: '0.78rem', color: '#16a34a' }}>✅ All systems operational</div>
+              <h3 className="font-bold text-gray-800">Platform Health</h3>
+              <p className="text-xs text-green-600 font-semibold mt-0.5 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> All systems operational
+              </p>
             </div>
           </div>
         </div>
