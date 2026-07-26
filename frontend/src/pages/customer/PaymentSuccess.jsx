@@ -10,21 +10,23 @@ export default function PaymentSuccess() {
   const [paymentInfo, setPaymentInfo] = useState(null);
 
   useEffect(() => {
+    const dataParam = searchParams.get('data');
     const oid = searchParams.get('oid');
     const amt = searchParams.get('amt');
     const refId = searchParams.get('refId');
 
-    if (!oid || !amt || !refId) {
+    if (dataParam) {
+      verifyPayment({ data: dataParam });
+    } else if (oid && amt && refId) {
+      verifyPayment({ oid, amt, refId });
+    } else {
       setStatus('failed');
-      return;
     }
-
-    verifyPayment(oid, amt, refId);
   }, []);
 
-  const verifyPayment = async (oid, amt, refId) => {
+  const verifyPayment = async (params) => {
     try {
-      const res = await paymentAPI.verifyPayment({ oid, amt, refId });
+      const res = await paymentAPI.verifyPayment(params);
       if (res.data?.success) {
         setPaymentInfo(res.data.payment);
         setStatus('success');

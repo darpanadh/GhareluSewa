@@ -95,7 +95,28 @@ export const initiatePayment = async (req, res) => {
 // Verify eSewa payment after redirect back
 export const verifyPayment = async (req, res) => {
   try {
-    const { oid, amt, refId } = req.query;
+    let { oid, amt, refId, data } = req.query;
+
+    if (data) {
+      // Decode eSewa v2 Base64 data response
+      const decodedData = JSON.parse(Buffer.from(data, 'base64').toString('utf-8'));
+      oid = decodedData.transaction_uuid;
+      amt = decodedData.total_amount.toString();
+      refId = decodedData.transaction_code;
+
+      // Verify HMAC-SHA256 signature sent by eSewa
+      const secret = process.env.ESEWA_SECRET || '8gBm/:&EnhH.1/q';
+      const message = `transaction_code=${decodedData.transaction_code},status=${decodedData.status},total_amount=${decodedData.total_amount},transaction_uuid=${decodedData.transaction_uuid},product_code=${decodedData.product_code},signed_field_names=${decodedData.signed_field_names}`;
+      const generatedSignature = crypto.createHmac('sha256', secret).update(message).digest('base64');
+
+      if (generatedSignature !== decodedData.signature) {
+        return res.status(400).json({ error: 'Signature verification failed — payment rejected' });
+      }
+
+      if (decodedData.status !== 'COMPLETE') {
+        return res.status(400).json({ error: `Payment status is ${decodedData.status} (expected COMPLETE)` });
+      }
+    }
 
     if (!oid || !amt || !refId) {
       return res.status(400).json({ error: 'Missing payment verification parameters' });
