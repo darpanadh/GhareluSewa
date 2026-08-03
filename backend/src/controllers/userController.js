@@ -39,7 +39,8 @@ export const getUserById = async (req, res) => {
 
     const result = await query(
       `SELECT u.id, u.name, u.email, u.phone, u.role, u.ward, u.avatar_url, u.bio, u.is_verified, u.created_at,
-              pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability, sc.name as service_category
+              pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability, pp.background_check_status, pp.skill_badges,
+              sc.name as service_category
        FROM users u
        LEFT JOIN provider_profiles pp ON u.id = pp.user_id
        LEFT JOIN service_categories sc ON pp.category_id = sc.id
@@ -65,7 +66,8 @@ export const getAllProviders = async (req, res) => {
 
     let sql = `
       SELECT u.id, u.name, u.email, u.phone, u.role, u.ward, u.avatar_url, u.bio,
-             pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability, sc.name as service_category, sc.id as category_id
+             pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability, pp.background_check_status, pp.skill_badges,
+             sc.name as service_category, sc.id as category_id
       FROM users u
       JOIN provider_profiles pp ON u.id = pp.user_id
       JOIN service_categories sc ON pp.category_id = sc.id

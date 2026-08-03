@@ -114,6 +114,14 @@ export default function CustomerDashboard() {
             </Link>
 
             <Link
+              to="/emergency"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-700 transition-all shadow-sm hover:shadow"
+            >
+              <AlertCircle className="w-4 h-4 animate-pulse" />
+              Emergency
+            </Link>
+
+            <Link
               to="/book"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#07535f] text-white text-sm font-semibold rounded-xl hover:bg-[#06424b] transition-all shadow-sm hover:shadow"
             >

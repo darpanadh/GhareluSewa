@@ -4,8 +4,9 @@ import { useAuth } from '../../context/AuthContext';
 import { userAPI } from '../../services/api';
 import {
   Search, MapPin, Star, SlidersHorizontal, Tag,
-  Banknote, ArrowRight
+  Banknote, ArrowRight, ShieldCheck
 } from 'lucide-react';
+
 
 export default function BrowseServices() {
   const navigate = useNavigate();
@@ -38,7 +39,8 @@ export default function BrowseServices() {
       category: 'Electrical Repairs',
       ward: 'Lakeside',
       description: 'Certified electrician specialising in wiring and switchboard work.',
-      tags: ['Appliance Servicing', 'Electrical Repairs']
+      tags: ['Appliance Servicing', 'Electrical Repairs', 'Switch Installation', 'Wiring'],
+      backgroundCheckStatus: 'approved'
     },
     {
       id: 'p-2',
@@ -49,7 +51,8 @@ export default function BrowseServices() {
       category: 'Appliance Servicing',
       ward: 'Baneshwor',
       description: 'Appliance repair expert — AC, fridge, washing machine, geyser.',
-      tags: ['Appliance Servicing']
+      tags: ['Appliance Servicing', 'AC Filter Cleaning', 'Water Heater'],
+      backgroundCheckStatus: 'approved'
     },
     {
       id: 'p-3',
@@ -60,7 +63,8 @@ export default function BrowseServices() {
       category: 'Plumbing',
       ward: 'Bagar',
       description: 'Licensed plumber with 8 years of experience in residential fittings.',
-      tags: ['Plumbing']
+      tags: ['Plumbing', 'Pipe Repair', 'Tap Installation'],
+      backgroundCheckStatus: 'approved'
     },
     {
       id: 'p-4',
@@ -71,7 +75,8 @@ export default function BrowseServices() {
       category: 'Carpentry',
       ward: 'New Road, Pokhara',
       description: 'Skilled carpenter for furniture, doors, and custom woodwork.',
-      tags: ['Carpentry']
+      tags: ['Carpentry', 'General Handyman'],
+      backgroundCheckStatus: 'approved'
     },
     {
       id: 'p-5',
@@ -82,7 +87,8 @@ export default function BrowseServices() {
       category: 'Plumbing',
       ward: 'Lakeside',
       description: 'Expert plumber for leak repairs, pipe installations, and sanitation.',
-      tags: ['Plumbing', 'Pipe Repair']
+      tags: ['Plumbing', 'Pipe Repair', 'Drain Cleaning'],
+      backgroundCheckStatus: 'approved'
     },
     {
       id: 'p-6',
@@ -93,7 +99,8 @@ export default function BrowseServices() {
       category: 'House Cleaning',
       ward: 'Chipiyata',
       description: 'Thorough deep cleaning, sanitizing, and room disinfection.',
-      tags: ['House Cleaning', 'Deep Clean']
+      tags: ['House Cleaning', 'Deep Clean', 'Bathroom Sanitization'],
+      backgroundCheckStatus: 'approved'
     }
   ];
 
@@ -111,12 +118,13 @@ export default function BrowseServices() {
           id: p.id,
           name: p.name || 'Service Pro',
           hourlyRate: p.hourly_rate || p.price || 650,
-          rating: parseFloat(p.rating || 4.8),
+          rating: parseFloat(p.rating_avg || p.rating || 4.8),
           reviewsCount: p.total_reviews || 20,
-          category: p.category_name || p.category || 'General',
+          category: p.service_category || p.category_name || p.category || 'General',
           ward: p.ward || p.location || 'Kathmandu',
           description: p.bio || p.description || 'Experienced local service professional.',
-          tags: p.skills ? p.skills.split(',') : [p.category_name || 'Home Service']
+          tags: p.skill_badges ? p.skill_badges.split(',') : (p.skills ? p.skills.split(',') : [p.service_category || 'Home Service']),
+          backgroundCheckStatus: p.background_check_status || 'pending'
         }));
         setBackendProviders(formatted);
       }
@@ -364,9 +372,17 @@ export default function BrowseServices() {
                     <div>
                       {/* Name & Hourly Rate */}
                       <div className="flex justify-between items-start gap-2 mb-1.5">
-                        <h3 className="font-extrabold text-gray-900 text-lg group-hover:text-[#07535f] transition-colors">
-                          {provider.name}
-                        </h3>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="font-extrabold text-gray-900 text-lg group-hover:text-[#07535f] transition-colors">
+                            {provider.name}
+                          </h3>
+                          {provider.backgroundCheckStatus === 'approved' && (
+                            <span className="inline-flex items-center gap-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600 fill-emerald-600" />
+                              <span>Verified Pro</span>
+                            </span>
+                          )}
+                        </div>
                         <span className="font-extrabold text-sm text-gray-900 shrink-0">
                           Rs. {provider.hourlyRate}<span className="text-xs text-gray-500 font-normal">/hr</span>
                         </span>
@@ -387,6 +403,7 @@ export default function BrowseServices() {
                           ))}
                         </div>
                         <span className="text-xs font-bold text-gray-700">{provider.rating.toFixed(1)}</span>
+                        <span className="text-xs text-gray-400">({provider.reviewsCount} reviews)</span>
                       </div>
 
                       {/* Bio description */}
@@ -395,15 +412,19 @@ export default function BrowseServices() {
                       </p>
 
                       {/* Skill Tags */}
-                      <div className="flex flex-wrap gap-1.5 mb-6">
-                        {provider.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full border border-gray-200/60"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                      <div className="mb-6">
+                        <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Approved Skill Badges</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {provider.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="bg-emerald-50/50 text-emerald-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-0.5"
+                            >
+                              <span className="w-1 h-1 rounded-full bg-emerald-500" />
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
