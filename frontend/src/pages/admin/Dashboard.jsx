@@ -141,7 +141,7 @@ export default function AdminDashboard() {
     { name: 'Carpentry',  value: 18, color: '#ef4444' },
   ];
 
-  const tabs = ['overview', 'users', 'providers', 'bookings', 'services', 'payments'];
+  const tabs = ['overview', 'users', 'providers', 'services'];
 
   const kpiCards = [
     {
@@ -440,45 +440,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Bookings Tab ──────────────────────────────────────────────── */}
-        {activeTab === 'bookings' && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h2 className="font-bold text-gray-900 text-base flex items-center gap-2 mb-5 pb-4 border-b border-gray-100">
-              <Calendar className="w-4 h-4 text-[#07535f]" /> All Platform Bookings
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider border-b border-gray-100">
-                    <th className="pb-3 px-3">ID</th>
-                    <th className="pb-3 px-3">Service</th>
-                    <th className="pb-3 px-3">Status</th>
-                    <th className="pb-3 px-3">Provider</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {recentBookings.length > 0 ? recentBookings.map(b => (
-                    <tr key={b.id} className="hover:bg-gray-50/50">
-                      <td className="py-3.5 px-3 font-mono text-xs text-gray-500 font-bold">BK-{b.id}</td>
-                      <td className="py-3.5 px-3 font-semibold text-gray-800">{b.service_category || 'Home Service'}</td>
-                      <td className="py-3.5 px-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                          b.status === 'completed'   ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' :
-                          b.status === 'cancelled'   ? 'text-red-700 bg-red-50 border border-red-200' :
-                          b.status === 'in_progress' ? 'text-blue-700 bg-blue-50 border border-blue-200' :
-                          'text-amber-700 bg-amber-50 border border-amber-200'
-                        }`}>{b.status}</span>
-                      </td>
-                      <td className="py-3.5 px-3 text-gray-700">{b.provider_name || '—'}</td>
-                    </tr>
-                  )) : (
-                    <tr><td colSpan="4" className="py-10 text-center text-gray-400 text-xs">No bookings found.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+
 
         {/* ── Users Tab ─────────────────────────────────────────────────── */}
         {activeTab === 'users' && (
@@ -489,14 +451,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Payments Tab ──────────────────────────────────────────────── */}
-        {activeTab === 'payments' && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center py-16">
-            <CreditCard className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="font-bold text-gray-500">Payments & Revenue</p>
-            <p className="text-xs text-gray-400 mt-1">View full payment data in the <Link to="/admin/analytics" className="text-[#07535f] font-bold underline">Analytics</Link> section.</p>
-          </div>
-        )}
+
 
         {/* ── Services Tab ──────────────────────────────────────────────── */}
         {(activeTab === 'services') && (
