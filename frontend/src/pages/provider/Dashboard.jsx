@@ -121,7 +121,7 @@ export default function ProviderDashboard() {
       )}
 
       {/* ── Hero Banner ─────────────────────────────────────────────────── */}
-      <div className="bg-[#07535f] px-4 sm:px-8 pt-6 pb-0">
+      <div className="bg-[#07535f] px-4 sm:px-8 pt-6 pb-6 shadow-sm">
         <div className="max-w-7xl mx-auto">
           {/* Top row */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -177,14 +177,14 @@ export default function ProviderDashboard() {
           </div>
 
           {/* Stat tiles */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pb-0">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
             {[
               { label: "Today's Earnings", value: `Rs. 2,400`, badge: '+15%' },
               { label: 'Completed Today',  value: `${completedJobs.length} Jobs`, badge: 'On track' },
               { label: 'Active Now',        value: `${activeJobs.length} Jobs`,   badge: 'Live' },
               { label: 'Acceptance Rate',   value: '94%',                         badge: 'Excellent' },
             ].map((s, i) => (
-              <div key={i} className="bg-white/10 border border-white/15 rounded-t-2xl px-4 py-4">
+              <div key={i} className="bg-white/10 rounded-2xl px-5 py-4">
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-white/55 text-[9px] font-bold uppercase tracking-widest">{s.label}</span>
                   <span className="text-white/70 text-[9px] font-bold bg-white/10 px-1.5 py-0.5 rounded-full">{s.badge}</span>

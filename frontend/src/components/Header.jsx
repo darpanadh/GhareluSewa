@@ -195,18 +195,6 @@ export const Header = () => {
                   >
                     <LayoutGrid className="w-4 h-4" />
                     <span>Dashboard</span>
-                  </Link>
-                  <Link
-                    to="/admin/users"
-                    className={
-                      location.pathname.startsWith('/admin/users')
-                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
-                        : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
-                    }
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Users</span>
-                  </Link>
                   <Link
                     to="/admin/bookings"
                     className={
@@ -403,9 +391,6 @@ export const Header = () => {
                   <>
                     <Link to="/admin" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
                       <LayoutGrid className="w-4 h-4" /> Dashboard
-                    </Link>
-                    <Link to="/admin/users" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                      <User className="w-4 h-4" /> Users
                     </Link>
                     <Link to="/admin/bookings" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> Bookings

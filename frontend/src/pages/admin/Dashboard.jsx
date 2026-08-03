@@ -265,28 +265,10 @@ export default function AdminDashboard() {
         {activeTab === 'overview' && (
           <>
             {/* Charts row */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-              {/* Bar chart */}
-              <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="font-bold text-gray-900 text-base mb-1">Revenue & Bookings Growth</h3>
-                <p className="text-xs text-blue-500 font-medium mb-4">Visualizing platform activity over the last 7 days.</p>
-                <BarChart data={revenueData} />
-              </div>
-
-              {/* Donut chart */}
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="font-bold text-gray-900 text-base mb-1">Services Distribution</h3>
-                <p className="text-xs text-gray-400 font-medium mb-2">Most popular categories by volume.</p>
-                <DonutChart data={serviceData} />
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-1">
-                  {serviceData.map(s => (
-                    <div key={s.name} className="flex items-center gap-2 text-xs text-gray-600">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }}></span>
-                      {s.name}
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h3 className="font-bold text-gray-900 text-base mb-1">Revenue & Bookings Growth</h3>
+              <p className="text-xs text-blue-500 font-medium mb-4">Visualizing platform activity over the last 7 days.</p>
+              <BarChart data={revenueData} />
             </div>
 
             {/* Pending KYC */}
