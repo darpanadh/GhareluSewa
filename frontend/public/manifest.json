@@ -1,0 +1,20 @@
+{
+  "name": "Gharelu Sewa",
+  "short_name": "GhareluSewa",
+  "description": "Connect with trusted local service providers for all your household needs",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07535f",
+  "theme_color": "#07535f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%2307535f'/><text y='140' x='20' font-size='130' fill='white'>🏠</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "lifestyle"],
+  "lang": "ne-NP"
+}

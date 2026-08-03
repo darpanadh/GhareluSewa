@@ -53,6 +53,11 @@ export const initializeDatabase = async () => {
     try {
       await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS citizenship_no VARCHAR(100)`);
       await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS citizenship_image_url TEXT`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS skill_badges TEXT DEFAULT ''`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS background_check_status VARCHAR(50) DEFAULT 'pending'`);
+      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS photo_url TEXT`);
+      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS completion_status VARCHAR(100) DEFAULT 'completed_on_time'`);
+      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_repeated_customer BOOLEAN DEFAULT FALSE`);
     } catch (e) {
       console.log('Columns already exist or error adding them:', e.message);
     }

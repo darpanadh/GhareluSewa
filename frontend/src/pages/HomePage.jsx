@@ -214,50 +214,80 @@ export default function HomePage() {
             <p className="text-sm text-gray-500 max-w-2xl mx-auto">Built for reliability, speed, and trust in every neighborhood.</p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Feature 1 */}
-            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center mb-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Feature 1 — Emergency Booking */}
+            <Link
+              to="/emergency"
+              className="bg-red-50 border-2 border-red-100 p-6 rounded-2xl hover:shadow-lg hover:border-red-300 transition-all group cursor-pointer block"
+            >
+              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Clock className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-gray-900 mb-2">Emergency Booking</h3>
+              <div className="flex items-center gap-1.5 mb-2">
+                <h3 className="font-bold text-gray-900">Emergency Booking</h3>
+                <ArrowRight className="w-4 h-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Solves urgent household problems faster by automatically broadcasting to available pros in your ward.
+                Urgent household problem? Get a provider dispatched to your ward in minutes.
               </p>
-            </div>
+              <span className="inline-block mt-3 text-xs font-bold text-red-600 bg-red-100 px-2.5 py-1 rounded-full">
+                🚨 Tap to request now →
+              </span>
+            </Link>
             
-            {/* Feature 2 */}
-            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-                <Search className="w-6 h-6" /> {/* Could use WifiOff or something, but Search/Globe is fine */}
+            {/* Feature 2 — Offline Mode */}
+            <div className="bg-blue-50 border-2 border-blue-100 p-6 rounded-2xl hover:shadow-lg hover:border-blue-300 transition-all group">
+              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <Users className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-gray-900 mb-2">Offline/Low-Data Mode</h3>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Optimized app performance helps you connect and book even in weak-network areas.
+                App works in weak network areas. Your bookings and provider info are cached for low-data access.
               </p>
+              <span className="inline-block mt-3 text-xs font-semibold text-blue-600 bg-blue-100 px-2.5 py-1 rounded-full">
+                ✅ Auto-enabled
+              </span>
             </div>
 
-            {/* Feature 3 */}
-            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
+            {/* Feature 3 — Trust System */}
+            <Link
+              to="/register?role=provider"
+              className="bg-emerald-50 border-2 border-emerald-100 p-6 rounded-2xl hover:shadow-lg hover:border-emerald-300 transition-all group block"
+            >
+              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-gray-900 mb-2">Verified Trust System</h3>
+              <div className="flex items-center gap-1.5 mb-2">
+                <h3 className="font-bold text-gray-900">Verified Trust System</h3>
+                <ArrowRight className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Complete peace of mind with ID verification, skill badges, background checks, and visible service history.
+                Every provider passes ID verification, background checks, and gets skill badges reviewed by admins.
               </p>
-            </div>
+              <span className="inline-block mt-3 text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
+                🛡 Provider signup →
+              </span>
+            </Link>
 
-            {/* Feature 4 */}
-            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 bg-yellow-50 text-yellow-600 rounded-xl flex items-center justify-center mb-4">
+            {/* Feature 4 — Ratings */}
+            <Link
+              to="/services"
+              className="bg-yellow-50 border-2 border-yellow-100 p-6 rounded-2xl hover:shadow-lg hover:border-yellow-300 transition-all group block"
+            >
+              <div className="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Star className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-gray-900 mb-2">Ratings with Real Proof</h3>
+              <div className="flex items-center gap-1.5 mb-2">
+                <h3 className="font-bold text-gray-900">Ratings with Real Proof</h3>
+                <ArrowRight className="w-4 h-4 text-yellow-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Authentic reviews including photo evidence, completion status, and repeated-customer reputation scores.
+                Reviews include photo evidence, "Completed on time" tags, and repeated-customer badges.
               </p>
-            </div>
+              <span className="inline-block mt-3 text-xs font-bold text-yellow-700 bg-yellow-100 px-2.5 py-1 rounded-full">
+                ⭐ Browse providers →
+              </span>
+            </Link>
           </div>
         </div>
       </section>

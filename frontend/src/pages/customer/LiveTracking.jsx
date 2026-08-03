@@ -377,12 +377,34 @@ export default function LiveTracking() {
                         ))}
                       </div>
 
+                      {/* Completion Status */}
+                      <div className="mb-4">
+                        <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Completion Status</label>
+                        <select
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#07535f]/30"
+                          onChange={(e) => setReviewComment(prev => prev + (prev ? ' | ' : '') + `[Status: ${e.target.value}]`)}
+                        >
+                          <option value="completed_on_time">✅ Completed on time</option>
+                          <option value="delayed">⚠️ Delayed but completed</option>
+                          <option value="exceeded_expectations">🌟 Exceeded expectations</option>
+                        </select>
+                      </div>
+
+                      {/* Photo Upload Simulation */}
+                      <div className="mb-4">
+                        <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">Photo Evidence (Optional)</label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-[#07535f] transition-colors bg-gray-50/50">
+                          <span className="text-xl mb-1 block">📸</span>
+                          <span className="text-xs text-gray-500 font-semibold">Tap to upload photo of completed work</span>
+                        </div>
+                      </div>
+
                       {/* Comment Box */}
                       <textarea
                         value={reviewComment}
                         onChange={e => setReviewComment(e.target.value)}
-                        placeholder="Tell us about your experience"
-                        rows={3}
+                        placeholder="Tell us about your experience..."
+                        rows={2}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#07535f]/30 focus:border-[#07535f] resize-none transition-all mb-4"
                       />
 
@@ -395,7 +417,7 @@ export default function LiveTracking() {
                         disabled={reviewSubmitting || reviewRating === 0}
                         className="w-full bg-[#07535f] hover:bg-[#06424b] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm"
                       >
-                        {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+                        {reviewSubmitting ? 'Submitting...' : 'Submit Verified Review'}
                       </button>
                     </form>
                   )}

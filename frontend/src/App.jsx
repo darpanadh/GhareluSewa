@@ -14,6 +14,7 @@ import BrowseServices from './pages/customer/BrowseServices';
 import BookingDetails from './pages/customer/BookingDetails';
 import BookingHistory from './pages/customer/BookingHistory';
 import BookingWizard from './pages/customer/BookingWizard';
+import EmergencyBooking from './pages/customer/EmergencyBooking';
 import LiveTracking from './pages/customer/LiveTracking';
 import InvoicePage from './pages/customer/InvoicePage';
 import PaymentSuccess from './pages/customer/PaymentSuccess';
@@ -63,6 +64,7 @@ const AppRoutes = () => {
       <Route path="/services" element={<BrowseServices />} />
       <Route path="/browse" element={<BrowseServices />} />
       <Route path="/book" element={<BookingWizard />} />
+      <Route path="/emergency" element={<EmergencyBooking />} />
       <Route path="/track" element={<LiveTracking />} />
       <Route path="/payment/success" element={<PaymentSuccess />} />
       <Route path="/payment/failed" element={<PaymentSuccess />} />

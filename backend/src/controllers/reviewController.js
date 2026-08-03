@@ -4,7 +4,7 @@ import { sendNotification, notifyAllAdmins } from '../config/socketHelper.js';
 // Create review (Customer only)
 export const createReview = async (req, res) => {
   try {
-    const { booking_id, rating, comment } = req.body;
+    const { booking_id, rating, comment, photo_url, completion_status } = req.body;
 
     if (!booking_id || !rating) {
       return res.status(400).json({ error: 'Booking ID and rating required' });
@@ -46,12 +46,27 @@ export const createReview = async (req, res) => {
       return res.status(409).json({ error: 'Review already exists for this booking' });
     }
 
-    // Create review
+    // Detect repeated customer: has this customer booked this provider before (other than current booking)?
+    const repeatCheck = await query(
+      `SELECT COUNT(*) as cnt FROM bookings
+       WHERE customer_id = $1 AND provider_id = $2 AND id != $3 AND status = 'completed'`,
+      [booking.customer_id, booking.provider_id, booking_id]
+    );
+    const is_repeated_customer = parseInt(repeatCheck.rows[0]?.cnt || 0) > 0;
+
+    // Create review with all proof fields
     const result = await query(
-      `INSERT INTO reviews (booking_id, customer_id, provider_id, rating, comment)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, booking_id, rating, comment, created_at`,
-      [booking_id, booking.customer_id, booking.provider_id, rating, comment || null]
+      `INSERT INTO reviews
+         (booking_id, customer_id, provider_id, rating, comment, photo_url, completion_status, is_repeated_customer)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, booking_id, rating, comment, photo_url, completion_status, is_repeated_customer, created_at`,
+      [
+        booking_id, booking.customer_id, booking.provider_id,
+        rating, comment || null,
+        photo_url || null,
+        completion_status || 'completed_on_time',
+        is_repeated_customer
+      ]
     );
 
     // Update provider's average rating
@@ -70,14 +85,14 @@ export const createReview = async (req, res) => {
     const customerResult = await query('SELECT name FROM users WHERE id = $1', [booking.customer_id]);
     const customerName = customerResult.rows[0]?.name || 'A customer';
 
-    // ── Notify Provider ──
+    // Notify Provider
     await sendNotification(
       booking.provider_id, booking_id,
       `⭐ ${customerName} gave you a ${rating}-star review!${comment ? ` "${comment.substring(0, 60)}..."` : ''}`,
       'review'
     );
 
-    // ── Notify All Admins ──
+    // Notify All Admins
     await notifyAllAdmins(
       booking_id,
       `⭐ New review: ${customerName} rated booking #${booking_id} ${rating}/5 stars`,
@@ -101,7 +116,8 @@ export const getProviderReviews = async (req, res) => {
     const { limit = 20, offset = 0 } = req.query;
 
     const result = await query(
-      `SELECT r.id, r.booking_id, r.rating, r.comment, r.created_at,
+      `SELECT r.id, r.booking_id, r.rating, r.comment, r.photo_url,
+              r.completion_status, r.is_repeated_customer, r.created_at,
               u.name as customer_name, u.avatar_url as customer_avatar
        FROM reviews r
        JOIN users u ON r.customer_id = u.id
