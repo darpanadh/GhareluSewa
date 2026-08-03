@@ -195,6 +195,7 @@ export const Header = () => {
                   >
                     <LayoutGrid className="w-4 h-4" />
                     <span>Dashboard</span>
+                  </Link>
                   <Link
                     to="/admin/bookings"
                     className={

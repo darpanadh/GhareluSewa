@@ -206,6 +206,62 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Features / Why Choose Us Section */}
+      <section className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-800 font-serif mb-3">Why Choose Gharelu Sewa?</h2>
+            <p className="text-sm text-gray-500 max-w-2xl mx-auto">Built for reliability, speed, and trust in every neighborhood.</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Feature 1 */}
+            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center mb-4">
+                <Clock className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-2">Emergency Booking</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Solves urgent household problems faster by automatically broadcasting to available pros in your ward.
+              </p>
+            </div>
+            
+            {/* Feature 2 */}
+            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4">
+                <Search className="w-6 h-6" /> {/* Could use WifiOff or something, but Search/Globe is fine */}
+              </div>
+              <h3 className="font-bold text-gray-900 mb-2">Offline/Low-Data Mode</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Optimized app performance helps you connect and book even in weak-network areas.
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-2">Verified Trust System</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Complete peace of mind with ID verification, skill badges, background checks, and visible service history.
+              </p>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 bg-yellow-50 text-yellow-600 rounded-xl flex items-center justify-center mb-4">
+                <Star className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-gray-900 mb-2">Ratings with Real Proof</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Authentic reviews including photo evidence, completion status, and repeated-customer reputation scores.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Roadmap Section */}
       <section className="bg-gray-50/70 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
