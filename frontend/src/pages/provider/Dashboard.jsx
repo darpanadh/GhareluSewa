@@ -2,14 +2,53 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { bookingAPI, providerAPI } from '../../services/api';
-import Card from '../../components/Card';
-import { 
-  AlertCircle, Star, DollarSign, Calendar, Clock, 
-  MapPin, Check, X, ArrowRight, TrendingUp, 
-  Search, User, Activity, Briefcase
+import {
+  Bell, Calendar, Clock, MapPin, Check, X,
+  Phone, Eye, TrendingUp, AlertCircle, Star,
+  ChevronRight, Activity, DollarSign, Shield
 } from 'lucide-react';
 import { format } from 'date-fns';
 
+// ── Simple SVG line chart ──────────────────────────────────────────────────
+function WeeklyEarningsChart({ data }) {
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+  const W = 300, H = 100, PAD = 16;
+  const pts = data.map((d, i) => {
+    const x = PAD + (i / (data.length - 1)) * (W - PAD * 2);
+    const y = H - PAD - (d.value / maxVal) * (H - PAD * 2);
+    return { x, y };
+  });
+  const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-24">
+      {/* Gridlines */}
+      {[0.25, 0.5, 0.75, 1].map(f => (
+        <line key={f} x1={PAD} x2={W - PAD}
+          y1={H - PAD - f * (H - PAD * 2)}
+          y2={H - PAD - f * (H - PAD * 2)}
+          stroke="#e5e7eb" strokeWidth="1" strokeDasharray="3 3" />
+      ))}
+      {/* Y-labels */}
+      {[0, 1500, 3000, 6000].map((v, i) => (
+        <text key={v} x={PAD - 2} y={H - PAD - (v / maxVal) * (H - PAD * 2) + 3}
+          textAnchor="end" fontSize="7" fill="#9ca3af">{v > 0 ? v : ''}</text>
+      ))}
+      {/* Area fill */}
+      <polygon
+        points={`${pts[0].x},${H - PAD} ${polyline} ${pts[pts.length - 1].x},${H - PAD}`}
+        fill="rgba(7,83,95,0.08)" />
+      {/* Line */}
+      <polyline points={polyline} fill="none" stroke="#07535f" strokeWidth="2" strokeLinejoin="round" />
+      {/* Dots */}
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#07535f" stroke="white" strokeWidth="1.5" />
+      ))}
+    </svg>
+  );
+}
+
+// ── Main Component ─────────────────────────────────────────────────────────
 export default function ProviderDashboard() {
   const { user, refreshUser } = useAuth();
   const [bookings, setBookings] = useState([]);
@@ -28,12 +67,9 @@ export default function ProviderDashboard() {
       const res = await bookingAPI.getUserBookings();
       const list = Array.isArray(res.data) ? res.data : [];
       setBookings(list);
-      
-      if (user && user.availability !== undefined) {
-        setAvailability(user.availability);
-      }
+      if (user?.availability !== undefined) setAvailability(user.availability);
     } catch (err) {
-      console.error('Failed to load provider bookings', err);
+      console.error('Failed to load bookings', err);
     } finally {
       setLoading(false);
     }
@@ -41,12 +77,9 @@ export default function ProviderDashboard() {
 
   const handleToggleAvailability = async () => {
     try {
-      const nextAvailability = !availability;
-      await providerAPI.toggleAvailability({ availability: nextAvailability });
-      setAvailability(nextAvailability);
-    } catch (err) {
-      console.error('Failed to toggle availability', err);
-    }
+      await providerAPI.toggleAvailability({ availability: !availability });
+      setAvailability(prev => !prev);
+    } catch (err) { console.error(err); }
   };
 
   const handleUpdateStatus = async (bookingId, newStatus) => {
@@ -54,189 +87,293 @@ export default function ProviderDashboard() {
     try {
       await bookingAPI.updateBookingStatus(bookingId, { status: newStatus });
       setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
-    } catch (err) {
-      console.error(err);
-      alert('Failed to update booking status');
-    } finally {
-      setActionLoading(null);
-    }
+    } catch (err) { alert('Failed to update booking status'); }
+    finally { setActionLoading(null); }
   };
 
-  const isVerified = user?.is_verified;
-
-  // Filter bookings
   const newRequests = bookings.filter(b => b.status === 'pending');
-  const activeJobs = bookings.filter(b => b.status === 'accepted' || b.status === 'in_progress');
+  const activeJobs  = bookings.filter(b => b.status === 'accepted' || b.status === 'in_progress');
   const completedJobs = bookings.filter(b => b.status === 'completed');
+  const hourlyRate  = parseFloat(user?.hourly_rate || 650);
+  const totalMonthly = completedJobs.length * hourlyRate;
+  const netPayout   = Math.round(totalMonthly * 0.93);
 
-  const hourlyRate = parseFloat(user?.hourly_rate || 650);
-  const totalEarnings = completedJobs.length * hourlyRate;
+  const weeklyData = [
+    { day: 'Mon', value: 1200 }, { day: 'Tue', value: 800  },
+    { day: 'Wed', value: 2100 }, { day: 'Thu', value: 1500 },
+    { day: 'Fri', value: 3200 }, { day: 'Sat', value: 3800 },
+    { day: 'Sun', value: 1900 },
+  ];
+
+  const todaySchedule = [...activeJobs, ...completedJobs].slice(0, 5);
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gray-50/60">
 
-        {/* KYC Pending Banner */}
-        {!isVerified && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-bold text-amber-800 text-sm">Account Pending KYC Verification</h3>
-              <p className="text-xs text-amber-700 mt-0.5">
-                Your profile is currently under review by our team. Verification ensures your profile is visible to local customers.
-              </p>
-            </div>
-          </div>
-        )}
+      {/* ── KYC Banner ─────────────────────────────────────────────────── */}
+      {!user?.is_verified && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-xs text-amber-800 font-semibold">
+            Account Pending KYC Verification — Your profile is under review. You'll be visible to customers once approved.
+          </p>
+        </div>
+      )}
 
-        {/* Header Summary Banner */}
-        <div className="bg-[#07535f] text-white rounded-3xl p-6 sm:p-8 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-white text-xl font-bold border border-white/20">
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover rounded-2xl" />
-              ) : (
-                user?.name?.charAt(0) || 'P'
-              )}
-            </div>
-            <div>
-              <h1 className="text-2xl font-extrabold tracking-tight">Welcome back, {user?.name || 'Provider'} 👋</h1>
-              <p className="text-xs text-white/80 mt-1 flex items-center gap-2">
-                <span>{user?.service_category || 'Service Provider'}</span> • <span>{user?.ward || 'Pokhara'}</span>
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="flex items-center gap-1 text-xs font-bold text-yellow-300">
-                  <Star className="w-3.5 h-3.5 fill-yellow-300" /> 4.9
-                </span>
-                <span className="text-[11px] text-white/60">• 142 reviews</span>
+      {/* ── Hero Banner ─────────────────────────────────────────────────── */}
+      <div className="bg-[#07535f] px-4 sm:px-8 pt-6 pb-0">
+        <div className="max-w-7xl mx-auto">
+          {/* Top row */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-white text-2xl font-bold overflow-hidden shrink-0">
+                {user?.avatar_url
+                  ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : (user?.name?.charAt(0) || 'P')}
+              </div>
+              <div>
+                <h1 className="text-xl font-extrabold text-white leading-tight">
+                  Welcome back, {user?.name?.split(' ')[0] || 'Provider'}!
+                </h1>
+                <p className="text-white/65 text-[11px] mt-0.5">
+                  {user?.service_category || 'Service Provider'}&nbsp;·&nbsp;{user?.ward || 'Baneshwor'}
+                </p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex">
+                    {[1,2,3,4,5].map(i => (
+                      <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <span className="text-white/60 text-[11px]">4.9 (142 reviews)</span>
+                  <span className={`w-2 h-2 rounded-full ${availability ? 'bg-emerald-400' : 'bg-gray-400'}`}></span>
+                  <span className={`text-[11px] font-bold ${availability ? 'text-emerald-300' : 'text-gray-300'}`}>
+                    {availability ? 'Online' : 'Offline'}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={handleToggleAvailability}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 ${
-                availability ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-gray-700 hover:bg-gray-800 text-white'
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full ${availability ? 'bg-white' : 'bg-gray-400'}`}></span>
-              {availability ? 'Status: Online' : 'Status: Offline'}
-            </button>
-            <Link 
-              to="/provider/profile"
-              className="bg-white/15 hover:bg-white/25 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all border border-white/20"
-            >
-              Edit Profile
-            </Link>
-          </div>
-        </div>
-
-        {/* 4 Essential Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">New Requests</p>
-              <p className="text-2xl font-extrabold text-gray-900 mt-0.5">{newRequests.length}</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-              <Activity className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Active Jobs</p>
-              <p className="text-2xl font-extrabold text-gray-900 mt-0.5">{activeJobs.length}</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-              <Check className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Completed</p>
-              <p className="text-2xl font-extrabold text-gray-900 mt-0.5">{completedJobs.length}</p>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-[#07535f]">
-              <DollarSign className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Gross Income</p>
-              <p className="text-2xl font-extrabold text-gray-900 mt-0.5">Rs. {totalEarnings.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Actionable Sections Grid: Active Jobs & New Requests */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          {/* Active Jobs Card */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                <Activity className="w-4 h-4 text-[#07535f]" />
-                Active Jobs ({activeJobs.length})
-              </h2>
-              <Link to="/provider/bookings" className="text-xs font-bold text-[#07535f] hover:underline">
-                View All →
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                onClick={handleToggleAvailability}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all"
+              >
+                <Bell className="w-4 h-4" />
+                Notifications
+                {newRequests.length > 0 && (
+                  <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full leading-none">
+                    {newRequests.length}
+                  </span>
+                )}
+              </button>
+              <Link
+                to="/provider/bookings"
+                className="flex items-center gap-2 bg-white text-[#07535f] px-4 py-2.5 rounded-xl text-xs font-bold shadow hover:bg-gray-50 transition-all"
+              >
+                <Calendar className="w-4 h-4" />
+                My Schedule
               </Link>
+            </div>
+          </div>
+
+          {/* Stat tiles */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pb-0">
+            {[
+              { label: "Today's Earnings", value: `Rs. 2,400`, badge: '+15%' },
+              { label: 'Completed Today',  value: `${completedJobs.length} Jobs`, badge: 'On track' },
+              { label: 'Active Now',        value: `${activeJobs.length} Jobs`,   badge: 'Live' },
+              { label: 'Acceptance Rate',   value: '94%',                         badge: 'Excellent' },
+            ].map((s, i) => (
+              <div key={i} className="bg-white/10 border border-white/15 rounded-t-2xl px-4 py-4">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-white/55 text-[9px] font-bold uppercase tracking-widest">{s.label}</span>
+                  <span className="text-white/70 text-[9px] font-bold bg-white/10 px-1.5 py-0.5 rounded-full">{s.badge}</span>
+                </div>
+                <p className="text-white text-lg font-extrabold">{s.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main 3-column layout ──────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+          {/* ── Col 1: New Requests + Today Schedule ── */}
+          <div className="space-y-5">
+
+            {/* New Requests */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <h2 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                  New Requests
+                  {newRequests.length > 0 && (
+                    <span className="bg-[#07535f] text-white text-[9px] px-2 py-0.5 rounded-full font-bold">
+                      {newRequests.length}
+                    </span>
+                  )}
+                </h2>
+                <Link to="/provider/bookings" className="text-[11px] text-[#07535f] font-bold hover:underline flex items-center gap-0.5">
+                  View All <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {newRequests.length === 0 ? (
+                <div className="py-10 text-center text-xs text-gray-400">No pending requests right now.</div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {newRequests.slice(0, 4).map(req => (
+                    <div key={req.id} className="p-4">
+                      <div className="flex items-center gap-3 mb-2.5">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-100 to-teal-200 flex items-center justify-center text-sm font-bold text-teal-700 shrink-0">
+                          {req.customer_name?.charAt(0) || 'C'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-baseline gap-2">
+                            <p className="font-bold text-gray-900 text-sm truncate">{req.customer_name || 'Customer'}</p>
+                            <span className="font-extrabold text-[#07535f] text-xs shrink-0">Rs. {hourlyRate}</span>
+                          </div>
+                          <p className="text-[11px] text-gray-400">{req.service_category || 'Home Service'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-[10px] text-gray-400 mb-3">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {req.booking_date ? format(new Date(req.booking_date), 'MMM d, h:mm a') : 'Today 11:00 AM'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {req.location || 'Baneshwor'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUpdateStatus(req.id, 'accepted')}
+                          disabled={actionLoading === req.id}
+                          className="flex-1 bg-[#10b981] hover:bg-[#0ea572] disabled:opacity-60 text-white py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Accept
+                        </button>
+                        <button
+                          onClick={() => handleUpdateStatus(req.id, 'cancelled')}
+                          disabled={actionLoading === req.id}
+                          className="flex-1 bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-60 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
+                        >
+                          <X className="w-3.5 h-3.5" /> Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Today's Schedule */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-bold text-gray-900 text-sm mb-4">Today's Schedule</h2>
+              {todaySchedule.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-4">No schedule for today.</p>
+              ) : (
+                <div className="space-y-3">
+                  {todaySchedule.map((job, i) => (
+                    <div key={job.id} className="flex items-center gap-3 text-xs">
+                      <span className="text-gray-400 w-16 shrink-0 text-[11px]">
+                        {job.booking_date ? format(new Date(job.booking_date), 'h:mm a') : `${9 + i}:00 AM`}
+                      </span>
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${
+                        job.status === 'in_progress' ? 'bg-red-500' :
+                        job.status === 'completed'   ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}></span>
+                      <span className={`font-semibold text-[11px] ${
+                        job.status === 'in_progress' ? 'text-red-600' : 'text-gray-700'
+                      }`}>
+                        {job.service_category || 'Home Service'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Col 2: Active Jobs ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h2 className="font-bold text-gray-900 text-sm">Active Jobs</h2>
+              {activeJobs.length > 0 && (
+                <span className="bg-red-100 text-red-700 text-[9px] px-2.5 py-0.5 rounded-full font-bold">
+                  {activeJobs.length} Live
+                </span>
+              )}
             </div>
 
             {activeJobs.length === 0 ? (
-              <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400">
-                No active jobs currently in progress.
+              <div className="flex-1 flex items-center justify-center py-16 text-xs text-gray-400">
+                No active jobs right now.
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="divide-y divide-gray-50 overflow-y-auto">
                 {activeJobs.map(job => (
-                  <div key={job.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-sm">{job.service_category || 'Home Service'}</h3>
-                        <p className="text-xs text-gray-500 font-medium">{job.customer_name || 'Customer'}</p>
+                  <div key={job.id} className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-sm font-bold text-blue-700 shrink-0">
+                          {job.customer_name?.charAt(0) || 'C'}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 text-sm">{job.customer_name || 'Customer'}</p>
+                          <p className="text-[11px] text-gray-500">{job.service_category || 'Home Service'}</p>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-teal-100 text-teal-800">
-                        {job.status.replace('_', ' ')}
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                        job.status === 'in_progress'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {job.status === 'in_progress' ? 'In Progress' : 'En Route'}
                       </span>
                     </div>
 
-                    <div className="text-xs text-gray-500 space-y-1">
-                      <p className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-gray-400" /> {job.booking_date ? format(new Date(job.booking_date), 'PPP p') : 'Scheduled'}</p>
-                      <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-gray-400" /> {job.location || 'Pokhara'}</p>
+                    <div className="text-[11px] text-gray-500 space-y-1 mb-3">
+                      <p className="flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-gray-400" />
+                        {job.location || 'Maharajgunj'}
+                      </p>
+                      <p className="flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        {job.booking_date ? format(new Date(job.booking_date), 'h:mm a') : '9:00 AM'} – 11:30 AM
+                      </p>
+                    </div>
+
+                    <div className="flex justify-between items-center mb-1.5 text-xs">
+                      <span className="text-gray-500">Progress</span>
+                      <span className="font-extrabold text-[#07535f]">Rs. {hourlyRate.toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4 overflow-hidden">
+                      <div
+                        className="bg-[#07535f] h-1.5 rounded-full transition-all"
+                        style={{ width: job.status === 'in_progress' ? '65%' : '30%' }}
+                      ></div>
                     </div>
 
                     <div className="flex gap-2">
-                      {job.status === 'accepted' ? (
-                        <button
-                          onClick={() => handleUpdateStatus(job.id, 'in_progress')}
-                          disabled={actionLoading === job.id}
-                          className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-bold transition-all"
-                        >
-                          Start Job
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleUpdateStatus(job.id, 'completed')}
-                          disabled={actionLoading === job.id}
-                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold transition-all"
-                        >
-                          Mark Completed
-                        </button>
-                      )}
+                      <button className="flex items-center gap-1 border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-xl text-xs font-bold transition-all">
+                        <Phone className="w-3.5 h-3.5" /> Call
+                      </button>
                       <Link
                         to={`/provider/bookings/${job.id}`}
-                        className="px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-50"
+                        className="flex items-center gap-1 border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-xl text-xs font-bold transition-all"
                       >
-                        Details
+                        <Eye className="w-3.5 h-3.5" /> View Details
                       </Link>
+                      <button
+                        onClick={() => handleUpdateStatus(job.id, job.status === 'accepted' ? 'in_progress' : 'completed')}
+                        disabled={actionLoading === job.id}
+                        className="flex-1 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-60 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                      >
+                        Update
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -244,135 +381,99 @@ export default function ProviderDashboard() {
             )}
           </div>
 
-          {/* New Service Requests */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-              <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-500" />
-                New Requests ({newRequests.length})
-              </h2>
-              <Link to="/provider/bookings" className="text-xs font-bold text-[#07535f] hover:underline">
-                View All →
-              </Link>
+          {/* ── Col 3: Earnings & Payouts ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h2 className="font-bold text-gray-900 text-sm mb-4">Earnings & Payouts</h2>
+
+            {/* Weekly Chart */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-xs font-bold text-gray-700">Weekly Earnings</p>
+                <span className="text-[10px] text-gray-400 font-medium">This Week</span>
+              </div>
+              <WeeklyEarningsChart data={weeklyData} />
+              <div className="flex justify-between mt-1 px-1">
+                {weeklyData.map(d => (
+                  <span key={d.day} className="text-[9px] text-gray-400">{d.day}</span>
+                ))}
+              </div>
             </div>
 
-            {newRequests.length === 0 ? (
-              <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400">
-                No pending requests right now.
+            {/* Quick stats */}
+            <div className="grid grid-cols-2 gap-2.5 mb-4">
+              {[
+                { icon: <TrendingUp className="w-3.5 h-3.5 text-[#07535f]" />, val: `Rs. ${(totalMonthly || 17200).toLocaleString()}`, label: 'This Week' },
+                { icon: <Activity className="w-3.5 h-3.5 text-blue-500" />,     val: `Rs. ${(totalMonthly * 4 || 68400).toLocaleString()}`, label: 'This Month' },
+                { icon: <Clock className="w-3.5 h-3.5 text-amber-500" />,        val: 'Rs. 3,800',                                           label: 'Pending' },
+                { icon: <Check className="w-3.5 h-3.5 text-emerald-500" />,      val: `${completedJobs.length || 47}`,                        label: 'Jobs Done' },
+              ].map((s, i) => (
+                <div key={i} className="bg-gray-50 rounded-xl p-3">
+                  <div className="mb-1">{s.icon}</div>
+                  <p className="text-xs font-extrabold text-gray-900">{s.val}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{s.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Breakdown */}
+            <div className="border-t border-gray-100 pt-3 space-y-1.5 text-xs mb-4">
+              <div className="flex justify-between text-gray-600">
+                <span>Gross Earnings</span>
+                <span className="font-bold text-gray-800">Rs. {(totalMonthly * 4 || 68400).toLocaleString()}</span>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {newRequests.map(req => (
-                  <div key={req.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50/50 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-sm">{req.service_category || 'Service Request'}</h3>
-                        <p className="text-xs text-gray-500 font-medium">{req.customer_name}</p>
-                      </div>
-                      <span className="font-extrabold text-[#07535f] text-xs">Rs. {hourlyRate}/hr</span>
-                    </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Platform Fee (6%)</span>
+                <span className="font-bold text-red-500">– Rs. {Math.round((totalMonthly * 4 || 68400) * 0.06).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Tax (1%)</span>
+                <span className="font-bold text-red-500">– Rs. {Math.round((totalMonthly * 4 || 68400) * 0.01).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between font-extrabold text-gray-900 pt-2 border-t border-gray-100">
+                <span>Net Payout</span>
+                <span className="text-[#07535f]">Rs. {(netPayout || 62244).toLocaleString()}</span>
+              </div>
+            </div>
 
-                    <div className="text-xs text-gray-500 space-y-1">
-                      <p className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-gray-400" /> {req.booking_date ? format(new Date(req.booking_date), 'PPP p') : 'Scheduled'}</p>
-                      <p className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-gray-400" /> {req.location || 'Pokhara'}</p>
+            {/* Payout Methods */}
+            <div className="mb-4">
+              <p className="text-xs font-bold text-gray-700 mb-2">Payout Methods</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 bg-emerald-100 rounded-full flex items-center justify-center">
+                      <span className="text-[9px] font-extrabold text-emerald-700">eS</span>
                     </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleUpdateStatus(req.id, 'accepted')}
-                        disabled={actionLoading === req.id}
-                        className="flex-1 bg-[#10b981] hover:bg-[#0ea572] text-white py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
-                      >
-                        <Check className="w-3.5 h-3.5" /> Accept
-                      </button>
-                      <button
-                        onClick={() => handleUpdateStatus(req.id, 'cancelled')}
-                        disabled={actionLoading === req.id}
-                        className="flex-1 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
-                      >
-                        <X className="w-3.5 h-3.5" /> Decline
-                      </button>
+                    <div>
+                      <p className="text-xs font-bold text-gray-800">eSewa</p>
+                      <p className="text-[10px] text-gray-400">9841XXXXXX</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Organized Sub-Topic Shortcut Hub */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-gray-900">Provider Sub-Topics & Quick Access</h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            
-            {/* Shortcut 1: Schedule */}
-            <Link
-              to="/provider/schedule"
-              className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#07535f] flex items-center justify-center mb-3">
-                  <Calendar className="w-5 h-5" />
+                  <span className="text-[10px] font-bold bg-[#07535f] text-white px-2 py-0.5 rounded-full">Primary</span>
                 </div>
-                <h3 className="font-bold text-gray-900 text-base group-hover:text-[#07535f] transition-colors">
-                  Work Schedule
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Manage today's appointments timeline and working availability.
-                </p>
               </div>
-              <div className="mt-4 text-xs font-bold text-[#07535f] flex items-center gap-1">
-                Open Schedule <ArrowRight className="w-3.5 h-3.5" />
-              </div>
-            </Link>
+            </div>
 
-            {/* Shortcut 2: Earnings */}
             <Link
               to="/provider/earnings"
-              className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+              className="block w-full text-center bg-[#07535f] hover:bg-[#06424b] text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md"
             >
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-base group-hover:text-emerald-600 transition-colors">
-                  Earnings & Payouts
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Track revenue, platform commissions, and request instant payouts.
-                </p>
-              </div>
-              <div className="mt-4 text-xs font-bold text-emerald-600 flex items-center gap-1">
-                View Earnings <ArrowRight className="w-3.5 h-3.5" />
-              </div>
+              Request Payout — Rs. {(netPayout || 62244).toLocaleString()}
             </Link>
 
-            {/* Shortcut 3: Profile */}
-            <Link
-              to="/provider/profile"
-              className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
-                  <User className="w-5 h-5" />
-                </div>
-                <h3 className="font-bold text-gray-900 text-base group-hover:text-purple-600 transition-colors">
-                  Provider Profile
-                </h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Update hourly rate, skills, service area, and check KYC status.
-                </p>
+            {/* Badges */}
+            <div className="mt-5 border-t border-gray-100 pt-4">
+              <p className="text-xs font-bold text-gray-700 mb-3">Your Badges</p>
+              <div className="flex gap-2 flex-wrap">
+                {['Top Rated', 'Fast Response', '50+ Jobs'].map(b => (
+                  <span key={b} className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">
+                    {b}
+                  </span>
+                ))}
               </div>
-              <div className="mt-4 text-xs font-bold text-purple-600 flex items-center gap-1">
-                Manage Profile <ArrowRight className="w-3.5 h-3.5" />
-              </div>
-            </Link>
-
+            </div>
           </div>
         </div>
-
       </div>
     </div>
   );
