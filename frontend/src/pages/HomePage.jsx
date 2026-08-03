@@ -228,7 +228,7 @@ export default function HomePage() {
                 <ArrowRight className="w-4 h-4 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Urgent household problem? Get a provider dispatched to your ward in minutes.
+                Solves urgent household problems faster.
               </p>
               <span className="inline-block mt-3 text-xs font-bold text-red-600 bg-red-100 px-2.5 py-1 rounded-full">
                 🚨 Tap to request now →
@@ -242,7 +242,7 @@ export default function HomePage() {
               </div>
               <h3 className="font-bold text-gray-900 mb-2">Offline/Low-Data Mode</h3>
               <p className="text-xs text-gray-500 leading-relaxed">
-                App works in weak network areas. Your bookings and provider info are cached for low-data access.
+                Helps in weak-network areas.
               </p>
               <span className="inline-block mt-3 text-xs font-semibold text-blue-600 bg-blue-100 px-2.5 py-1 rounded-full">
                 ✅ Auto-enabled
@@ -262,7 +262,7 @@ export default function HomePage() {
                 <ArrowRight className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Every provider passes ID verification, background checks, and gets skill badges reviewed by admins.
+                ID verification, skill badges, background checks, and visible service history.
               </p>
               <span className="inline-block mt-3 text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
                 🛡 Provider signup →
@@ -282,7 +282,7 @@ export default function HomePage() {
                 <ArrowRight className="w-4 h-4 text-yellow-600 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Reviews include photo evidence, "Completed on time" tags, and repeated-customer badges.
+                Including photo reviews, completion status, and repeated-customer reputation.
               </p>
               <span className="inline-block mt-3 text-xs font-bold text-yellow-700 bg-yellow-100 px-2.5 py-1 rounded-full">
                 ⭐ Browse providers →
