@@ -6,7 +6,7 @@ node_modules/
 # Testing
 /coverage
 
-# Production
+# Production & Builds
 /dist
 /build
 frontend/dist/
@@ -19,12 +19,24 @@ backend/fixPg.js
 *.jar
 *.egg-info
 
-# Environment variables
+# Environment variables & Sensitive Credentials (All folders)
 .env
 .env.local
+.env.production
+.env.development
 .env.*.local
+*.env
+**/.env
+**/.env.*
+credentials.json
+secrets.json
+service-account*.json
+*.pem
+*.key
+*.cert
+*.p12
 
-# IDE
+# IDE & Editor files
 .vscode/
 .idea/
 *.swp
@@ -45,6 +57,6 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Dev
+# Dev Cache
 .vite
 .eslintcache

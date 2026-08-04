@@ -5,16 +5,27 @@ dotenv.config();
 
 const { Pool, Client } = pg;
 
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'gharelu_sewa',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-};
+const isProductionOrCloud = process.env.DATABASE_URL || process.env.DB_SSL === 'true';
 
-// Ensure database exists
+const dbConfig = process.env.DATABASE_URL
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      ssl: isProductionOrCloud ? { rejectUnauthorized: false } : false,
+    }
+  : {
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      database: process.env.DB_NAME || 'gharelu_sewa',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgres',
+      ssl: isProductionOrCloud ? { rejectUnauthorized: false } : false,
+    };
+
+// Ensure database exists (Only for local localhost setups)
 const ensureDatabaseExists = async () => {
+  if (process.env.DATABASE_URL || process.env.DB_HOST !== 'localhost') {
+    return; // Skip auto database creation when connecting to cloud DBs like Supabase
+  }
   const masterClient = new Client({
     host: dbConfig.host,
     port: dbConfig.port,
@@ -46,7 +57,7 @@ let pool = null;
 try {
   pool = new Pool({
     ...dbConfig,
-    connectionTimeoutMillis: 3000,
+    connectionTimeoutMillis: 10000,
   });
   
   // Test connection
