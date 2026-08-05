@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI } from '../../services/api';
 import {
-  getAllPayoutRequests, markPayoutCompleted, markPayoutRejected, getPayoutStats
+  getAllPayoutRequests, fetchAllPayoutRequestsAsync, markPayoutCompleted, markPayoutRejected, getPayoutStats
 } from '../../services/payoutStore';
 import {
   CreditCard, DollarSign, TrendingUp, CheckCircle, XCircle,
@@ -18,9 +18,9 @@ export default function ManagePayments() {
   const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'completed'
   const [stats, setStats] = useState(null);
 
-  // Load data from shared store
-  const refreshData = useCallback(() => {
-    const requests = getAllPayoutRequests();
+  // Load data from backend server & shared store
+  const refreshData = useCallback(async () => {
+    const requests = await fetchAllPayoutRequestsAsync();
     setPayoutRequests(requests);
     setStats(getPayoutStats());
     setLoading(false);

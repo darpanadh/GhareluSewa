@@ -1,16 +1,9 @@
-/**
- * Shared Payout Store — localStorage-based sync between Provider ↔ Admin
- * 
- * When a provider submits a withdrawal request, it's saved here.
- * The admin ManagePayments page reads from here and can disburse payments.
- * When admin marks a request as 'completed', the provider sees the update.
- */
+import { adminAPI, providerAPI } from './api';
 
 const STORE_KEY = 'gharelu_payout_requests';
 
 /**
- * Get all payout requests from the store.
- * @returns {Array} Array of payout request objects
+ * Get all payout requests from localStorage fallback.
  */
 export function getAllPayoutRequests() {
   try {
@@ -22,23 +15,55 @@ export function getAllPayoutRequests() {
 }
 
 /**
+ * Fetch all payout requests from server (Async for Admin).
+ */
+export async function fetchAllPayoutRequestsAsync() {
+  try {
+    const res = await adminAPI.getPayoutRequests();
+    const serverRequests = res.data || [];
+    localStorage.setItem(STORE_KEY, JSON.stringify(serverRequests));
+    window.dispatchEvent(new CustomEvent('payout_store_updated'));
+    return serverRequests;
+  } catch (err) {
+    console.warn('Could not fetch server payout requests, using local cache', err);
+    return getAllPayoutRequests();
+  }
+}
+
+/**
  * Get payout requests for a specific provider.
- * @param {number|string} providerId 
- * @returns {Array}
  */
 export function getProviderPayoutRequests(providerId) {
   return getAllPayoutRequests().filter(r => String(r.provider_id) === String(providerId));
 }
 
 /**
- * Submit a new payout request (called by provider).
- * @param {Object} request — { provider_id, provider_name, provider_email, category, amount, method, account_details }
- * @returns {Object} The created request with id, status, timestamps
+ * Fetch provider payout requests from server (Async).
  */
-export function submitPayoutRequest(request) {
-  const all = getAllPayoutRequests();
-  
-  const newRequest = {
+export async function fetchProviderPayoutRequestsAsync(providerId) {
+  try {
+    const res = await providerAPI.getPayouts();
+    const serverRequests = res.data || [];
+    
+    // Merge with local storage
+    const all = getAllPayoutRequests();
+    const otherProviders = all.filter(r => String(r.provider_id) !== String(providerId));
+    const merged = [...serverRequests, ...otherProviders];
+    localStorage.setItem(STORE_KEY, JSON.stringify(merged));
+    
+    window.dispatchEvent(new CustomEvent('payout_store_updated'));
+    return serverRequests;
+  } catch (err) {
+    console.warn('Could not fetch provider payouts from server', err);
+    return getProviderPayoutRequests(providerId);
+  }
+}
+
+/**
+ * Submit a new payout request (called by provider).
+ */
+export async function submitPayoutRequest(request) {
+  const localReq = {
     id: `PW-${Date.now().toString(36).toUpperCase()}`,
     provider_id: request.provider_id,
     provider_name: request.provider_name || 'Unknown Provider',
@@ -47,71 +72,93 @@ export function submitPayoutRequest(request) {
     amount: Number(request.amount),
     method: request.method || 'eSewa',
     account_details: request.account_details || '',
-    status: 'pending',             // 'pending' | 'completed' | 'rejected'
+    status: 'pending',
     requested_at: new Date().toISOString(),
     processed_at: null,
   };
-  
-  all.unshift(newRequest);
-  localStorage.setItem(STORE_KEY, JSON.stringify(all));
-  
-  // Dispatch a custom event so other open tabs/components can react
-  window.dispatchEvent(new CustomEvent('payout_store_updated'));
-  
-  return newRequest;
+
+  try {
+    const res = await providerAPI.requestPayout({
+      amount: Number(request.amount),
+      method: request.method,
+      account_details: request.account_details,
+      provider_name: request.provider_name,
+      provider_email: request.provider_email,
+      category: request.category,
+    });
+    const created = res.data || localReq;
+    
+    const all = getAllPayoutRequests();
+    all.unshift(created);
+    localStorage.setItem(STORE_KEY, JSON.stringify(all));
+    window.dispatchEvent(new CustomEvent('payout_store_updated'));
+    return created;
+  } catch (err) {
+    console.warn('Failed to submit payout to backend, saving locally', err);
+    const all = getAllPayoutRequests();
+    all.unshift(localReq);
+    localStorage.setItem(STORE_KEY, JSON.stringify(all));
+    window.dispatchEvent(new CustomEvent('payout_store_updated'));
+    return localReq;
+  }
 }
 
 /**
- * Admin: Mark a payout request as completed (payment sent).
- * @param {string} requestId 
- * @returns {Object|null} The updated request, or null if not found
+ * Admin: Mark a payout request as completed.
  */
-export function markPayoutCompleted(requestId) {
+export async function markPayoutCompleted(requestId) {
+  try {
+    await adminAPI.updatePayoutStatus(requestId, 'completed');
+  } catch (err) {
+    console.warn('Server status update failed, updating local state', err);
+  }
+
   const all = getAllPayoutRequests();
   const idx = all.findIndex(r => r.id === requestId);
-  if (idx === -1) return null;
-  
-  all[idx].status = 'completed';
-  all[idx].processed_at = new Date().toISOString();
-  
-  localStorage.setItem(STORE_KEY, JSON.stringify(all));
-  window.dispatchEvent(new CustomEvent('payout_store_updated'));
-  
-  return all[idx];
+  if (idx !== -1) {
+    all[idx].status = 'completed';
+    all[idx].processed_at = new Date().toISOString();
+    localStorage.setItem(STORE_KEY, JSON.stringify(all));
+    window.dispatchEvent(new CustomEvent('payout_store_updated'));
+    return all[idx];
+  }
+  return null;
 }
 
 /**
  * Admin: Reject a payout request.
- * @param {string} requestId 
- * @returns {Object|null}
  */
-export function markPayoutRejected(requestId) {
+export async function markPayoutRejected(requestId) {
+  try {
+    await adminAPI.updatePayoutStatus(requestId, 'rejected');
+  } catch (err) {
+    console.warn('Server status update failed, updating local state', err);
+  }
+
   const all = getAllPayoutRequests();
   const idx = all.findIndex(r => r.id === requestId);
-  if (idx === -1) return null;
-  
-  all[idx].status = 'rejected';
-  all[idx].processed_at = new Date().toISOString();
-  
-  localStorage.setItem(STORE_KEY, JSON.stringify(all));
-  window.dispatchEvent(new CustomEvent('payout_store_updated'));
-  
-  return all[idx];
+  if (idx !== -1) {
+    all[idx].status = 'rejected';
+    all[idx].processed_at = new Date().toISOString();
+    localStorage.setItem(STORE_KEY, JSON.stringify(all));
+    window.dispatchEvent(new CustomEvent('payout_store_updated'));
+    return all[idx];
+  }
+  return null;
 }
 
 /**
- * Compute aggregate stats from all requests.
- * @returns {Object} { totalRequested, totalDisbursed, totalPending, pendingCount, completedCount }
+ * Compute aggregate stats.
  */
 export function getPayoutStats() {
   const all = getAllPayoutRequests();
   const pending = all.filter(r => r.status === 'pending');
   const completed = all.filter(r => r.status === 'completed');
-  
+
   return {
-    totalRequested: all.reduce((s, r) => s + r.amount, 0),
-    totalDisbursed: completed.reduce((s, r) => s + r.amount, 0),
-    totalPending: pending.reduce((s, r) => s + r.amount, 0),
+    totalRequested: all.reduce((s, r) => s + (Number(r.amount) || 0), 0),
+    totalDisbursed: completed.reduce((s, r) => s + (Number(r.amount) || 0), 0),
+    totalPending: pending.reduce((s, r) => s + (Number(r.amount) || 0), 0),
     pendingCount: pending.length,
     completedCount: completed.length,
     totalCount: all.length,

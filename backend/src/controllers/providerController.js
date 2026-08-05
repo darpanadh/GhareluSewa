@@ -158,3 +158,43 @@ export const getProviderEarnings = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch earnings' });
   }
 };
+
+// Request withdrawal/payout
+export const requestPayout = async (req, res) => {
+  try {
+    const { amount, method, account_details, provider_name, provider_email, category } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Valid amount required' });
+    }
+
+    const id = `PW-${Date.now().toString(36).toUpperCase()}`;
+
+    const result = await query(
+      `INSERT INTO payout_requests (id, provider_id, provider_name, provider_email, category, amount, method, account_details, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+       RETURNING *`,
+      [id, req.userId, provider_name || 'Provider', provider_email || '', category || 'General', amount, method || 'eSewa', account_details || '']
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Request payout error:', error);
+    res.status(500).json({ error: 'Failed to submit payout request' });
+  }
+};
+
+// Get provider payout requests
+export const getMyPayouts = async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT * FROM payout_requests WHERE provider_id = $1 ORDER BY requested_at DESC`,
+      [req.userId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get provider payouts error:', error);
+    res.status(500).json({ error: 'Failed to fetch payout requests' });
+  }
+};
+

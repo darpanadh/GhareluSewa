@@ -17,5 +17,7 @@ router.get('/analytics', adminController.getAnalytics);
 router.get('/users', adminController.getAllUsers);
 router.patch('/users/:userId/deactivate', adminController.deactivateUser);
 router.patch('/users/:userId/activate', adminController.activateUser);
+router.get('/payouts', adminController.getAllPayoutRequests);
+router.patch('/payouts/:id/status', adminController.updatePayoutStatus);
 
 export default router;

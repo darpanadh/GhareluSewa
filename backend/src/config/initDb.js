@@ -135,6 +135,23 @@ export const initializeDatabase = async () => {
       )
     `);
 
+    // Create payout_requests table
+    await query(`
+      CREATE TABLE IF NOT EXISTS payout_requests (
+        id VARCHAR(100) PRIMARY KEY,
+        provider_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider_name VARCHAR(255),
+        provider_email VARCHAR(255),
+        category VARCHAR(100),
+        amount DECIMAL(10, 2) NOT NULL,
+        method VARCHAR(50) DEFAULT 'eSewa',
+        account_details TEXT,
+        status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'rejected')),
+        requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP
+      )
+    `);
+
     try {
       await query(`CREATE INDEX IF NOT EXISTS idx_payments_booking_id ON payments(booking_id)`);
       await query(`CREATE INDEX IF NOT EXISTS idx_payments_customer_id ON payments(customer_id)`);

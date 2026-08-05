@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { providerAPI } from '../../services/api';
-import { submitPayoutRequest, getProviderPayoutRequests } from '../../services/payoutStore';
+import { submitPayoutRequest, getProviderPayoutRequests, fetchProviderPayoutRequestsAsync } from '../../services/payoutStore';
 import {
   TrendingUp, DollarSign, Calendar, Clock,
   Award, ChevronRight, Loader, AlertCircle, BarChart2,
@@ -41,9 +41,10 @@ export default function MyEarnings() {
   // Load payout requests from shared store (syncs with admin)
   const [payoutRequests, setPayoutRequests] = useState([]);
 
-  const refreshPayoutRequests = useCallback(() => {
+  const refreshPayoutRequests = useCallback(async () => {
     if (user?.id) {
-      setPayoutRequests(getProviderPayoutRequests(user.id));
+      const data = await fetchProviderPayoutRequestsAsync(user.id);
+      setPayoutRequests(data);
     }
   }, [user?.id]);
 
@@ -133,7 +134,7 @@ export default function MyEarnings() {
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // Save to shared payout store so admin can see it
-      const newReq = submitPayoutRequest({
+      const newReq = await submitPayoutRequest({
         provider_id: user?.id,
         provider_name: user?.name || 'Unknown',
         provider_email: user?.email || '',

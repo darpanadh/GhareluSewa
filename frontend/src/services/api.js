@@ -94,6 +94,8 @@ export const providerAPI = {
   updateProfile: (data) => api.patch('/providers/profile', data),
   toggleAvailability: (data) => api.patch('/providers/availability', data),
   getEarnings: (params) => api.get('/providers/earnings', { params }),
+  requestPayout: (data) => api.post('/providers/payouts', data),
+  getPayouts: () => api.get('/providers/payouts'),
 };
 
 // Admin endpoints
@@ -108,6 +110,8 @@ export const adminAPI = {
   getAllUsers: (params) => api.get('/admin/users', { params }),
   deactivateUser: (userId, data) => api.patch(`/admin/users/${userId}/deactivate`, data),
   activateUser: (userId) => api.patch(`/admin/users/${userId}/activate`),
+  getPayoutRequests: () => api.get('/admin/payouts'),
+  updatePayoutStatus: (id, status) => api.patch(`/admin/payouts/${id}/status`, { status }),
 };
 
 // Payment endpoints (eSewa)

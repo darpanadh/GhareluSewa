@@ -10,5 +10,7 @@ router.get('/profile/:providerId', providerController.getProviderProfile);
 router.patch('/profile', verifyAuth, authorize(['provider']), providerController.updateProviderProfile);
 router.patch('/availability', verifyAuth, authorize(['provider']), providerController.toggleAvailability);
 router.get('/earnings', verifyAuth, authorize(['provider']), providerController.getProviderEarnings);
+router.post('/payouts', verifyAuth, authorize(['provider']), providerController.requestPayout);
+router.get('/payouts', verifyAuth, authorize(['provider']), providerController.getMyPayouts);
 
 export default router;

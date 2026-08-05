@@ -302,3 +302,46 @@ export const getAllProviders = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch providers' });
   }
 };
+
+// Get all payout requests (admin)
+export const getAllPayoutRequests = async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT * FROM payout_requests ORDER BY requested_at DESC`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get all payout requests error:', error);
+    res.status(500).json({ error: 'Failed to fetch payout requests' });
+  }
+};
+
+// Update payout request status (admin)
+export const updatePayoutStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['completed', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const result = await query(
+      `UPDATE payout_requests
+       SET status = $1, processed_at = CURRENT_TIMESTAMP
+       WHERE id = $2
+       RETURNING *`,
+      [status, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Payout request not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Update payout status error:', error);
+    res.status(500).json({ error: 'Failed to update payout status' });
+  }
+};
+
