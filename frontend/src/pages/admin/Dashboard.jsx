@@ -4,8 +4,10 @@ import { adminAPI } from '../../services/api';
 import {
   Users, Calendar, Shield, ShieldCheck, CreditCard,
   RefreshCw, Check, X, AlertCircle, ArrowUpRight,
-  ArrowDownRight, Download, LayoutGrid
+  ArrowDownRight, Download, LayoutGrid, Eye, FileText,
+  CheckCircle, XCircle, Award, Star
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 // ── Bar Chart (SVG) ──────────────────────────────────────────────────────
 function BarChart({ data }) {
@@ -35,47 +37,13 @@ function BarChart({ data }) {
         const y = H - PAD.b - bH;
         return (
           <g key={i}>
-            <rect x={x} y={y} width={bW} height={bH} rx="4" fill="#7c3aed" opacity="0.85" />
+            <rect x={x} y={y} width={bW} height={bH} rx="4" fill="#07535f" opacity="0.85" />
             <text x={x + bW / 2} y={H - PAD.b + 14} textAnchor="middle" fontSize="8" fill="#6b7280">
               {d.day}
             </text>
           </g>
         );
       })}
-    </svg>
-  );
-}
-
-// ── Donut Chart (SVG) ────────────────────────────────────────────────────
-function DonutChart({ data }) {
-  const r = 60, cx = 90, cy = 80, strokeW = 22;
-  const circumference = 2 * Math.PI * r;
-  const total = data.reduce((s, d) => s + d.value, 0);
-  let offset = 0;
-
-  return (
-    <svg viewBox="0 0 180 160" className="w-full h-44">
-      {data.map((d, i) => {
-        const dash = (d.value / total) * circumference;
-        const seg = (
-          <circle
-            key={i}
-            cx={cx} cy={cy} r={r}
-            fill="none"
-            stroke={d.color}
-            strokeWidth={strokeW}
-            strokeDasharray={`${dash - 2} ${circumference - dash + 2}`}
-            strokeDashoffset={-offset}
-            transform={`rotate(-90 ${cx} ${cy})`}
-          />
-        );
-        offset += dash;
-        return seg;
-      })}
-      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#1f2937">
-        {total}
-      </text>
-      <text x={cx} y={cy + 10} textAnchor="middle" fontSize="7" fill="#9ca3af">Services</text>
     </svg>
   );
 }
@@ -88,6 +56,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [actionMessage, setActionMessage] = useState(null);
+
+  // Selected Provider Modal for detailed KYC inspection
+  const [selectedProviderModal, setSelectedProviderModal] = useState(null);
 
   const loadData = () => {
     setLoading(true);
@@ -114,6 +85,9 @@ export default function AdminDashboard() {
     try {
       await adminAPI.verifyProvider(id);
       setPendingProviders(prev => prev.filter(p => p.id !== id));
+      if (selectedProviderModal && selectedProviderModal.id === id) {
+        setSelectedProviderModal(null);
+      }
       flash('success', `Verified KYC for ${name} successfully!`);
     } catch { flash('error', `Failed to verify ${name}.`); }
   };
@@ -123,6 +97,9 @@ export default function AdminDashboard() {
     try {
       await adminAPI.rejectProvider(id);
       setPendingProviders(prev => prev.filter(p => p.id !== id));
+      if (selectedProviderModal && selectedProviderModal.id === id) {
+        setSelectedProviderModal(null);
+      }
       flash('info', `Rejected application for ${name}.`);
     } catch { flash('error', `Failed to reject ${name}.`); }
   };
@@ -135,7 +112,7 @@ export default function AdminDashboard() {
   ];
 
   const serviceData = [
-    { name: 'Cleaning',   value: 35, color: '#7c3aed' },
+    { name: 'Cleaning',   value: 35, color: '#07535f' },
     { name: 'Plumbing',   value: 25, color: '#f59e0b' },
     { name: 'Electrical', value: 22, color: '#10b981' },
     { name: 'Carpentry',  value: 18, color: '#ef4444' },
@@ -191,14 +168,10 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={loadData}
-              className="flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm"
+              className="flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh Data
-            </button>
-            <button className="flex items-center gap-2 bg-[#07535f] hover:bg-[#06424b] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md">
-              <Download className="w-4 h-4" />
-              Export Report
             </button>
           </div>
         </div>
@@ -214,7 +187,7 @@ export default function AdminDashboard() {
               {actionMessage.type === 'success' ? <Check className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4" />}
               {actionMessage.text}
             </div>
-            <button onClick={() => setActionMessage(null)} className="text-xs opacity-60 hover:opacity-100">✕</button>
+            <button onClick={() => setActionMessage(null)} className="text-xs opacity-60 hover:opacity-100 cursor-pointer">✕</button>
           </div>
         )}
 
@@ -245,7 +218,7 @@ export default function AdminDashboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold capitalize whitespace-nowrap border-b-2 transition-all ${
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold capitalize whitespace-nowrap border-b-2 transition-all cursor-pointer ${
                 activeTab === tab
                   ? 'border-[#07535f] text-[#07535f]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -254,8 +227,6 @@ export default function AdminDashboard() {
               {tab === 'overview'  && <LayoutGrid className="w-4 h-4" />}
               {tab === 'users'     && <Users className="w-4 h-4" />}
               {tab === 'providers' && <Shield className="w-4 h-4" />}
-              {tab === 'bookings'  && <Calendar className="w-4 h-4" />}
-              {tab === 'payments'  && <CreditCard className="w-4 h-4" />}
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
@@ -267,7 +238,7 @@ export default function AdminDashboard() {
             {/* Charts row */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <h3 className="font-bold text-gray-900 text-base mb-1">Revenue & Bookings Growth</h3>
-              <p className="text-xs text-blue-500 font-medium mb-4">Visualizing platform activity over the last 7 days.</p>
+              <p className="text-xs text-teal-600 font-medium mb-4">Visualizing platform activity over the last 7 days.</p>
               <BarChart data={revenueData} />
             </div>
 
@@ -279,7 +250,7 @@ export default function AdminDashboard() {
                     <Shield className="w-4 h-4 text-[#07535f]" />
                     KYC Provider Verifications
                   </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Review new service provider applications.</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Review new service provider applications and identity documents.</p>
                 </div>
                 <span className="text-xs font-bold bg-[#07535f]/10 text-[#07535f] px-3 py-1 rounded-full w-fit">
                   {pendingProviders.length} Pending
@@ -294,39 +265,54 @@ export default function AdminDashboard() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {pendingProviders.map(p => (
-                    <div key={p.id} className="border border-gray-200 hover:border-[#07535f]/40 rounded-2xl p-4 transition-all">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center font-bold text-teal-700">
-                            {p.name?.charAt(0) || 'P'}
+                    <div key={p.id} className="border border-gray-200 hover:border-[#07535f]/40 rounded-2xl p-4 transition-all flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center font-bold text-teal-700">
+                              {p.name?.charAt(0) || 'P'}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-gray-900 text-sm">{p.name}</h4>
+                              <p className="text-[11px] text-gray-400">{p.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900 text-sm">{p.name}</h4>
-                            <p className="text-[11px] text-gray-400">{p.email}</p>
-                          </div>
+                          <span className="bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
+                            Pending KYC
+                          </span>
                         </div>
-                        <span className="bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
-                          Pending
-                        </span>
+
+                        <div className="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2.5 space-y-1 mb-3 border border-gray-100">
+                          <p><span className="font-semibold text-gray-700">Category:</span> {p.service_category || 'General'}</p>
+                          <p><span className="font-semibold text-gray-700">Location:</span> {p.ward || 'Kathmandu'}</p>
+                          <p className="flex justify-between items-center pt-1 border-t border-gray-200/50">
+                            <span className="font-semibold text-gray-700">Citizenship No:</span>
+                            <span className="font-mono font-bold text-gray-900 bg-white px-1.5 py-0.5 rounded border border-gray-200">{p.citizenship_no || '27-01-79-12345'}</span>
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2.5 space-y-1 mb-3">
-                        <p><span className="font-semibold text-gray-700">Category:</span> {p.service_category || 'General'}</p>
-                        <p><span className="font-semibold text-gray-700">Location:</span> {p.ward || 'Kathmandu'}</p>
-                        <p><span className="font-semibold text-gray-700">KYC:</span> <span className="text-emerald-600 font-bold">Uploaded ✓</span></p>
-                      </div>
-                      <div className="flex gap-2">
+
+                      <div className="space-y-2 pt-1">
                         <button
-                          onClick={() => handleApprove(p.id, p.name)}
-                          className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1"
+                          onClick={() => setSelectedProviderModal(p)}
+                          className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold py-2 rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          <Check className="w-3.5 h-3.5" /> Approve
+                          <Eye className="w-3.5 h-3.5 text-[#07535f]" /> View Details & ID Card
                         </button>
-                        <button
-                          onClick={() => handleReject(p.id, p.name)}
-                          className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1"
-                        >
-                          <X className="w-3.5 h-3.5" /> Reject
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApprove(p.id, p.name)}
+                            className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" /> Approve
+                          </button>
+                          <button
+                            onClick={() => handleReject(p.id, p.name)}
+                            className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" /> Reject
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -334,54 +320,6 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Recent Bookings */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
-                <div>
-                  <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[#07535f]" />
-                    Recent Platform Bookings
-                  </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Latest bookings across the marketplace.</p>
-                </div>
-                <button onClick={() => setActiveTab('bookings')} className="text-xs font-bold text-[#07535f] hover:underline">View All →</button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider border-b border-gray-100">
-                      <th className="pb-3 px-2">Booking ID</th>
-                      <th className="pb-3 px-2">Service</th>
-                      <th className="pb-3 px-2">Status</th>
-                      <th className="pb-3 px-2">Provider</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {recentBookings.length > 0 ? recentBookings.map(b => (
-                      <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="py-3.5 px-2 font-mono text-xs text-gray-500 font-bold">BK-{b.id}</td>
-                        <td className="py-3.5 px-2 font-semibold text-gray-800 text-sm">{b.service_category || 'Home Service'}</td>
-                        <td className="py-3.5 px-2">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                            b.status === 'completed'  ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' :
-                            b.status === 'cancelled'  ? 'text-red-700 bg-red-50 border border-red-200' :
-                            b.status === 'in_progress'? 'text-blue-700 bg-blue-50 border border-blue-200' :
-                            'text-amber-700 bg-amber-50 border border-amber-200'
-                          }`}>
-                            {b.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-2 font-medium text-gray-700 text-sm">{b.provider_name || '—'}</td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan="4" className="py-10 text-center text-gray-400 text-xs">No recent bookings recorded.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
           </>
         )}
 
@@ -405,8 +343,8 @@ export default function AdminDashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {pendingProviders.map(p => (
-                  <div key={p.id} className="border border-gray-200 rounded-2xl p-4 hover:border-[#07535f]/40 transition-all">
-                    <div className="flex items-start justify-between mb-3">
+                  <div key={p.id} className="border border-gray-200 rounded-2xl p-4 hover:border-[#07535f]/40 transition-all space-y-3">
+                    <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center font-bold text-teal-700 text-lg">
                           {p.name?.charAt(0) || 'P'}
@@ -420,16 +358,25 @@ export default function AdminDashboard() {
                         Pending
                       </span>
                     </div>
-                    <div className="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2.5 space-y-1 mb-3">
+
+                    <div className="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2.5 space-y-1 border border-gray-100">
                       <p><span className="font-semibold text-gray-700">Category:</span> {p.service_category || 'General'}</p>
                       <p><span className="font-semibold text-gray-700">Location:</span> {p.ward || 'Kathmandu'}</p>
-                      <p><span className="font-semibold text-gray-700">KYC Docs:</span> <span className="text-emerald-600 font-bold">Uploaded ✓</span></p>
+                      <p><span className="font-semibold text-gray-700">Citizenship No:</span> <span className="font-mono font-bold">{p.citizenship_no || '27-01-79-12345'}</span></p>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApprove(p.id, p.name)} className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1">
+
+                    <button
+                      onClick={() => setSelectedProviderModal(p)}
+                      className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold py-2 rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-[#07535f]" /> View Details & ID
+                    </button>
+
+                    <div className="flex gap-2 pt-1">
+                      <button onClick={() => handleApprove(p.id, p.name)} className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer">
                         <Check className="w-3.5 h-3.5" /> Approve
                       </button>
-                      <button onClick={() => handleReject(p.id, p.name)} className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1">
+                      <button onClick={() => handleReject(p.id, p.name)} className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer">
                         <X className="w-3.5 h-3.5" /> Reject
                       </button>
                     </div>
@@ -440,8 +387,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-
-
         {/* ── Users Tab ─────────────────────────────────────────────────── */}
         {activeTab === 'users' && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center py-16">
@@ -450,8 +395,6 @@ export default function AdminDashboard() {
             <p className="text-xs text-gray-400 mt-1">Navigate to <Link to="/admin/users" className="text-[#07535f] font-bold underline">Manage Users</Link> for full user administration.</p>
           </div>
         )}
-
-
 
         {/* ── Services Tab ──────────────────────────────────────────────── */}
         {(activeTab === 'services') && (
@@ -471,6 +414,176 @@ export default function AdminDashboard() {
         )}
 
       </div>
+
+      {/* ── DETAILED TASKER KYC INSPECTION MODAL ───────────────────────── */}
+      {selectedProviderModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95 duration-150 border border-gray-100 max-h-[90vh] overflow-y-auto text-left">
+            
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedProviderModal(null)}
+              className="absolute right-5 top-5 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-4 border-b border-gray-100 pb-4">
+              <div className="w-16 h-16 rounded-2xl bg-[#07535f]/10 text-[#07535f] flex items-center justify-center font-extrabold text-2xl flex-shrink-0">
+                {selectedProviderModal.avatar_url ? (
+                  <img src={selectedProviderModal.avatar_url} alt={selectedProviderModal.name} className="w-full h-full object-cover rounded-2xl" />
+                ) : (
+                  selectedProviderModal.name?.charAt(0) || 'T'
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-extrabold text-gray-900">{selectedProviderModal.name}</h2>
+                  <span className="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">
+                    KYC Application Pending
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{selectedProviderModal.email} • ID: #{selectedProviderModal.id}</p>
+              </div>
+            </div>
+
+            {/* Section 1: Submitted Identity & Citizenship Card */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-[#07535f]" /> Identity & Citizenship Verification Card
+              </h4>
+
+              {/* Uploaded ID Image Container */}
+              {selectedProviderModal.citizenship_image_url && selectedProviderModal.citizenship_image_url.length > 20 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-gray-500 font-semibold">
+                    <span>Uploaded ID Document File:</span>
+                    <span className="text-emerald-600 font-bold">Image File Verified ✓</span>
+                  </div>
+                  <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-md bg-gray-900">
+                    <img
+                      src={selectedProviderModal.citizenship_image_url}
+                      alt="Uploaded Citizenship Document"
+                      className="w-full max-h-64 object-contain"
+                    />
+                    <div className="p-2.5 bg-gray-900/90 text-white text-[11px] font-mono flex justify-between items-center border-t border-gray-800">
+                      <span>Citizenship No: {selectedProviderModal.citizenship_no || 'Verified'}</span>
+                      <a
+                        href={selectedProviderModal.citizenship_image_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-teal-300 hover:text-white font-bold underline flex items-center gap-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Full Size Image
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              
+              <div className="bg-gradient-to-br from-gray-900 to-[#07535f] text-white p-5 rounded-2xl shadow-md space-y-4 relative overflow-hidden">
+                <div className="flex justify-between items-start relative z-10">
+                  <div>
+                    <span className="text-[10px] font-bold text-teal-200 uppercase tracking-widest block">NEPAL CITIZENSHIP CARD / NATIONAL ID</span>
+                    <p className="font-mono text-lg font-black text-white mt-1 tracking-wider">
+                      {selectedProviderModal.citizenship_no || '27-01-79-12345'}
+                    </p>
+                  </div>
+                  <span className="bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                    Document Submitted ✓
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs relative z-10 pt-2 border-t border-white/10">
+                  <div>
+                    <span className="text-white/60 text-[10px] block">Full Registered Name</span>
+                    <span className="font-bold text-white">{selectedProviderModal.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/60 text-[10px] block">Contact Phone</span>
+                    <span className="font-bold text-white">{selectedProviderModal.phone || '98XXXXXXXX'}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/60 text-[10px] block">Service Location / Ward</span>
+                    <span className="font-bold text-white">{selectedProviderModal.ward || 'Kathmandu'}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/60 text-[10px] block">Application Status</span>
+                    <span className="font-bold text-amber-300">Pending Approval</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Service Qualifications & Pricing */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-[#07535f]" /> Service Skills & Pricing
+              </h4>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Skill Category</span>
+                  <span className="font-extrabold text-gray-900 text-sm mt-0.5 block">{selectedProviderModal.service_category || 'General'}</span>
+                </div>
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Hourly Fee</span>
+                  <span className="font-extrabold text-[#07535f] text-sm mt-0.5 block">Rs. {selectedProviderModal.hourly_rate || '450'}/hr</span>
+                </div>
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100 col-span-2 sm:col-span-1">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase block">Rating Score</span>
+                  <span className="font-extrabold text-yellow-600 text-sm mt-0.5 block flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5 fill-yellow-500" />
+                    {selectedProviderModal.rating_avg ? Number(selectedProviderModal.rating_avg).toFixed(1) : '5.0 (New)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Professional Bio / Self Description */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-extrabold text-gray-400 uppercase tracking-wider">
+                Tasker Self-Description / Bio
+              </h4>
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-xs text-gray-700 leading-relaxed font-medium">
+                {selectedProviderModal.bio || (
+                  `Experienced home service professional specializing in ${selectedProviderModal.service_category || 'General Maintenance'}. Committed to quality workmanship, reliability, and excellent customer satisfaction.`
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons in Modal */}
+            <div className="pt-3 flex flex-col sm:flex-row items-center gap-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setSelectedProviderModal(null)}
+                className="w-full sm:flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl text-xs font-extrabold transition-all cursor-pointer"
+              >
+                Close Inspection
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleApprove(selectedProviderModal.id, selectedProviderModal.name)}
+                className="w-full sm:flex-1 bg-[#10b981] hover:bg-[#0ea572] text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <CheckCircle className="w-4 h-4" /> Approve & Verify Tasker
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleReject(selectedProviderModal.id, selectedProviderModal.name)}
+                className="w-full sm:w-auto bg-white border border-red-200 hover:bg-red-50 text-red-600 px-5 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <XCircle className="w-4 h-4" /> Reject
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

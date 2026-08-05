@@ -41,11 +41,12 @@ export const register = async (req, res) => {
       const hourlyRate = req.body.hourlyRate || 500;
       const bio = req.body.bio || '';
       const citizenshipNo = req.body.citizenshipNo || null;
+      const citizenshipImageUrl = req.body.citizenship_image_url || req.body.citizenshipImageUrl || null;
 
       await query(
-        `INSERT INTO provider_profiles (user_id, category_id, hourly_rate, availability, citizenship_no)
-         VALUES ($1, $2, $3, true, $4)`,
-        [user.id, categoryId, hourlyRate, citizenshipNo]
+        `INSERT INTO provider_profiles (user_id, category_id, hourly_rate, availability, citizenship_no, citizenship_image_url)
+         VALUES ($1, $2, $3, true, $4, $5)`,
+        [user.id, categoryId, hourlyRate, citizenshipNo, citizenshipImageUrl]
       );
 
       if (bio) {
@@ -87,7 +88,7 @@ export const login = async (req, res) => {
     // Find user (case-insensitive email matching and trimmed input)
     const cleanEmail = email ? email.trim().toLowerCase() : '';
     const result = await query(
-      'SELECT id, name, email, password_hash, role, is_verified FROM users WHERE LOWER(email) = LOWER($1) AND is_active = TRUE',
+      'SELECT id, name, email, password_hash, role, is_verified, is_active FROM users WHERE LOWER(email) = LOWER($1)',
       [cleanEmail]
     );
 
@@ -101,6 +102,17 @@ export const login = async (req, res) => {
     const validPassword = await comparePassword(password, user.password_hash);
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check account status / KYC rejection
+    if (!user.is_active) {
+      if (user.role === 'provider') {
+        return res.status(403).json({
+          error: 'Your KYC application was not approved during review. Please re-verify your KYC details or submit updated identity documents.',
+          is_kyc_rejected: true,
+        });
+      }
+      return res.status(403).json({ error: 'Your account has been deactivated. Please contact support.' });
     }
 
     // Generate token
@@ -148,3 +160,80 @@ export const getCurrentUser = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 };
+
+// Re-verify provider KYC
+export const reverifyKYC = async (req, res) => {
+  try {
+    const { email, password, name, phone, ward, categoryId, hourlyRate, bio, citizenshipNo, citizenship_image_url } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required to re-verify KYC' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const userResult = await query(
+      'SELECT id, name, email, password_hash, role FROM users WHERE LOWER(email) = LOWER($1)',
+      [cleanEmail]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Account not found with this email' });
+    }
+
+    const user = userResult.rows[0];
+
+    if (user.role !== 'provider') {
+      return res.status(400).json({ error: 'Only service providers can submit KYC re-verification' });
+    }
+
+    const validPassword = await comparePassword(password, user.password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid password. Please enter your correct account password.' });
+    }
+
+    // Reactivate user and set is_verified to false so it goes back to admin queue
+    await query(
+      `UPDATE users
+       SET is_active = TRUE,
+           is_verified = FALSE,
+           name = COALESCE($1, name),
+           phone = COALESCE($2, phone),
+           ward = COALESCE($3, ward),
+           bio = COALESCE($4, bio),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5`,
+      [name || null, phone || null, ward || null, bio || null, user.id]
+    );
+
+    // Update or insert provider profile
+    const profileCheck = await query('SELECT id FROM provider_profiles WHERE user_id = $1', [user.id]);
+    
+    if (profileCheck.rows.length > 0) {
+      await query(
+        `UPDATE provider_profiles
+         SET category_id = COALESCE($1, category_id),
+             hourly_rate = COALESCE($2, hourly_rate),
+             citizenship_no = COALESCE($3, citizenship_no),
+             citizenship_image_url = COALESCE($4, citizenship_image_url),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = $5`,
+        [categoryId ? parseInt(categoryId) : null, hourlyRate ? parseFloat(hourlyRate) : null, citizenshipNo || null, citizenship_image_url || null, user.id]
+      );
+    } else {
+      await query(
+        `INSERT INTO provider_profiles (user_id, category_id, hourly_rate, availability, citizenship_no, citizenship_image_url)
+         VALUES ($1, $2, $3, true, $4, $5)`,
+        [user.id, categoryId ? parseInt(categoryId) : 1, hourlyRate ? parseFloat(hourlyRate) : 500, citizenshipNo || null, citizenship_image_url || null]
+      );
+    }
+
+    res.json({
+      message: 'KYC re-verification submitted successfully! Your application is now in the admin review queue.',
+      success: true,
+    });
+  } catch (error) {
+    console.error('Re-verify KYC error:', error);
+    res.status(500).json({ error: 'Failed to submit KYC re-verification' });
+  }
+};
+
