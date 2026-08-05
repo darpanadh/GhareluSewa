@@ -20,7 +20,10 @@ export function getAllPayoutRequests() {
 export async function fetchAllPayoutRequestsAsync() {
   try {
     const res = await adminAPI.getPayoutRequests();
-    const serverRequests = res.data || [];
+    const serverRequests = (res.data || []).map(r => ({
+      ...r,
+      amount: Number(r.amount) || 0
+    }));
     localStorage.setItem(STORE_KEY, JSON.stringify(serverRequests));
     window.dispatchEvent(new CustomEvent('payout_store_updated'));
     return serverRequests;
@@ -43,7 +46,10 @@ export function getProviderPayoutRequests(providerId) {
 export async function fetchProviderPayoutRequestsAsync(providerId) {
   try {
     const res = await providerAPI.getPayouts();
-    const serverRequests = res.data || [];
+    const serverRequests = (res.data || []).map(r => ({
+      ...r,
+      amount: Number(r.amount) || 0
+    }));
     
     // Merge with local storage
     const all = getAllPayoutRequests();
