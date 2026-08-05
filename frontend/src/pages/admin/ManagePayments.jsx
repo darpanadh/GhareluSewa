@@ -6,7 +6,7 @@ import {
 import {
   CreditCard, DollarSign, TrendingUp, CheckCircle, XCircle,
   Building, Smartphone, ArrowUpRight, Search, Filter, RefreshCw, Send,
-  ShieldCheck, Loader, AlertTriangle, Users, Wallet
+  ShieldCheck, Loader, AlertTriangle, Users, Wallet, X
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -17,6 +17,9 @@ export default function ManagePayments() {
   const [successMsg, setSuccessMsg] = useState('');
   const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'completed'
   const [stats, setStats] = useState(null);
+
+  // Custom Confirmation Modal State: null | { type: 'approve' | 'reject', requestId, providerName, amount, method, accountDetails }
+  const [confirmModal, setConfirmModal] = useState(null);
 
   // Load data from backend server & shared store
   const refreshData = useCallback(async () => {
@@ -41,41 +44,48 @@ export default function ManagePayments() {
     };
   }, [refreshData]);
 
-  const handleSendPayment = async (requestId, providerName, amount, method) => {
-    if (!window.confirm(`Confirm: Send Rs. ${amount.toLocaleString()} to "${providerName}" via ${method}?\n\nThis action cannot be undone.`)) return;
-
-    setProcessingId(requestId);
-    try {
-      // Simulate backend processing delay
-      await new Promise(r => setTimeout(r, 1000));
-
-      // Mark as completed in shared store — provider will see this instantly
-      markPayoutCompleted(requestId);
-      refreshData();
-
-      setSuccessMsg(`✅ Payment of Rs. ${amount.toLocaleString()} successfully sent to ${providerName} via ${method}!`);
-      setTimeout(() => setSuccessMsg(''), 5000);
-    } catch (err) {
-      alert('Failed to process payment. Please try again.');
-    } finally {
-      setProcessingId(null);
-    }
+  const triggerSendPayment = (req) => {
+    setConfirmModal({
+      type: 'approve',
+      requestId: req.id,
+      providerName: req.provider_name,
+      amount: req.amount,
+      method: req.method,
+      accountDetails: req.account_details,
+    });
   };
 
-  const handleRejectPayout = async (requestId, providerName) => {
-    if (!window.confirm(`Reject payout request from "${providerName}"?\n\nThe provider will be notified.`)) return;
+  const triggerRejectPayout = (req) => {
+    setConfirmModal({
+      type: 'reject',
+      requestId: req.id,
+      providerName: req.provider_name,
+      amount: req.amount,
+      method: req.method,
+      accountDetails: req.account_details,
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmModal) return;
+    const { type, requestId, providerName, amount, method } = confirmModal;
 
     setProcessingId(requestId);
     try {
-      await new Promise(r => setTimeout(r, 500));
-      markPayoutRejected(requestId);
+      if (type === 'approve') {
+        await markPayoutCompleted(requestId);
+        setSuccessMsg(`✅ Payment of Rs. ${(Number(amount) || 0).toLocaleString()} successfully sent to ${providerName} via ${method}!`);
+      } else {
+        await markPayoutRejected(requestId);
+        setSuccessMsg(`Payout request from ${providerName} has been rejected.`);
+      }
       refreshData();
-      setSuccessMsg(`Payout request from ${providerName} has been rejected.`);
-      setTimeout(() => setSuccessMsg(''), 4000);
+      setTimeout(() => setSuccessMsg(''), 5000);
     } catch (err) {
-      alert('Failed to reject request.');
+      alert('Failed to update payout request status. Please try again.');
     } finally {
       setProcessingId(null);
+      setConfirmModal(null);
     }
   };
 
@@ -87,7 +97,7 @@ export default function ManagePayments() {
   const pendingRequests = payoutRequests.filter(p => p.status === 'pending');
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8 animate-in fade-in duration-300 relative">
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -97,13 +107,13 @@ export default function ManagePayments() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Payments & Professional Payouts</h1>
-            <p className="text-sm text-gray-500">Review withdrawal requests from professionals and send payments</p>
+            <p className="text-sm text-gray-500">Review withdrawal requests from professionals and disburse payments</p>
           </div>
         </div>
 
         <button
           onClick={refreshData}
-          className="flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-xs"
+          className="flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-xs cursor-pointer"
         >
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
@@ -123,7 +133,7 @@ export default function ManagePayments() {
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
           <div className="text-sm">
             <span className="font-bold text-amber-900">{pendingRequests.length} pending payout request{pendingRequests.length > 1 ? 's' : ''}</span>
-            <span className="text-amber-700"> totaling Rs. {pendingRequests.reduce((s, r) => s + r.amount, 0).toLocaleString()} — awaiting your action.</span>
+            <span className="text-amber-700"> totaling Rs. {pendingRequests.reduce((s, r) => s + (Number(r.amount) || 0), 0).toLocaleString()} — awaiting your action.</span>
           </div>
         </div>
       )}
@@ -283,7 +293,7 @@ export default function ManagePayments() {
                 {/* Right: Amount + Actions */}
                 <div className="flex items-center gap-4 sm:gap-6 flex-shrink-0">
                   <div className="text-right">
-                    <p className="text-xl font-black text-gray-900">Rs. {req.amount.toLocaleString()}</p>
+                    <p className="text-xl font-black text-gray-900">Rs. {(Number(req.amount) || 0).toLocaleString()}</p>
                     <span className={`inline-block mt-1 px-3 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
                       req.status === 'completed'
                         ? 'bg-emerald-100 text-emerald-800'
@@ -298,17 +308,17 @@ export default function ManagePayments() {
                   {req.status === 'pending' ? (
                     <div className="flex flex-col gap-2">
                       <button
-                        onClick={() => handleSendPayment(req.id, req.provider_name, req.amount, req.method)}
+                        onClick={() => triggerSendPayment(req)}
                         disabled={processingId === req.id}
-                        className="bg-[#10b981] hover:bg-[#0ea572] active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                        className="bg-[#10b981] hover:bg-[#0ea572] active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                       >
                         <Send className="w-3.5 h-3.5" />
                         <span>{processingId === req.id ? 'Sending...' : 'Send Payment'}</span>
                       </button>
                       <button
-                        onClick={() => handleRejectPayout(req.id, req.provider_name)}
+                        onClick={() => triggerRejectPayout(req)}
                         disabled={processingId === req.id}
-                        className="bg-white border border-red-200 hover:bg-red-50 disabled:opacity-50 text-red-600 text-xs font-bold px-5 py-2 rounded-xl transition-all flex items-center gap-1.5 justify-center"
+                        className="bg-white border border-red-200 hover:bg-red-50 disabled:opacity-50 text-red-600 text-xs font-bold px-5 py-2 rounded-xl transition-all flex items-center gap-1.5 justify-center cursor-pointer"
                       >
                         <XCircle className="w-3.5 h-3.5" />
                         <span>Reject</span>
@@ -340,6 +350,97 @@ export default function ManagePayments() {
           Platform retains 10% commission from each job automatically.
         </p>
       </div>
+
+      {/* Custom Confirmation Modal (Replaces browser alert/confirm popup) */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95 duration-150 border border-gray-100">
+            
+            {/* Close X Button */}
+            <button
+              onClick={() => setConfirmModal(null)}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header / Icon */}
+            <div className="flex items-center gap-3.5">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold flex-shrink-0 ${
+                confirmModal.type === 'approve' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
+              }`}>
+                {confirmModal.type === 'approve' ? <Send className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-gray-900">
+                  {confirmModal.type === 'approve' ? 'Disburse Payment' : 'Reject Payout Request'}
+                </h3>
+                <p className="text-xs text-gray-500">
+                  {confirmModal.type === 'approve' ? 'Confirm financial transfer to professional' : 'Decline withdrawal request'}
+                </p>
+              </div>
+            </div>
+
+            {/* Details Box */}
+            <div className="bg-gray-50/80 rounded-2xl p-4 border border-gray-100 space-y-2.5 text-xs text-gray-700">
+              <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                <span className="text-gray-500 font-semibold">Professional:</span>
+                <span className="font-extrabold text-gray-900 text-sm">{confirmModal.providerName}</span>
+              </div>
+
+              <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                <span className="text-gray-500 font-semibold">Payout Amount:</span>
+                <span className={`font-black text-base ${confirmModal.type === 'approve' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                  Rs. {(Number(confirmModal.amount) || 0).toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 font-semibold">Payment Destination:</span>
+                <span className="font-bold text-[#07535f]">{confirmModal.method} ({confirmModal.accountDetails})</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-500 leading-relaxed">
+              {confirmModal.type === 'approve'
+                ? 'Are you sure you want to mark this payout as completed? The professional will see funds marked as Paid.'
+                : 'Rejecting this request will restore the requested funds back to the professional\'s available balance.'}
+            </p>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                disabled={processingId === confirmModal.requestId}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 py-3 rounded-2xl text-xs font-extrabold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                disabled={processingId === confirmModal.requestId}
+                className={`flex-1 text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer ${
+                  confirmModal.type === 'approve'
+                    ? 'bg-[#10b981] hover:bg-[#0ea572]'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {processingId === confirmModal.requestId ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" /> Processing...
+                  </>
+                ) : (
+                  confirmModal.type === 'approve' ? 'Confirm Payment' : 'Confirm Rejection'
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
