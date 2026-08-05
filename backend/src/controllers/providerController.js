@@ -129,11 +129,12 @@ export const getProviderEarnings = async (req, res) => {
     const { start_date, end_date } = req.query;
 
     let sql = `
-      SELECT COUNT(*) as total_bookings,
-             SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_bookings,
-             SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as active_bookings,
-             SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_bookings,
-             COALESCE(pp.hourly_rate * SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as estimated_earnings
+      SELECT 
+        COUNT(*)::int as total_bookings,
+        COALESCE(SUM(CASE WHEN b.status = 'completed' THEN 1 ELSE 0 END), 0)::int as completed_bookings,
+        COALESCE(SUM(CASE WHEN b.status = 'in_progress' THEN 1 ELSE 0 END), 0)::int as active_bookings,
+        COALESCE(SUM(CASE WHEN b.status = 'cancelled' THEN 1 ELSE 0 END), 0)::int as cancelled_bookings,
+        COALESCE(SUM(CASE WHEN b.status = 'completed' THEN COALESCE(b.total_price, pp.hourly_rate, 0) ELSE 0 END), 0)::int as estimated_earnings
       FROM bookings b
       LEFT JOIN provider_profiles pp ON b.provider_id = pp.user_id
       WHERE b.provider_id = $1
@@ -152,7 +153,18 @@ export const getProviderEarnings = async (req, res) => {
     }
 
     const result = await query(sql, params);
-    res.json(result.rows[0]);
+    const row = result.rows[0] || {};
+
+    res.json({
+      total_bookings: Number(row.total_bookings || 0),
+      completed_bookings: Number(row.completed_bookings || 0),
+      active_bookings: Number(row.active_bookings || 0),
+      cancelled_bookings: Number(row.cancelled_bookings || 0),
+      estimated_earnings: Number(row.estimated_earnings || 0),
+      total: Number(row.estimated_earnings || 0),
+      jobs: Number(row.completed_bookings || 0),
+      payments: []
+    });
   } catch (error) {
     console.error('Get provider earnings error:', error);
     res.status(500).json({ error: 'Failed to fetch earnings' });

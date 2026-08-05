@@ -70,23 +70,25 @@ export default function MyEarnings() {
     try {
       const res = await providerAPI.getEarnings({ period });
       const data = res.data || {};
-      setEarnings(data);
+      const totalAmt = Number(data.estimated_earnings ?? data.total ?? 0);
+      const jobsCnt = Number(data.completed_bookings ?? data.total_bookings ?? data.jobs ?? 0);
+      setEarnings({
+        total: totalAmt,
+        jobs: jobsCnt,
+        avg: jobsCnt > 0 ? Math.round(totalAmt / jobsCnt) : 0,
+      });
       setPayments(Array.isArray(data.payments) ? data.payments : []);
     } catch (err) {
-      console.warn('Could not load server earnings, using fallback data', err);
-      setEarnings({ total: 14500, jobs: 12, avg: 1208 });
-      setPayments([
-        { id: 'TXN-9082', amount: 3500, status: 'completed', created_at: new Date().toISOString() },
-        { id: 'TXN-8711', amount: 2200, status: 'completed', created_at: new Date(Date.now() - 86400000 * 2).toISOString() },
-        { id: 'TXN-7412', amount: 4800, status: 'completed', created_at: new Date(Date.now() - 86400000 * 5).toISOString() },
-      ]);
+      console.warn('Could not load server earnings', err);
+      setEarnings({ total: 0, jobs: 0, avg: 0 });
+      setPayments([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const total      = earnings?.total     || 14500;
-  const jobsCount  = earnings?.jobs      || earnings?.count || 12;
+  const total      = Number(earnings?.total ?? 0);
+  const jobsCount  = Number(earnings?.jobs ?? 0);
   const avg        = jobsCount > 0 ? Math.round(total / jobsCount) : 0;
   const commission = Math.round(total * 0.10);
   const netTotal   = total - commission;

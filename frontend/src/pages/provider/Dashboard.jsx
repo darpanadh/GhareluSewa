@@ -179,10 +179,10 @@ export default function ProviderDashboard() {
           {/* Stat tiles */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
             {[
-              { label: "Today's Earnings", value: `Rs. 2,400`, badge: '+15%' },
-              { label: 'Completed Today',  value: `${completedJobs.length} Jobs`, badge: 'On track' },
-              { label: 'Active Now',        value: `${activeJobs.length} Jobs`,   badge: 'Live' },
-              { label: 'Acceptance Rate',   value: '94%',                         badge: 'Excellent' },
+              { label: "Today's Earnings", value: `Rs. ${totalMonthly.toLocaleString()}`, badge: completedJobs.length > 0 ? '+15%' : '0%' },
+              { label: 'Completed Today',  value: `${completedJobs.length} Jobs`, badge: completedJobs.length > 0 ? 'On track' : 'No jobs' },
+              { label: 'Active Now',        value: `${activeJobs.length} Jobs`,   badge: activeJobs.length > 0 ? 'Live' : 'Idle' },
+              { label: 'Acceptance Rate',   value: bookings.length > 0 ? '100%' : '0%', badge: 'Active' },
             ].map((s, i) => (
               <div key={i} className="bg-white/10 rounded-2xl px-5 py-4">
                 <div className="flex justify-between items-start mb-2">
@@ -402,10 +402,10 @@ export default function ProviderDashboard() {
             {/* Quick stats */}
             <div className="grid grid-cols-2 gap-2.5 mb-4">
               {[
-                { icon: <TrendingUp className="w-3.5 h-3.5 text-[#07535f]" />, val: `Rs. ${(totalMonthly || 17200).toLocaleString()}`, label: 'This Week' },
-                { icon: <Activity className="w-3.5 h-3.5 text-blue-500" />,     val: `Rs. ${(totalMonthly * 4 || 68400).toLocaleString()}`, label: 'This Month' },
-                { icon: <Clock className="w-3.5 h-3.5 text-amber-500" />,        val: 'Rs. 3,800',                                           label: 'Pending' },
-                { icon: <Check className="w-3.5 h-3.5 text-emerald-500" />,      val: `${completedJobs.length || 47}`,                        label: 'Jobs Done' },
+                { icon: <TrendingUp className="w-3.5 h-3.5 text-[#07535f]" />, val: `Rs. ${totalMonthly.toLocaleString()}`, label: 'This Week' },
+                { icon: <Activity className="w-3.5 h-3.5 text-blue-500" />,     val: `Rs. ${(totalMonthly * 4).toLocaleString()}`, label: 'This Month' },
+                { icon: <Clock className="w-3.5 h-3.5 text-amber-500" />,        val: 'Rs. 0',                                           label: 'Pending' },
+                { icon: <Check className="w-3.5 h-3.5 text-emerald-500" />,      val: `${completedJobs.length}`,                        label: 'Jobs Done' },
               ].map((s, i) => (
                 <div key={i} className="bg-gray-50 rounded-xl p-3">
                   <div className="mb-1">{s.icon}</div>
@@ -419,19 +419,19 @@ export default function ProviderDashboard() {
             <div className="border-t border-gray-100 pt-3 space-y-1.5 text-xs mb-4">
               <div className="flex justify-between text-gray-600">
                 <span>Gross Earnings</span>
-                <span className="font-bold text-gray-800">Rs. {(totalMonthly * 4 || 68400).toLocaleString()}</span>
+                <span className="font-bold text-gray-800">Rs. {(totalMonthly * 4).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Platform Fee (6%)</span>
-                <span className="font-bold text-red-500">– Rs. {Math.round((totalMonthly * 4 || 68400) * 0.06).toLocaleString()}</span>
+                <span className="font-bold text-red-500">– Rs. {Math.round((totalMonthly * 4) * 0.06).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Tax (1%)</span>
-                <span className="font-bold text-red-500">– Rs. {Math.round((totalMonthly * 4 || 68400) * 0.01).toLocaleString()}</span>
+                <span className="font-bold text-red-500">– Rs. {Math.round((totalMonthly * 4) * 0.01).toLocaleString()}</span>
               </div>
               <div className="flex justify-between font-extrabold text-gray-900 pt-2 border-t border-gray-100">
                 <span>Net Payout</span>
-                <span className="text-[#07535f]">Rs. {(netPayout || 62244).toLocaleString()}</span>
+                <span className="text-[#07535f]">Rs. {netPayout.toLocaleString()}</span>
               </div>
             </div>
 
@@ -458,7 +458,7 @@ export default function ProviderDashboard() {
               to="/provider/earnings"
               className="block w-full text-center bg-[#07535f] hover:bg-[#06424b] text-white py-3 rounded-xl text-xs font-bold transition-all shadow-md"
             >
-              Request Payout — Rs. {(netPayout || 62244).toLocaleString()}
+              Request Payout — Rs. {netPayout.toLocaleString()}
             </Link>
 
             {/* Badges */}
