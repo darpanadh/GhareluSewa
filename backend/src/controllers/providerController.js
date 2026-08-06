@@ -134,7 +134,7 @@ export const getProviderEarnings = async (req, res) => {
         COALESCE(SUM(CASE WHEN b.status = 'completed' THEN 1 ELSE 0 END), 0)::int as completed_bookings,
         COALESCE(SUM(CASE WHEN b.status = 'in_progress' THEN 1 ELSE 0 END), 0)::int as active_bookings,
         COALESCE(SUM(CASE WHEN b.status = 'cancelled' THEN 1 ELSE 0 END), 0)::int as cancelled_bookings,
-        COALESCE(SUM(CASE WHEN b.status = 'completed' THEN COALESCE(b.total_price, pp.hourly_rate, 0) ELSE 0 END), 0)::int as estimated_earnings
+        COALESCE(SUM(CASE WHEN b.status = 'completed' THEN COALESCE(NULLIF(b.total_price, 0), NULLIF(pp.hourly_rate, 0), 650) ELSE 0 END), 0)::int as estimated_earnings
       FROM bookings b
       LEFT JOIN provider_profiles pp ON b.provider_id = pp.user_id
       WHERE b.provider_id = $1

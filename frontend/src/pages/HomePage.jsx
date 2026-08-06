@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import CityWardSelector from '../components/CityWardSelector';
 import { Search, MapPin, Star, ShieldCheck, Clock, Users, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   
+  useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      if (user.role === 'admin') navigate('/admin', { replace: true });
+      else if (user.role === 'provider') navigate('/provider', { replace: true });
+      else if (user.role === 'customer') navigate('/customer', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
+
   const [ward, setWard] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -76,40 +85,14 @@ export default function HomePage() {
           {/* Search Bar Container */}
           <form onSubmit={handleSearchSubmit} className="bg-white p-2 rounded-2xl shadow-xl max-w-3xl mx-auto flex flex-col md:flex-row gap-2">
             
-            {/* Ward Selector */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b md:border-b-0 md:border-r border-gray-100 flex-1 min-w-[200px]">
-              <MapPin className="w-5 h-5 text-gray-400 shrink-0" />
-              <select
+            {/* City & Ward Cascaded Selector */}
+            <div className="flex-1 min-w-[280px]">
+              <CityWardSelector
                 value={ward}
-                onChange={(e) => setWard(e.target.value)}
-                className="w-full bg-transparent text-gray-700 font-medium focus:outline-none text-sm appearance-none cursor-pointer"
-              >
-                <option value="">Select City / Area</option>
-                <optgroup label="🏔 Pokhara (Gandaki Province)">
-                  <option value="Lakeside">Lakeside, Pokhara</option>
-                  <option value="Newroad Pokhara">New Road, Pokhara</option>
-                  <option value="Chipiyata">Chipiyata, Pokhara</option>
-                  <option value="Bagar">Bagar, Pokhara</option>
-                  <option value="Mahendrapul">Mahendrapul, Pokhara</option>
-                  <option value="Simalchaur">Simalchaur, Pokhara</option>
-                  <option value="Prithvichowk">Prithvichowk, Pokhara</option>
-                </optgroup>
-                <optgroup label="🏙 Kathmandu Valley">
-                  <option value="Baneshwor">Baneshwor, Kathmandu</option>
-                  <option value="Koteshwor">Koteshwor, Kathmandu</option>
-                  <option value="Thamel">Thamel, Kathmandu</option>
-                  <option value="Newroad Kathmandu">New Road, Kathmandu</option>
-                  <option value="Pulchowk">Pulchowk, Lalitpur</option>
-                  <option value="Jawalakhel">Jawalakhel, Lalitpur</option>
-                  <option value="Bhaktapur">Bhaktapur</option>
-                </optgroup>
-                <optgroup label="🌄 Other Cities">
-                  <option value="Butwal">Butwal, Rupandehi</option>
-                  <option value="Biratnagar">Biratnagar, Morang</option>
-                  <option value="Birgunj">Birgunj, Parsa</option>
-                  <option value="Dharan">Dharan, Sunsari</option>
-                </optgroup>
-              </select>
+                onChange={setWard}
+                showLabels={false}
+                layout="row"
+              />
             </div>
 
             {/* Service Input */}

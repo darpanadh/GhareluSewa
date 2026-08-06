@@ -1,8 +1,11 @@
-import { query } from '../config/database.js';
+import { query, getPool } from '../config/database.js';
 import { sendNotification, notifyAllAdmins } from '../config/socketHelper.js';
 
 // Create review (Customer only)
 export const createReview = async (req, res) => {
+  const pool = getPool();
+  let client;
+
   try {
     const { booking_id, rating, comment, photo_url, completion_status } = req.body;
 
@@ -54,8 +57,12 @@ export const createReview = async (req, res) => {
     );
     const is_repeated_customer = parseInt(repeatCheck.rows[0]?.cnt || 0) > 0;
 
-    // Create review with all proof fields
-    const result = await query(
+    // ── ACID TRANSACTION: Atomic insert review & update provider_profiles ────
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    // 1. Insert review
+    const result = await client.query(
       `INSERT INTO reviews
          (booking_id, customer_id, provider_id, rating, comment, photo_url, completion_status, is_repeated_customer)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -69,17 +76,21 @@ export const createReview = async (req, res) => {
       ]
     );
 
-    // Update provider's average rating
-    const avgRating = await query(
-      `SELECT AVG(rating) as avg_rating, COUNT(*) as total_reviews FROM reviews WHERE provider_id = $1`,
+    // 2. Re-calculate mathematical average of all customer ratings for this provider
+    const avgRating = await client.query(
+      `SELECT ROUND(AVG(rating)::numeric, 2) as avg_rating, COUNT(*) as total_reviews FROM reviews WHERE provider_id = $1`,
       [booking.provider_id]
     );
 
     const ratingData = avgRating.rows[0];
-    await query(
-      `UPDATE provider_profiles SET rating_avg = $1, total_reviews = $2 WHERE user_id = $3`,
+
+    // 3. Atomically persist recalculated average rating into provider_profiles table
+    await client.query(
+      `UPDATE provider_profiles SET rating_avg = COALESCE($1, 0), total_reviews = $2 WHERE user_id = $3`,
       [ratingData.avg_rating, ratingData.total_reviews, booking.provider_id]
     );
+
+    await client.query('COMMIT');
 
     // Get customer name for notification
     const customerResult = await query('SELECT name FROM users WHERE id = $1', [booking.customer_id]);
@@ -104,8 +115,11 @@ export const createReview = async (req, res) => {
       review: result.rows[0],
     });
   } catch (error) {
+    if (client) await client.query('ROLLBACK');
     console.error('Create review error:', error);
     res.status(500).json({ error: 'Failed to create review' });
+  } finally {
+    if (client) client.release();
   }
 };
 

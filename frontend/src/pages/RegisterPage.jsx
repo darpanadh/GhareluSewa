@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import CityWardSelector from '../components/CityWardSelector';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
@@ -162,13 +163,12 @@ export default function RegisterPage() {
             <Input label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Enter your email" required />
             <Input label="Phone Number" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="98XXXXXXXX" />
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Ward / Area</label>
-              <select name="ward" value={formData.ward} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#07535f]/30">
-                <option value="">Select your area</option>
-                {['Lakeside', 'Chipiyata', 'Bagar', 'Mahendrapul', 'Baneshwor', 'Koteshwor', 'Thamel', 'Pulchowk', 'Jawalakhel', 'Bhaktapur', 'Butwal', 'Biratnagar', 'Dharan'].map(w => <option key={w} value={w}>{w}</option>)}
-              </select>
-            </div>
+            <CityWardSelector
+              value={formData.ward}
+              onChange={(w) => setFormData(prev => ({ ...prev, ward: w }))}
+              required
+              layout="row"
+            />
 
             <Input label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="At least 6 characters" required />
             <Input label="Confirm Password" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm your password" required />

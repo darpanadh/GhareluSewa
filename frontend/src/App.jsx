@@ -53,14 +53,20 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 import AdminLayout from './components/AdminLayout';
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+
+  const getDashboardPath = () => {
+    if (user?.role === 'admin') return '/admin';
+    if (user?.role === 'provider') return '/provider';
+    return '/customer';
+  };
 
   return (
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />} />
-      <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <RegisterPage />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to={getDashboardPath()} replace /> : <LoginPage />} />
+      <Route path="/register" element={isAuthenticated ? <Navigate to={getDashboardPath()} replace /> : <RegisterPage />} />
       <Route path="/services" element={<BrowseServices />} />
       <Route path="/browse" element={<BrowseServices />} />
       <Route path="/book" element={<BookingWizard />} />

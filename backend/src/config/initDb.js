@@ -58,6 +58,7 @@ export const initializeDatabase = async () => {
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS photo_url TEXT`);
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS completion_status VARCHAR(100) DEFAULT 'completed_on_time'`);
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_repeated_customer BOOLEAN DEFAULT FALSE`);
+      await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_price DECIMAL(10, 2) DEFAULT 650`);
     } catch (e) {
       console.log('Columns already exist or error adding them:', e.message);
     }
@@ -185,12 +186,12 @@ export const initializeDatabase = async () => {
     // Seed Users (Password is 'password')
     await query(`
       INSERT INTO users (id, name, email, phone, password_hash, role, ward, avatar_url, bio, is_verified) VALUES
-      (1, 'Admin User', 'admin@gharelusewa.com', '9801234567', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'admin', 'Baneshwor', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'Platform Administrator', true),
-      (2, 'Rajesh Shrestha', 'rajesh@gmail.com', '9841123456', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'provider', 'Baneshwor', 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150', 'Professional plumber with over 10 years of experience in leak repairs.', true),
-      (3, 'Priya M.', 'priya@gmail.com', '9813987654', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'customer', 'Baneshwor', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Homeowner looking for reliable services', true)
-      ON CONFLICT (id) DO NOTHING
+      (1, 'Admin User', 'admin@gharelusewa.com', '9801234567', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'admin', 'Kathmandu Ward No. 10', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'Platform Administrator', true),
+      (2, 'Rajesh Shrestha', 'rajesh@gmail.com', '9841123456', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'provider', 'Pokhara Ward No. 12', 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150', 'Professional plumber with over 10 years of experience in leak repairs.', true),
+      (3, 'Priya M.', 'priya@gmail.com', '9813987654', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'customer', 'Pokhara Ward No. 12', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Homeowner looking for reliable services', true)
+      ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, is_active = true, ward = EXCLUDED.ward
     `);
-
+    
     // Seed Provider Profile
     await query(`
       INSERT INTO provider_profiles (id, user_id, category_id, hourly_rate, availability, rating_avg, total_reviews) VALUES

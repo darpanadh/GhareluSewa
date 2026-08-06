@@ -10,11 +10,15 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Get provider's hourly rate for total_price
+    const providerPriceRes = await query('SELECT hourly_rate FROM provider_profiles WHERE user_id = $1', [provider_id]);
+    const jobPrice = parseFloat(providerPriceRes.rows[0]?.hourly_rate || 650);
+
     const result = await query(
-      `INSERT INTO bookings (customer_id, provider_id, category_id, booking_date, location, description, is_emergency)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, customer_id, provider_id, status, booking_date, location, is_emergency, created_at`,
-      [req.userId, provider_id, category_id, booking_date, location, description || null, is_emergency || false]
+      `INSERT INTO bookings (customer_id, provider_id, category_id, booking_date, location, description, is_emergency, total_price)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, customer_id, provider_id, status, booking_date, location, is_emergency, total_price, created_at`,
+      [req.userId, provider_id, category_id, booking_date, location, description || null, is_emergency || false, jobPrice]
     );
 
     const booking = result.rows[0];

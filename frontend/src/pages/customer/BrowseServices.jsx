@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { userAPI } from '../../services/api';
+import CityWardSelector from '../../components/CityWardSelector';
 import {
   Search, MapPin, Star, SlidersHorizontal, Tag,
   Banknote, ArrowRight, ShieldCheck
@@ -264,36 +265,12 @@ export default function BrowseServices() {
               </select>
             </div>
 
-            {/* Filter 2: Ward */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                Ward
-              </label>
-              <select
-                value={selectedWard}
-                onChange={(e) => setSelectedWard(e.target.value)}
-                className="w-full bg-gray-50/70 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#07535f] cursor-pointer"
-              >
-                <option value="All wards">All wards</option>
-                <optgroup label="🏔 Pokhara">
-                  <option value="Lakeside">Lakeside, Pokhara</option>
-                  <option value="New Road">New Road, Pokhara</option>
-                  <option value="Chipiyata">Chipiyata, Pokhara</option>
-                  <option value="Bagar">Bagar, Pokhara</option>
-                  <option value="Mahendrapul">Mahendrapul, Pokhara</option>
-                  <option value="Prithvichowk">Prithvichowk, Pokhara</option>
-                </optgroup>
-                <optgroup label="🏙 Kathmandu Valley">
-                  <option value="Baneshwor">Baneshwor, Kathmandu</option>
-                  <option value="Thamel">Thamel, Kathmandu</option>
-                  <option value="Koteshwor">Koteshwor, Kathmandu</option>
-                  <option value="Pulchowk">Pulchowk, Lalitpur</option>
-                  <option value="Jawalakhel">Jawalakhel, Lalitpur</option>
-                  <option value="Bhaktapur">Bhaktapur</option>
-                </optgroup>
-              </select>
-            </div>
+            {/* Filter 2: City & Ward Cascaded Filter */}
+            <CityWardSelector
+              value={selectedWard === 'All wards' ? '' : selectedWard}
+              onChange={(w) => setSelectedWard(w || 'All wards')}
+              layout="col"
+            />
 
             {/* Filter 3: Min Rating */}
             <div className="space-y-2">

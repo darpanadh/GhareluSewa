@@ -43,7 +43,12 @@ export default function LoginPage() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        const dest = result.user?.role === 'customer' && redirectPath === '/' ? '/customer' : redirectPath;
+        let dest = redirectPath;
+        if (!redirectPath || redirectPath === '/') {
+          if (result.user?.role === 'admin') dest = '/admin';
+          else if (result.user?.role === 'provider') dest = '/provider';
+          else dest = '/customer';
+        }
         navigate(dest);
       } else {
         setError(result.error);
@@ -214,11 +219,36 @@ export default function LoginPage() {
         </div>
 
         {/* Demo credentials hint */}
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-          <p className="font-medium mb-1">Demo Credentials:</p>
-          <p>Customer: priya@gmail.com / password</p>
-          <p>Provider: rajesh@gmail.com / password</p>
-          <p>Admin: admin@gharelusewa.com / password</p>
+        <div className="mt-4 p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-xl text-xs text-blue-900 space-y-2">
+          <p className="font-bold text-blue-950 flex items-center justify-between">
+            <span>Demo Quick Login (Click to Fill & Sign In):</span>
+          </p>
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
+            <button
+              type="button"
+              onClick={() => { setEmail('priya@gmail.com'); setPassword('password'); }}
+              className="bg-white hover:bg-blue-100 text-blue-800 font-bold py-1.5 px-2 rounded-lg border border-blue-200 text-[11px] transition-colors text-center cursor-pointer"
+            >
+              Customer
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEmail('rajesh@gmail.com'); setPassword('password'); }}
+              className="bg-white hover:bg-blue-100 text-blue-800 font-bold py-1.5 px-2 rounded-lg border border-blue-200 text-[11px] transition-colors text-center cursor-pointer"
+            >
+              Provider
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEmail('admin@gharelusewa.com'); setPassword('password'); }}
+              className="bg-white hover:bg-blue-100 text-blue-800 font-bold py-1.5 px-2 rounded-lg border border-blue-200 text-[11px] transition-colors text-center cursor-pointer"
+            >
+              Admin
+            </button>
+          </div>
+          <div className="text-[10px] text-blue-600/90 pt-1 font-medium text-center">
+            Password for all demo accounts: <code className="font-bold bg-blue-100/80 px-1 py-0.5 rounded text-blue-900">password</code>
+          </div>
         </div>
       </Card>
 

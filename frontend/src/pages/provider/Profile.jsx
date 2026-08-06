@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { providerAPI, userAPI } from '../../services/api';
+import CityWardSelector from '../../components/CityWardSelector';
 import Card from '../../components/Card';
 import {
   User, Phone, MapPin, Briefcase, Star, Edit3,
@@ -225,44 +226,34 @@ export default function ProviderProfile() {
 
             {/* Service Area dropdown — full width */}
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.4rem' }}>
-                Service Area
-              </label>
-              <div style={{ position: 'relative' }}>
-                <MapPin style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: '#94a3b8' }} />
-                {editing ? (
-                  <select
-                    name="service_area"
-                    value={form.service_area}
-                    onChange={handleChange}
-                    style={{
-                      width: '100%', paddingLeft: '2.25rem', paddingRight: '1rem',
-                      paddingTop: '0.625rem', paddingBottom: '0.625rem',
-                      border: '1px solid #c7d2fe', borderRadius: '8px',
-                      fontSize: '0.875rem', background: 'white', color: '#1e293b',
-                      outline: 'none', boxSizing: 'border-box',
-                    }}
-                  >
-                    <option value="">Select area</option>
-                    <optgroup label="🏔 Pokhara">
-                      {POKHARA_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-                    </optgroup>
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={form.service_area || '—'}
-                    disabled
-                    style={{
-                      width: '100%', paddingLeft: '2.25rem', paddingRight: '1rem',
-                      paddingTop: '0.625rem', paddingBottom: '0.625rem',
-                      border: '1px solid #f1f5f9', borderRadius: '8px',
-                      fontSize: '0.875rem', background: '#f8fafc', color: '#1e293b',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                )}
-              </div>
+              {editing ? (
+                <CityWardSelector
+                  value={form.service_area}
+                  onChange={(w) => setForm(prev => ({ ...prev, service_area: w }))}
+                  layout="row"
+                />
+              ) : (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.4rem' }}>
+                    Service Area
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <MapPin style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: '#94a3b8' }} />
+                    <input
+                      type="text"
+                      value={form.service_area || '—'}
+                      disabled
+                      style={{
+                        width: '100%', paddingLeft: '2.25rem', paddingRight: '1rem',
+                        paddingTop: '0.625rem', paddingBottom: '0.625rem',
+                        border: '1px solid #f1f5f9', borderRadius: '8px',
+                        fontSize: '0.875rem', background: '#f8fafc', color: '#1e293b',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Skills */}

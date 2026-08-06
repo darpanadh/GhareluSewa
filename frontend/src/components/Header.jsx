@@ -97,7 +97,7 @@ export const Header = () => {
 
             {/* Left Area: Logo & All Services */}
             <div className="flex items-center gap-10">
-              <Link to={isAuthenticated && user?.role === 'customer' ? '/customer' : '/'} className="flex items-center gap-2.5">
+              <Link to={isAuthenticated ? (user?.role === 'admin' ? '/admin' : user?.role === 'provider' ? '/provider' : '/customer') : '/'} className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#07535f] flex items-center justify-center text-white shadow-xs">
                   <Wrench className="w-5 h-5 stroke-[2.5]" />
                 </div>
