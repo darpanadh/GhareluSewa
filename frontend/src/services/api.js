@@ -107,6 +107,7 @@ export const adminAPI = {
   getAllProviders: (params) => api.get('/admin/providers/all', { params }),
   verifyProvider: (userId) => api.patch(`/admin/providers/${userId}/verify`),
   rejectProvider: (userId, data) => api.patch(`/admin/providers/${userId}/reject`, data),
+  clearProviderDues: (userId) => api.patch(`/admin/providers/${userId}/clear-dues`),
   getAllBookings: (params) => api.get('/admin/bookings', { params }),
   getBookingsExport: (params) => api.get('/admin/bookings/export', { params }),
   getAnalytics: (params) => api.get('/admin/analytics', { params }),

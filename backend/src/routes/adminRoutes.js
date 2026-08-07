@@ -12,6 +12,7 @@ router.get('/providers/pending', adminController.getPendingProviders);
 router.get('/providers/all', adminController.getAllProviders);
 router.patch('/providers/:userId/verify', adminController.verifyProvider);
 router.patch('/providers/:userId/reject', adminController.rejectProvider);
+router.patch('/providers/:userId/clear-dues', adminController.clearProviderDues);
 router.get('/bookings', adminController.getAllBookings);
 router.get('/bookings/export', adminController.getBookingsExport);
 router.get('/analytics', adminController.getAdminAnalytics);

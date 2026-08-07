@@ -225,21 +225,103 @@ export default function MyEarnings() {
           </div>
         </div>
 
-        {/* Withdrawal Highlight Banner */}
-        <div className="bg-gradient-to-r from-[#07535f] via-[#06424b] to-[#0a6c7c] rounded-3xl p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+  const [serverEarnings, setServerEarnings] = useState(null);
+  const [showContactAdminModal, setShowContactAdminModal] = useState(false);
+
+  useEffect(() => {
+    fetchEarnings();
+  }, [period]);
+
+  const fetchEarnings = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await providerAPI.getEarnings({ period });
+      const data = res.data || {};
+      setServerEarnings(data);
+      const totalAmt = Number(data.estimated_earnings ?? data.total ?? 0);
+      const jobsCnt = Number(data.completed_bookings ?? data.total_bookings ?? data.jobs ?? 0);
+      setEarnings({
+        total: totalAmt,
+        jobs: jobsCnt,
+        avg: jobsCnt > 0 ? Math.round(totalAmt / jobsCnt) : 0,
+      });
+      setChartData(Array.isArray(data.chartData) ? data.chartData : []);
+      setPayments(Array.isArray(data.payments) ? data.payments : []);
+    } catch (err) {
+      console.warn('Could not load server earnings', err);
+      setEarnings({ total: 0, jobs: 0, avg: 0 });
+      setChartData([]);
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const total      = Number(earnings?.total ?? 0);
+  const jobsCount  = Number(earnings?.jobs ?? 0);
+  const avg        = jobsCount > 0 ? Math.round(total / jobsCount) : 0;
+  const commission = Math.round(total * 0.10);
+  const netTotal   = total - commission;
+  
+  // Calculate Pending and Completed Withdrawals for exact financial consistency
+  const pendingPayouts = payoutRequests
+    .filter(r => r.status === 'pending')
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+  const completedPayouts = payoutRequests
+    .filter(r => r.status === 'completed')
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+  // Available balance (real-time from server calculations to properly reflect cash deductions)
+  const calcAvailableBalance = serverEarnings?.available_balance !== undefined 
+    ? serverEarnings.available_balance 
+    : netTotal - pendingPayouts - completedPayouts;
+
+  const isNegative = calcAvailableBalance < 0;
+  const isFrozen = serverEarnings?.is_frozen || false;
+  const daysRemaining = serverEarnings?.days_remaining ?? 3;
+
+        {/* Withdrawal / Negative Balance Highlight Banner */}
+        <div className={`rounded-3xl p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden transition-all ${
+          isFrozen 
+            ? 'bg-gradient-to-r from-red-800 via-rose-900 to-red-950 border-2 border-red-500'
+            : isNegative 
+            ? 'bg-gradient-to-r from-amber-700 via-orange-800 to-rose-900 border-2 border-amber-400'
+            : 'bg-gradient-to-r from-[#07535f] via-[#06424b] to-[#0a6c7c]'
+        }`}>
           <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
             <Wallet className="w-64 h-64 text-white" />
           </div>
 
           <div className="space-y-2 z-10">
-            <div className="flex items-center gap-2 text-emerald-300 font-bold text-xs uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4" /> Available for Withdrawal
+            <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider">
+              {isFrozen ? (
+                <span className="text-red-300 flex items-center gap-1.5 font-extrabold bg-red-950/60 px-3 py-1 rounded-full border border-red-400/30">
+                  <AlertCircle className="w-4 h-4 text-red-400 animate-pulse" /> 🛑 ACCOUNT FROZEN — OVERDUE PLATFORM DUES
+                </span>
+              ) : isNegative ? (
+                <span className="text-amber-300 flex items-center gap-1.5 font-extrabold bg-amber-950/60 px-3 py-1 rounded-full border border-amber-400/30">
+                  <AlertCircle className="w-4 h-4 text-amber-400 animate-bounce" /> ⚠️ NEGATIVE BALANCE — {daysRemaining} DAY TRIAL REMAINING
+                </span>
+              ) : (
+                <span className="text-emerald-300 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" /> Available for Withdrawal
+                </span>
+              )}
             </div>
+
             <div className="text-4xl sm:text-5xl font-black tracking-tight">
-              Rs. {availableBalance.toLocaleString()}
+              Rs. {calcAvailableBalance.toLocaleString()}
             </div>
+
             <div className="flex items-center gap-3 pt-1 flex-wrap">
-              {pendingPayouts > 0 && (
+              {isNegative && (
+                <span className="bg-rose-900/60 border border-rose-400/40 text-rose-200 text-[11px] font-bold px-3 py-1 rounded-lg">
+                  10% Commission on Cash Jobs Exceeds Wallet Balance
+                </span>
+              )}
+              {pendingPayouts > 0 && !isNegative && (
                 <span className="bg-amber-400/20 border border-amber-300/40 text-amber-200 text-[11px] font-bold px-2.5 py-1 rounded-lg">
                   ⏳ Pending Hold: Rs. {pendingPayouts.toLocaleString()}
                 </span>
@@ -250,19 +332,36 @@ export default function MyEarnings() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-white/80 max-w-md pt-1">
-              Net earnings after 10% platform fee minus pending/processed withdrawals. If admin rejects a request, funds automatically return here.
+
+            <p className="text-xs text-white/80 max-w-md pt-1 leading-relaxed">
+              {isFrozen 
+                ? 'Your account has been frozen because negative 10% platform fee dues were not cleared within the 3-day trial period. Please contact Admin immediately to settle dues and reactivate your profile.'
+                : isNegative 
+                ? `10% platform fee for cash jobs is deducted from your balance. You have a ${daysRemaining}-day grace period to clear your negative dues with Admin before account auto-freezes.`
+                : 'Net earnings after 10% platform fee minus pending/processed withdrawals. If admin rejects a request, funds automatically return here.'
+              }
             </p>
           </div>
 
-          <button
-            onClick={handleOpenWithdraw}
-            className="z-10 bg-[#10b981] hover:bg-[#0ea572] active:scale-95 text-white font-extrabold px-6 py-3.5 rounded-2xl shadow-md transition-all flex items-center gap-2 text-sm group"
-          >
-            <Wallet className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span>Withdraw Payment</span>
-            <ArrowUpRight className="w-4 h-4" />
-          </button>
+          {isNegative || isFrozen ? (
+            <button
+              onClick={() => setShowContactAdminModal(true)}
+              className="z-10 bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold px-6 py-3.5 rounded-2xl shadow-xl transition-all flex items-center gap-2 text-sm cursor-pointer hover:scale-105"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>Contact Admin to Clear Dues</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={handleOpenWithdraw}
+              className="z-10 bg-[#10b981] hover:bg-[#0ea572] active:scale-95 text-white font-extrabold px-6 py-3.5 rounded-2xl shadow-md transition-all flex items-center gap-2 text-sm group cursor-pointer"
+            >
+              <Wallet className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <span>Withdraw Payment</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -603,6 +702,72 @@ export default function MyEarnings() {
 
                 </form>
               )}
+
+            </div>
+          </div>
+        )}
+
+        {/* CONTACT ADMIN TO CLEAR DUES MODAL */}
+        {showContactAdminModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 relative animate-in fade-in zoom-in-95 duration-150">
+              <button
+                onClick={() => setShowContactAdminModal(false)}
+                className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="space-y-1">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-2 font-bold">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-extrabold text-gray-900">Clear Negative Dues with Admin</h3>
+                <p className="text-xs text-gray-500">Contact Gharelu Sewa Admin to settle 10% cash commission platform dues.</p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-amber-800 font-medium">Overdue Platform Dues:</span>
+                  <span className="text-lg font-black text-rose-700">Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-amber-200/60 pt-2">
+                  <span className="text-amber-800 font-medium">Status / Grace Period:</span>
+                  <span className="font-extrabold text-amber-900">
+                    {isFrozen ? '🛑 Account Frozen' : `⏳ ${daysRemaining} Days Trial Remaining`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <p className="font-bold text-gray-800">Admin Payment Methods for Dues Settlement:</p>
+
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-emerald-900 text-xs">eSewa / Khalti Direct</p>
+                    <p className="text-[11px] text-emerald-700 font-mono">9841000000 (Gharelu Sewa Admin)</p>
+                  </div>
+                  <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">Primary</span>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-blue-900 text-xs">Direct Bank Transfer</p>
+                    <p className="text-[11px] text-blue-700">NIC Asia Bank - A/C 012345678910</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-[11px] text-gray-600 leading-relaxed">
+                ℹ️ Once you transfer the dues of <strong>Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</strong>, contact Admin support or show receipt screenshot. Admin will instantly click <strong>Clear Dues</strong> in Admin Panel to restore your account to active online status.
+              </div>
+
+              <a
+                href="tel:9841000000"
+                className="w-full bg-[#07535f] hover:bg-[#06424b] text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-2 block text-center"
+              >
+                <Smartphone className="w-4 h-4" /> Call Admin Support Now (9841000000)
+              </a>
 
             </div>
           </div>

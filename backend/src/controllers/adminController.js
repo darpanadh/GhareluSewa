@@ -438,7 +438,7 @@ export const getAllProviders = async (req, res) => {
 
     const result = await query(
       `SELECT u.id, u.name, u.email, u.phone, u.ward, u.avatar_url, u.bio, u.is_verified, u.is_active, u.created_at,
-              pp.hourly_rate, pp.citizenship_no, pp.citizenship_image_url, pp.rating_avg, pp.total_reviews, sc.name as service_category
+              pp.hourly_rate, pp.citizenship_no, pp.citizenship_image_url, pp.rating_avg, pp.total_reviews, pp.is_frozen, pp.negative_since, sc.name as service_category
        FROM users u
        LEFT JOIN provider_profiles pp ON u.id = pp.user_id
        LEFT JOIN service_categories sc ON pp.category_id = sc.id
@@ -468,7 +468,39 @@ export const getAllPayoutRequests = async (req, res) => {
   }
 };
 
-// Update payout request status (admin)
+// Clear provider dues & unfreeze account (Admin action)
+export const clearProviderDues = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await query(
+      `UPDATE provider_profiles
+       SET is_frozen = FALSE, negative_since = NULL, availability = TRUE
+       WHERE user_id = $1
+       RETURNING id, user_id, is_frozen, negative_since, availability`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Provider profile not found' });
+    }
+
+    // Notify provider
+    await query(
+      `INSERT INTO notifications (user_id, message, type)
+       VALUES ($1, $2, $3)`,
+      [userId, '✅ Your negative balance dues have been cleared by Admin! Account unfrozen.', 'dues_cleared']
+    );
+
+    res.json({
+      message: 'Provider dues cleared and account unfrozen successfully',
+      profile: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Clear provider dues error:', error);
+    res.status(500).json({ error: 'Failed to clear provider dues' });
+  }
+};
 export const updatePayoutStatus = async (req, res) => {
   try {
     const { id } = req.params;
