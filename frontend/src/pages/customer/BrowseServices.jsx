@@ -125,6 +125,7 @@ export default function BrowseServices() {
           reviewsCount: p.total_reviews || 20,
           category: p.service_category || p.category_name || p.category || 'General',
           ward: p.ward || p.location || 'Kathmandu',
+          service_wards: p.service_wards || p.ward || 'Kathmandu',
           description: p.bio || p.description || 'Experienced local service professional.',
           tags: p.skill_badges ? p.skill_badges.split(',') : (p.skills ? p.skills.split(',') : [p.service_category || 'Home Service']),
           backgroundCheckStatus: p.background_check_status || 'pending'
@@ -441,9 +442,15 @@ export default function BrowseServices() {
                       </div>
 
                       {/* Bio description */}
-                      <p className="text-xs text-gray-600 leading-relaxed mb-4 line-clamp-2 font-medium">
+                      <p className="text-xs text-gray-600 leading-relaxed mb-3 line-clamp-2 font-medium">
                         {provider.description}
                       </p>
+
+                      {/* Coverage Wards */}
+                      <div className="mb-4 text-xs font-semibold text-gray-600 bg-gray-50 p-2 rounded-xl border border-gray-100 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-[#07535f] shrink-0" />
+                        <span className="truncate">Covers: {provider.service_wards || provider.ward}</span>
+                      </div>
 
                       {/* Skill Tags */}
                       <div className="mb-6">

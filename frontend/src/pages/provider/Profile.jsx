@@ -1,33 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { providerAPI, userAPI } from '../../services/api';
-import CityWardSelector from '../../components/CityWardSelector';
+import { providerAPI } from '../../services/api';
+import MultiWardSelector from '../../components/MultiWardSelector';
 import EditProfileModal from '../../components/EditProfileModal';
-import Card from '../../components/Card';
 import {
-  User, Phone, MapPin, Briefcase, Star, Edit3,
-  Save, X, Check, Loader, Camera, Shield, Award,
-  Clock, AlertCircle, ChevronRight
+  User, Phone, MapPin, Briefcase, Edit3,
+  Save, X, Loader2, Camera, ShieldCheck, Award,
+  Clock, AlertCircle, Tag, CheckCircle2,
+  DollarSign, Plus
 } from 'lucide-react';
 
-const SERVICE_CATEGORIES = [
-  'Plumbing', 'Electrical', 'Cleaning', 'Carpentry',
-  'Painting', 'Appliance Repair', 'Pest Control', 'Gardening'
-];
-
-const POKHARA_AREAS = [
-  'Lakeside (Baidam)', 'Chipiyata', 'Bagar', 'Mahendrapul',
-  'New Road', 'Srijana Chowk', 'Prithvi Chowk', 'Mustang Chowk',
-  'Nadipur', 'Matepani', 'Ramghat', 'Naya Bazaar', 'Baglung Bus Park',
-  'Firke', 'Rambazar', 'Hospital Road', 'Khalte', 'Lamachaur',
-];
-
 export default function ProviderProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState('info'); // 'info' | 'wards' | 'skills' | 'kyc'
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,10 +26,13 @@ export default function ProviderProfile() {
     phone: '',
     bio: '',
     service_area: '',
+    service_wards: '',
     hourly_rate: '',
     experience_years: '',
     skills: '',
   });
+
+  const [newSkillInput, setNewSkillInput] = useState('');
 
   useEffect(() => {
     fetchProfile();
@@ -54,22 +46,24 @@ export default function ProviderProfile() {
         const data = res.data || {};
         setProfile(data);
         setForm({
-          full_name: data.full_name || user.full_name || '',
+          full_name: data.full_name || user.full_name || user.name || '',
           phone: data.phone || user.phone || '',
-          bio: data.bio || '',
-          service_area: data.service_area || '',
-          hourly_rate: data.hourly_rate || '',
-          experience_years: data.experience_years || '',
+          bio: data.bio || user.bio || '',
+          service_area: data.service_area || user.ward || '',
+          service_wards: data.service_wards || data.service_area || user.ward || '',
+          hourly_rate: data.hourly_rate ?? '',
+          experience_years: data.experience_years ?? '',
           skills: Array.isArray(data.skills) ? data.skills.join(', ') : (data.skills || ''),
         });
       }
     } catch (err) {
-      // fallback to user data if no provider profile yet
+      console.warn('Fallback to context user data', err);
       setForm({
-        full_name: user?.full_name || '',
+        full_name: user?.full_name || user?.name || '',
         phone: user?.phone || '',
-        bio: '',
-        service_area: '',
+        bio: user?.bio || '',
+        service_area: user?.ward || '',
+        service_wards: user?.ward || '',
         hourly_rate: '',
         experience_years: '',
         skills: '',
@@ -85,281 +79,536 @@ export default function ProviderProfile() {
     setSuccess('');
     try {
       const payload = {
-        ...form,
+        full_name: form.full_name,
+        phone: form.phone,
+        bio: form.bio,
+        service_area: form.service_wards || form.service_area,
+        service_wards: form.service_wards || form.service_area,
         hourly_rate: form.hourly_rate ? Number(form.hourly_rate) : undefined,
         experience_years: form.experience_years ? Number(form.experience_years) : undefined,
         skills: form.skills ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : [],
       };
+
       await providerAPI.updateProfile(payload);
+      
+      // Also sync context user if name/phone changed
+      if (updateUser) {
+        updateUser({
+          ...user,
+          name: form.full_name,
+          phone: form.phone,
+          bio: form.bio,
+          ward: form.service_wards || form.service_area,
+        });
+      }
+
       setSuccess('Profile updated successfully!');
       setEditing(false);
       fetchProfile();
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save profile.');
+      console.error('Update profile error:', err);
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to save profile changes.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleAddSkillChip = () => {
+    if (!newSkillInput.trim()) return;
+    const currentSkills = form.skills
+      ? form.skills.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+    if (!currentSkills.includes(newSkillInput.trim())) {
+      const updated = [...currentSkills, newSkillInput.trim()].join(', ');
+      setForm(prev => ({ ...prev, skills: updated }));
+    }
+    setNewSkillInput('');
+  };
+
+  const handleRemoveSkillChip = (skillToRemove) => {
+    const currentSkills = form.skills
+      ? form.skills.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+    const updated = currentSkills.filter(s => s !== skillToRemove).join(', ');
+    setForm(prev => ({ ...prev, skills: updated }));
   };
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '5rem 0', color: '#94a3b8' }}>
-        <Loader style={{ width: 32, height: 32, margin: '0 auto 1rem' }} />
-        <p>Loading profile…</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-slate-500">
+        <Loader2 className="w-10 h-10 animate-spin text-[#07535f] mb-3" />
+        <p className="text-sm font-medium">Loading provider profile…</p>
       </div>
     );
   }
 
   const verificationStatus = profile?.is_verified ? 'verified' : (profile?.verification_status || 'pending');
+  const skillsList = form.skills ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const serviceWardsList = (form.service_wards || form.service_area || user?.ward || '')
+    .split(',')
+    .map(w => w.trim())
+    .filter(Boolean);
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem 1rem' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.25rem' }}>My Profile</h1>
-          <p style={{ color: '#64748b' }}>Manage your provider information</p>
-        </div>
-        {!editing ? (
-          <button
-            onClick={() => setEditing(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#6366f1', color: 'white', border: 'none', borderRadius: '10px', padding: '0.625rem 1.25rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}
-          >
-            <Edit3 style={{ width: 16, height: 16 }} /> Edit Profile
-          </button>
-        ) : (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              onClick={() => { setEditing(false); fetchProfile(); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.625rem 1.25rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}
-            >
-              <X style={{ width: 16, height: 16 }} /> Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: '10px', padding: '0.625rem 1.25rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', opacity: saving ? 0.7 : 1 }}
-            >
-              {saving ? <Loader style={{ width: 16, height: 16 }} /> : <Save style={{ width: 16, height: 16 }} />}
-              {saving ? 'Saving…' : 'Save Changes'}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Success / Error */}
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+      
+      {/* Alert Notifications */}
       {success && (
-        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '0.875rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#15803d' }}>
-          <Check style={{ width: 18, height: 18 }} /> {success}
-        </div>
-      )}
-      {error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '0.875rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#b91c1c' }}>
-          <AlertCircle style={{ width: 18, height: 18 }} /> {error}
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <p className="text-sm font-semibold">{success}</p>
+          </div>
+          <button onClick={() => setSuccess('')} className="text-emerald-600 hover:text-emerald-800">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      {/* Profile Card */}
-      <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #f1f5f9', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '1.5rem' }}>
-        {/* Avatar band */}
-        <div style={{ background: 'linear-gradient(135deg, #07535f 0%, #0a7587 100%)', padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div
-            onClick={() => setIsModalOpen(true)}
-            style={{ position: 'relative', cursor: 'pointer' }}
-            title="Click to edit profile photo"
-            className="group"
-          >
-            <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', flexShrink: 0, border: '3px solid rgba(255,255,255,0.6)', color: 'white', fontWeight: 700 }}>
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt={user?.name || 'Provider'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                (form.full_name || user?.name || 'P')[0].toUpperCase()
-              )}
-            </div>
-            <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#ffffff', color: '#07535f', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-              <Camera style={{ width: 14, height: 14 }} />
-            </div>
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <p className="text-sm font-semibold">{error}</p>
           </div>
-          <div>
-            <div style={{ color: 'white', fontSize: '1.4rem', fontWeight: 700 }}>{form.full_name || user?.name || 'Provider'}</div>
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem' }}>{user?.email}</div>
-            <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {verificationStatus === 'verified' ? (
-                <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', padding: '3px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Shield style={{ width: 12, height: 12 }} /> KYC Verified
-                </span>
-              ) : (
-                <span style={{ background: 'rgba(255,200,0,0.2)', color: '#fef9c3', padding: '3px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Clock style={{ width: 12, height: 12 }} /> Verification {verificationStatus}
-                </span>
-              )}
+          <button onClick={() => setError('')} className="text-red-600 hover:text-red-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Profile Hero Banner Card ── */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-lg overflow-hidden">
+        
+        {/* Cover Graphic Header */}
+        <div className="relative bg-gradient-to-r from-[#07535f] via-[#096472] to-[#0d7888] px-6 pt-8 pb-16 text-white">
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            {!editing ? (
               <button
-                type="button"
-                onClick={() => setIsModalOpen(true)}
-                style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', padding: '3px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                onClick={() => setEditing(true)}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-xs border border-white/20 cursor-pointer"
               >
-                <Camera style={{ width: 12, height: 12 }} /> Change Photo
+                <Edit3 className="w-4 h-4" /> Edit Profile
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setEditing(false); fetchProfile(); }}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border border-white/20 cursor-pointer"
+                >
+                  <X className="w-4 h-4" /> Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-5">
+            
+            {/* Avatar with click action */}
+            <div 
+              className="relative group cursor-pointer"
+              onClick={() => setIsModalOpen(true)}
+              title="Click to update photo"
+            >
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-slate-200 flex items-center justify-center text-3xl font-extrabold text-[#07535f]">
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt={user?.name || 'Provider'} className="w-full h-full object-cover" />
+                ) : (
+                  (form.full_name || user?.name || 'P')[0].toUpperCase()
+                )}
+              </div>
+              <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                <Camera className="w-6 h-6" />
+              </div>
+              <button 
+                className="absolute bottom-1 right-1 p-1.5 bg-white text-[#07535f] rounded-full shadow-lg border border-slate-100 cursor-pointer"
+                title="Change Photo"
+              >
+                <Camera className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {/* Provider Details */}
+            <div className="text-center sm:text-left space-y-1 pb-1">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  {form.full_name || user?.name || 'Service Provider'}
+                </h1>
+                {verificationStatus === 'verified' && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400/20 text-emerald-100 border border-emerald-300/30">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" /> KYC Verified
+                  </span>
+                )}
+              </div>
+
+              <p className="text-white/80 text-xs sm:text-sm font-medium flex items-center justify-center sm:justify-start gap-2">
+                <span>{profile?.category_name || 'Home Service Provider'}</span>
+                <span>•</span>
+                <span>{user?.email}</span>
+              </p>
+            </div>
+
           </div>
         </div>
 
-        {/* Fields */}
-        <div style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-            {[
-              { name: 'full_name',         label: 'Full Name',         icon: User,      type: 'text',   placeholder: 'Your full name' },
-              { name: 'phone',             label: 'Phone Number',      icon: Phone,     type: 'tel',    placeholder: '98XXXXXXXX' },
-              { name: 'hourly_rate',       label: 'Hourly Rate (Rs)',  icon: Award,     type: 'number', placeholder: 'e.g. 500' },
-              { name: 'experience_years',  label: 'Years of Experience', icon: Briefcase, type: 'number', placeholder: 'e.g. 3' },
-            ].map(field => {
-              const Icon = field.icon;
-              return (
-                <div key={field.name}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.4rem' }}>
-                    {field.label}
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <Icon style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: '#94a3b8' }} />
-                    <input
-                      type={field.type}
-                      name={field.name}
-                      value={form[field.name]}
-                      onChange={handleChange}
-                      disabled={!editing}
-                      placeholder={field.placeholder}
-                      style={{
-                        width: '100%', paddingLeft: '2.25rem', paddingRight: '1rem',
-                        paddingTop: '0.625rem', paddingBottom: '0.625rem',
-                        border: '1px solid', borderColor: editing ? '#c7d2fe' : '#f1f5f9',
-                        borderRadius: '8px', fontSize: '0.875rem',
-                        background: editing ? 'white' : '#f8fafc',
-                        color: '#1e293b', outline: 'none', boxSizing: 'border-box',
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+        {/* Quick Metrics Bar */}
+        <div className="bg-slate-50/90 border-b border-slate-200/80 px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div className="bg-white p-3 rounded-2xl border border-slate-200/60 shadow-2xs">
+            <span className="text-xs text-slate-500 font-medium block">Hourly Rate</span>
+            <span className="text-base font-bold text-slate-800">
+              {form.hourly_rate ? `Rs. ${form.hourly_rate}/hr` : 'Not Set'}
+            </span>
+          </div>
 
-            {/* Service Area dropdown — full width */}
-            <div style={{ gridColumn: '1 / -1' }}>
-              {editing ? (
-                <CityWardSelector
-                  value={form.service_area}
-                  onChange={(w) => setForm(prev => ({ ...prev, service_area: w }))}
-                  layout="row"
-                />
-              ) : (
+          <div className="bg-white p-3 rounded-2xl border border-slate-200/60 shadow-2xs">
+            <span className="text-xs text-slate-500 font-medium block">Experience</span>
+            <span className="text-base font-bold text-slate-800">
+              {form.experience_years ? `${form.experience_years} Years` : 'Fresh'}
+            </span>
+          </div>
+
+          <div className="bg-white p-3 rounded-2xl border border-slate-200/60 shadow-2xs">
+            <span className="text-xs text-slate-500 font-medium block">Service Coverage</span>
+            <span className="text-base font-bold text-[#07535f]">
+              {serviceWardsList.length > 0 ? `${serviceWardsList.length} Wards` : 'None'}
+            </span>
+          </div>
+
+          <div className="bg-white p-3 rounded-2xl border border-slate-200/60 shadow-2xs">
+            <span className="text-xs text-slate-500 font-medium block">Account Status</span>
+            <span className={`text-sm font-bold capitalize ${verificationStatus === 'verified' ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {verificationStatus}
+            </span>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex border-b border-slate-200 px-6 bg-white overflow-x-auto">
+          {[
+            { id: 'info', label: 'Basic Info', icon: User },
+            { id: 'wards', label: 'Service Wards', icon: MapPin },
+            { id: 'skills', label: 'Skills & Bio', icon: Award },
+            { id: 'kyc', label: 'KYC & Verification', icon: ShieldCheck },
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 py-4 px-4 font-semibold text-xs sm:text-sm border-b-2 transition-colors whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? 'border-[#07535f] text-[#07535f]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[#07535f]' : 'text-slate-400'}`} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab Contents */}
+        <div className="p-6 sm:p-8">
+          
+          {/* TAB 1: BASIC INFO */}
+          {activeTab === 'info' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.4rem' }}>
-                    Service Area
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <MapPin style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: '#94a3b8' }} />
+                  <h3 className="text-base font-bold text-slate-800">Personal & Contact Information</h3>
+                  <p className="text-xs text-slate-500">Keep your primary contact details up to date</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Full Name</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      value={form.service_area || '—'}
-                      disabled
-                      style={{
-                        width: '100%', paddingLeft: '2.25rem', paddingRight: '1rem',
-                        paddingTop: '0.625rem', paddingBottom: '0.625rem',
-                        border: '1px solid #f1f5f9', borderRadius: '8px',
-                        fontSize: '0.875rem', background: '#f8fafc', color: '#1e293b',
-                        boxSizing: 'border-box',
-                      }}
+                      name="full_name"
+                      value={form.full_name}
+                      onChange={handleChange}
+                      disabled={!editing}
+                      placeholder="e.g. Ram Shrestha"
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all outline-none ${
+                        editing
+                          ? 'bg-white border border-indigo-200 focus:ring-2 focus:ring-[#07535f]'
+                          : 'bg-slate-50 border border-slate-200 text-slate-700'
+                      }`}
                     />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      disabled={!editing}
+                      placeholder="98XXXXXXXX"
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all outline-none ${
+                        editing
+                          ? 'bg-white border border-indigo-200 focus:ring-2 focus:ring-[#07535f]'
+                          : 'bg-slate-50 border border-slate-200 text-slate-700'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Hourly Rate (Rs)</label>
+                  <div className="relative">
+                    <DollarSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="number"
+                      name="hourly_rate"
+                      value={form.hourly_rate}
+                      onChange={handleChange}
+                      disabled={!editing}
+                      placeholder="e.g. 500"
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all outline-none ${
+                        editing
+                          ? 'bg-white border border-indigo-200 focus:ring-2 focus:ring-[#07535f]'
+                          : 'bg-slate-50 border border-slate-200 text-slate-700'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Years of Experience</label>
+                  <div className="relative">
+                    <Briefcase className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="number"
+                      name="experience_years"
+                      value={form.experience_years}
+                      onChange={handleChange}
+                      disabled={!editing}
+                      placeholder="e.g. 4"
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all outline-none ${
+                        editing
+                          ? 'bg-white border border-indigo-200 focus:ring-2 focus:ring-[#07535f]'
+                          : 'bg-slate-50 border border-slate-200 text-slate-700'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: SERVICE WARDS & COVERAGE */}
+          {activeTab === 'wards' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Service Coverage Wards</h3>
+                  <p className="text-xs text-slate-500">Select all Pokhara wards where you can accept job requests</p>
+                </div>
+              </div>
+
+              {editing ? (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <MultiWardSelector
+                    value={form.service_wards || form.service_area || user?.ward || ''}
+                    onChange={(w) => setForm(prev => ({ ...prev, service_wards: w, service_area: w }))}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <div className="flex items-center gap-2 mb-3 text-slate-700 text-xs font-bold">
+                      <MapPin className="w-4 h-4 text-[#07535f]" /> Active Service Areas ({serviceWardsList.length})
+                    </div>
+
+                    {serviceWardsList.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {serviceWardsList.map(w => (
+                          <span
+                            key={w}
+                            className="px-3 py-1.5 bg-sky-100 text-sky-800 font-semibold text-xs rounded-xl border border-sky-200 flex items-center gap-1.5"
+                          >
+                            <MapPin className="w-3 h-3 text-sky-600" /> {w}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-400 italic">No service wards selected yet. Click "Edit Profile" to add wards.</div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
+          )}
 
-            {/* Skills */}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.4rem' }}>
-                Skills (comma-separated)
-              </label>
-              <input
-                type="text"
-                name="skills"
-                value={form.skills}
-                onChange={handleChange}
-                disabled={!editing}
-                placeholder="e.g. Pipe Repair, Tap Replacement, Drain Cleaning"
-                style={{
-                  width: '100%', padding: '0.625rem 1rem',
-                  border: '1px solid', borderColor: editing ? '#c7d2fe' : '#f1f5f9',
-                  borderRadius: '8px', fontSize: '0.875rem',
-                  background: editing ? 'white' : '#f8fafc',
-                  color: '#1e293b', outline: 'none', boxSizing: 'border-box',
-                }}
-              />
-              {/* Skills tag preview */}
-              {form.skills && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
-                  {form.skills.split(',').map(s => s.trim()).filter(Boolean).map(skill => (
-                    <span key={skill} style={{ background: '#eef2ff', color: '#4338ca', padding: '2px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 500 }}>
-                      {skill}
-                    </span>
-                  ))}
+          {/* TAB 3: SKILLS & BIO */}
+          {activeTab === 'skills' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              
+              {/* Skills Chip Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800">Skills & Specializations</h3>
+                    <p className="text-xs text-slate-500">Showcase your technical skills to potential customers</p>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Bio */}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.4rem' }}>
-                Bio / About Me
-              </label>
-              <textarea
-                name="bio"
-                value={form.bio}
-                onChange={handleChange}
-                disabled={!editing}
-                placeholder="Write a short description about yourself and your services…"
-                rows={4}
-                style={{
-                  width: '100%', padding: '0.75rem 1rem',
-                  border: '1px solid', borderColor: editing ? '#c7d2fe' : '#f1f5f9',
-                  borderRadius: '8px', fontSize: '0.875rem',
-                  background: editing ? 'white' : '#f8fafc',
-                  color: '#1e293b', outline: 'none',
-                  resize: editing ? 'vertical' : 'none',
-                  boxSizing: 'border-box',
-                  fontFamily: 'inherit',
-                }}
-              />
+                {editing && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newSkillInput}
+                      onChange={(e) => setNewSkillInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkillChip(); } }}
+                      placeholder="Type a skill (e.g. Pipe Fitting, Wiring) and press Enter"
+                      className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#07535f]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddSkillChip}
+                      className="px-4 py-2 bg-[#07535f] text-white rounded-xl text-xs font-semibold flex items-center gap-1 hover:bg-[#06424b] transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" /> Add Skill
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {skillsList.length > 0 ? (
+                    skillsList.map(skill => (
+                      <span
+                        key={skill}
+                        className="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold text-xs rounded-xl flex items-center gap-1.5"
+                      >
+                        <Tag className="w-3.5 h-3.5 text-indigo-500" />
+                        {skill}
+                        {editing && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkillChip(skill)}
+                            className="ml-1 text-indigo-400 hover:text-indigo-700 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No skills added yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Bio Section */}
+              <div className="space-y-2 pt-4">
+                <label className="block text-xs font-semibold text-slate-700">Bio / Service Description</label>
+                <textarea
+                  name="bio"
+                  value={form.bio}
+                  onChange={handleChange}
+                  disabled={!editing}
+                  rows={4}
+                  placeholder="Introduce yourself, your experience, and what makes your work reliable..."
+                  className={`w-full p-4 rounded-xl text-xs sm:text-sm outline-none transition-all ${
+                    editing
+                      ? 'bg-white border border-indigo-200 focus:ring-2 focus:ring-[#07535f] resize-y'
+                      : 'bg-slate-50 border border-slate-200 text-slate-700 resize-none'
+                  }`}
+                />
+              </div>
+
             </div>
-          </div>
+          )}
+
+          {/* TAB 4: KYC & VERIFICATION */}
+          {activeTab === 'kyc' && (
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Verification & KYC Status</h3>
+                  <p className="text-xs text-slate-500">Verified status boosts your profile rank and builds trust</p>
+                </div>
+              </div>
+
+              <div className={`p-6 rounded-2xl border ${
+                verificationStatus === 'verified'
+                  ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                  : 'bg-amber-50/70 border-amber-200 text-amber-900'
+              }`}>
+                <div className="flex items-start gap-4">
+                  {verificationStatus === 'verified' ? (
+                    <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-600 flex-shrink-0">
+                      <ShieldCheck className="w-8 h-8" />
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-amber-100 rounded-2xl text-amber-600 flex-shrink-0">
+                      <Clock className="w-8 h-8" />
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <h4 className="text-base font-bold">
+                      {verificationStatus === 'verified' ? 'Account Verified ✓' : 'Verification Under Review'}
+                    </h4>
+                    <p className="text-xs sm:text-sm opacity-90">
+                      {verificationStatus === 'verified'
+                        ? 'Your identity documents have been authenticated by Gharelu Sewa administrators. Your profile shows a verified badge to customers.'
+                        : 'Your account details are currently under review by our admin team. You can still customize your profile in the meantime.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Benefits of Verified Providers</h4>
+                <ul className="space-y-2 text-xs text-slate-600">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> High placement in customer search results
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Trust Badge displayed on your profile card
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Ability to receive high-value & emergency service requests
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+
         </div>
+
       </div>
 
-      {/* KYC Status Info */}
-      <div style={{ background: verificationStatus === 'verified' ? '#f0fdf4' : '#fef9c3', borderRadius: '12px', padding: '1.25rem', border: '1px solid', borderColor: verificationStatus === 'verified' ? '#bbf7d0' : '#fde68a', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        {verificationStatus === 'verified' ? (
-          <>
-            <Shield style={{ width: 24, height: 24, color: '#16a34a', flexShrink: 0 }} />
-            <div>
-              <div style={{ fontWeight: 700, color: '#15803d' }}>KYC Verified ✓</div>
-              <div style={{ fontSize: '0.8rem', color: '#166534', marginTop: 2 }}>Your identity has been verified by Gharelu Sewa admin. You can accept bookings.</div>
-            </div>
-          </>
-        ) : (
-          <>
-            <Clock style={{ width: 24, height: 24, color: '#ca8a04', flexShrink: 0 }} />
-            <div>
-              <div style={{ fontWeight: 700, color: '#92400e' }}>KYC Verification {verificationStatus}</div>
-              <div style={{ fontSize: '0.8rem', color: '#92400e', marginTop: 2 }}>Your documents are under review. You'll be notified once verified.</div>
-            </div>
-          </>
-        )}
-      </div>
-      <EditProfileModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSaveSuccess={fetchProfile} />
+      {/* Edit Photo & Account Modal */}
+      <EditProfileModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSaveSuccess={fetchProfile}
+      />
     </div>
   );
 }

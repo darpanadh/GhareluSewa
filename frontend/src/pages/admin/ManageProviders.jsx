@@ -312,7 +312,6 @@ export default function ManageProviders() {
                   </>
                 )}
               </div>
-
             </div>
           ))}
         </div>

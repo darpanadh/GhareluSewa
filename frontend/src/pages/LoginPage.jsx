@@ -5,7 +5,17 @@ import { authAPI } from '../services/api';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
-import { AlertCircle, Shield, Upload, X, CheckCircle, FileText, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle, Shield, Upload, X, CheckCircle, FileText, RefreshCw,
+  Wrench, Zap, Sparkles, Snowflake, CheckCircle2, ShieldCheck
+} from 'lucide-react';
+
+const CATEGORY_OPTIONS = [
+  { id: '1', name: 'Plumbing', icon: Wrench },
+  { id: '2', name: 'Electrical', icon: Zap },
+  { id: '3', name: 'Cleaning', icon: Sparkles },
+  { id: '4', name: 'AC Service', icon: Snowflake },
+];
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -142,25 +152,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-slate-50/80 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-xl border border-slate-200/80 rounded-3xl p-6 sm:p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="text-gray-600 mt-2">Sign in to your Gharelu Sewa account</p>
+          <div className="w-12 h-12 bg-gradient-to-br from-[#07535f] to-[#0a7587] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md text-white font-extrabold text-xl">
+            GS
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Welcome Back</h1>
+          <p className="text-slate-500 text-xs sm:text-sm mt-1">Sign in to your Gharelu Sewa account</p>
         </div>
 
         {reverifySuccess && (
-          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-xs font-bold flex items-center gap-2">
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-900 text-xs font-bold flex items-center gap-2.5 animate-in fade-in duration-200">
             <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
             {reverifySuccess}
           </div>
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3 animate-in fade-in duration-200">
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3 animate-in fade-in duration-200">
             <div className="flex gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-900 font-semibold leading-relaxed">{error}</p>
+              <p className="text-xs sm:text-sm text-amber-900 font-semibold leading-relaxed">{error}</p>
             </div>
 
             {(error.includes('KYC') || error.includes('re-verify') || error.includes('approved')) && (
@@ -203,7 +216,7 @@ export default function LoginPage() {
             size="md"
             loading={loading}
             disabled={loading}
-            className="w-full cursor-pointer"
+            className="w-full py-3 text-sm font-bold shadow-md cursor-pointer rounded-2xl"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
@@ -212,8 +225,8 @@ export default function LoginPage() {
         {/* ── Google Sign In Button ── */}
         <div className="mt-5 space-y-3">
           <div className="relative flex items-center justify-center">
-            <div className="border-t border-gray-200 w-full" />
-            <span className="bg-white px-3 text-xs text-gray-400 font-semibold uppercase tracking-wider absolute">Or</span>
+            <div className="border-t border-slate-200 w-full" />
+            <span className="bg-white px-3 text-[11px] text-slate-400 font-bold uppercase tracking-wider absolute">Or</span>
           </div>
 
           <button
@@ -239,7 +252,7 @@ export default function LoginPage() {
                 setLoading(false);
               }
             }}
-            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-2.5 rounded-xl shadow-xs transition-all cursor-pointer text-xs"
+            className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-2xl shadow-xs transition-all cursor-pointer text-xs"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -251,45 +264,42 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-          <p className="text-gray-600 text-sm">
+        <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+          <p className="text-slate-600 text-xs sm:text-sm font-medium">
             Don't have an account?{' '}
-            <Link to="/register" className="text-primary-400 hover:text-primary-500 font-medium">
+            <Link to="/register" className="text-[#07535f] hover:underline font-bold">
               Sign up here
             </Link>
           </p>
         </div>
 
         {/* Demo credentials hint */}
-        <div className="mt-4 p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-xl text-xs text-blue-900 space-y-2">
-          <p className="font-bold text-blue-950 flex items-center justify-between">
-            <span>Demo Quick Login (Click to Fill & Sign In):</span>
+        <div className="mt-4 p-3.5 bg-sky-50/80 border border-sky-200/80 rounded-2xl text-xs text-sky-950 space-y-2">
+          <p className="font-bold flex items-center justify-between">
+            <span>Demo Quick Login:</span>
           </p>
-          <div className="grid grid-cols-3 gap-1.5 pt-1">
+          <div className="grid grid-cols-3 gap-1.5 pt-0.5">
             <button
               type="button"
               onClick={() => { setEmail('priya@gmail.com'); setPassword('password'); }}
-              className="bg-white hover:bg-blue-100 text-blue-800 font-bold py-1.5 px-2 rounded-lg border border-blue-200 text-[11px] transition-colors text-center cursor-pointer"
+              className="bg-white hover:bg-sky-100 text-sky-900 font-bold py-1.5 px-2 rounded-xl border border-sky-200 text-[11px] transition-colors text-center cursor-pointer shadow-2xs"
             >
               Customer
             </button>
             <button
               type="button"
               onClick={() => { setEmail('rajesh@gmail.com'); setPassword('password'); }}
-              className="bg-white hover:bg-blue-100 text-blue-800 font-bold py-1.5 px-2 rounded-lg border border-blue-200 text-[11px] transition-colors text-center cursor-pointer"
+              className="bg-white hover:bg-sky-100 text-sky-900 font-bold py-1.5 px-2 rounded-xl border border-sky-200 text-[11px] transition-colors text-center cursor-pointer shadow-2xs"
             >
               Provider
             </button>
             <button
               type="button"
               onClick={() => { setEmail('admin@gharelusewa.com'); setPassword('password'); }}
-              className="bg-white hover:bg-blue-100 text-blue-800 font-bold py-1.5 px-2 rounded-lg border border-blue-200 text-[11px] transition-colors text-center cursor-pointer"
+              className="bg-white hover:bg-sky-100 text-sky-900 font-bold py-1.5 px-2 rounded-xl border border-sky-200 text-[11px] transition-colors text-center cursor-pointer shadow-2xs"
             >
               Admin
             </button>
-          </div>
-          <div className="text-[10px] text-blue-600/90 pt-1 font-medium text-center">
-            Password for all demo accounts: <code className="font-bold bg-blue-100/80 px-1 py-0.5 rounded text-blue-900">password</code>
           </div>
         </div>
       </Card>
@@ -297,24 +307,24 @@ export default function LoginPage() {
       {/* ── RE-VERIFY KYC MODAL ─────────────────────────────────────────── */}
       {showReverifyModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5 relative animate-in fade-in zoom-in-95 duration-150 border border-gray-100 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-5 relative animate-in fade-in zoom-in-95 duration-150 border border-slate-100 max-h-[90vh] overflow-y-auto">
             
             {/* Close Button */}
             <button
               onClick={() => setShowReverifyModal(false)}
-              className="absolute right-5 top-5 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              className="absolute right-5 top-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
             {/* Modal Header */}
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#07535f]/10 text-[#07535f] flex items-center justify-center font-extrabold text-xl">
-                <Shield className="w-6 h-6" />
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#07535f] to-[#0a7587] text-white flex items-center justify-center font-extrabold text-xl shadow-md">
+                <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-extrabold text-gray-900">Tasker KYC Re-Verification</h2>
-                <p className="text-xs text-gray-500">Update your ID details and re-submit for Admin approval.</p>
+                <h2 className="text-lg font-extrabold text-slate-900">Tasker Professional Re-Verification</h2>
+                <p className="text-xs text-slate-500">Update your document details and re-submit for Admin approval.</p>
               </div>
             </div>
 
@@ -327,104 +337,113 @@ export default function LoginPage() {
 
             <form onSubmit={handleReverifySubmit} className="space-y-4 text-left">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Account Email Address</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Account Email Address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-xs font-bold text-gray-700"
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Account Password *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Account Password *</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your account password to verify"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Nepal Citizenship / License Number *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Citizenship / License Number *</label>
                 <input
                   type="text"
                   value={reverifyData.citizenshipNo}
                   onChange={(e) => setReverifyData(p => ({ ...p, citizenshipNo: e.target.value }))}
                   placeholder="e.g. 27-01-79-12345"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30"
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30"
                   required
                 />
               </div>
 
+              {/* Service Category */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Primary Service Specialty</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {CATEGORY_OPTIONS.map(cat => {
+                    const Icon = cat.icon;
+                    const isSelected = reverifyData.categoryId === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setReverifyData(p => ({ ...p, categoryId: cat.id }))}
+                        className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#07535f] text-white border-[#07535f]'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-[#07535f]/40'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" /> {cat.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* ID Document Photo Upload */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Updated ID Document Photo *
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Updated Document Image (Citizenship / License) *
                 </label>
                 {idImagePreview ? (
-                  <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-gray-900">
-                    <img src={idImagePreview} alt="ID Document Preview" className="w-full h-40 object-contain" />
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-900">
+                    <img src={idImagePreview} alt="ID Document Preview" className="w-full h-36 object-contain" />
                     <button
                       type="button"
                       onClick={() => { setIdImagePreview(null); setIdImageBase64(''); }}
-                      className="absolute top-2 right-2 bg-white/90 rounded-full p-1 shadow hover:bg-white"
+                      className="absolute top-2 right-2 bg-white/90 rounded-full p-1 shadow hover:bg-white text-slate-700 cursor-pointer"
                     >
-                      <X className="w-4 h-4 text-gray-700" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-gray-200 rounded-2xl py-6 flex flex-col items-center gap-2 text-gray-400 hover:border-[#07535f] hover:text-[#07535f] transition-all cursor-pointer bg-gray-50/50"
+                    className="w-full border-2 border-dashed border-slate-200 rounded-2xl py-5 flex flex-col items-center gap-1.5 text-slate-400 hover:border-[#07535f] hover:text-[#07535f] transition-all cursor-pointer bg-slate-50/50"
                   >
-                    <Upload className="w-6 h-6 text-[#07535f]" />
-                    <span className="text-xs font-bold text-gray-700">Click to upload new ID document photo</span>
-                    <span className="text-[10px] text-gray-400">JPG or PNG image format</span>
+                    <Upload className="w-5 h-5 text-[#07535f]" />
+                    <span className="text-xs font-bold text-slate-700">Click to upload new document photo</span>
+                    <span className="text-[10px] text-slate-400">JPG or PNG format</span>
                   </button>
                 )}
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIdImageChange} />
               </div>
 
-              {/* Service Category & Ward */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Service Category</label>
-                  <select
-                    value={reverifyData.categoryId}
-                    onChange={(e) => setReverifyData(p => ({ ...p, categoryId: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30"
-                  >
-                    <option value="1">🔧 Plumbing</option>
-                    <option value="2">⚡ Electrical</option>
-                    <option value="3">🧹 Cleaning</option>
-                    <option value="4">❄️ AC Service</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Hourly Rate (Rs.)</label>
-                  <input
-                    type="number"
-                    value={reverifyData.hourlyRate}
-                    onChange={(e) => setReverifyData(p => ({ ...p, hourlyRate: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30"
-                  />
-                </div>
+              {/* Hourly Rate & Bio */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Hourly Service Rate (Rs.)</label>
+                <input
+                  type="number"
+                  value={reverifyData.hourlyRate}
+                  onChange={(e) => setReverifyData(p => ({ ...p, hourlyRate: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30"
+                />
               </div>
 
-              {/* Bio */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Bio / Work Experience</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Bio / Work Qualifications</label>
                 <textarea
                   value={reverifyData.bio}
                   onChange={(e) => setReverifyData(p => ({ ...p, bio: e.target.value }))}
                   placeholder="Describe your qualifications, experience, and service details..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30 h-20 resize-none"
+                  className="w-full p-3 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#07535f]/30 h-20 resize-none"
                 />
               </div>
 
@@ -432,7 +451,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowReverifyModal(false)}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -442,7 +461,7 @@ export default function LoginPage() {
                   disabled={reverifyLoading}
                   className="flex-1 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-50 text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  {reverifyLoading ? 'Submitting...' : 'Re-Submit KYC Application'}
+                  {reverifyLoading ? 'Submitting...' : 'Submit Documents'}
                 </button>
               </div>
             </form>

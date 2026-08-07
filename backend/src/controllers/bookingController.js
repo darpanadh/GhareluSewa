@@ -288,8 +288,8 @@ export const createEmergencyBooking = async (req, res) => {
     const providersResult = await query(
       `SELECT u.id FROM users u
        JOIN provider_profiles pp ON u.id = pp.user_id
-       WHERE (u.ward = $1 OR u.ward ILIKE $2) AND pp.category_id = $3 AND u.is_verified = TRUE AND pp.availability = TRUE`,
-      [ward, `${cityName}%Whole City%`, category_id]
+       WHERE (u.ward = $1 OR u.ward ILIKE $2 OR pp.service_wards ILIKE $3 OR pp.service_wards ILIKE $4) AND pp.category_id = $5 AND u.is_verified = TRUE AND pp.availability = TRUE`,
+      [ward, `${cityName}%Whole City%`, `%${ward}%`, `%Whole City%`, category_id]
     );
 
     if (providersResult.rows.length === 0) {

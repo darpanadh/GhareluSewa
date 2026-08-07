@@ -39,7 +39,7 @@ export const getUserById = async (req, res) => {
 
     const result = await query(
       `SELECT u.id, u.name, u.email, u.phone, u.role, u.ward, u.avatar_url, u.bio, u.is_verified, u.created_at,
-              pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability, pp.background_check_status, pp.skill_badges,
+              pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability, pp.background_check_status, pp.skill_badges, pp.service_wards,
               sc.name as service_category
        FROM users u
        LEFT JOIN provider_profiles pp ON u.id = pp.user_id
@@ -66,7 +66,7 @@ export const getAllProviders = async (req, res) => {
 
     let sql = `
       SELECT u.id, u.name, u.email, u.phone, u.role, u.ward, u.avatar_url, u.bio,
-             pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability, pp.background_check_status, pp.skill_badges,
+             pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability, pp.background_check_status, pp.skill_badges, pp.service_wards,
              sc.name as service_category, sc.id as category_id
       FROM users u
       JOIN provider_profiles pp ON u.id = pp.user_id
@@ -84,8 +84,8 @@ export const getAllProviders = async (req, res) => {
     if (ward) {
       const cityMatch = ward.match(/^(Kathmandu|Pokhara|Bharatpur)/i);
       const cityName = cityMatch ? cityMatch[1] : ward.split(' ')[0];
-      sql += ` AND (u.ward = $${params.length + 1} OR u.ward ILIKE $${params.length + 2})`;
-      params.push(ward, `${cityName}%Whole City%`);
+      sql += ` AND (u.ward = $${params.length + 1} OR u.ward ILIKE $${params.length + 2} OR pp.service_wards ILIKE $${params.length + 3} OR pp.service_wards ILIKE $${params.length + 4})`;
+      params.push(ward, `${cityName}%Whole City%`, `%${ward}%`, `%Whole City%`);
     }
 
     if (rating_min) {
@@ -110,14 +110,14 @@ export const getProvidersByWard = async (req, res) => {
     const cityMatch = ward.match(/^(Kathmandu|Pokhara|Bharatpur)/i);
     const cityName = cityMatch ? cityMatch[1] : ward.split(' ')[0];
 
-    const sql = `SELECT u.id, u.name, u.phone, u.avatar_url, pp.hourly_rate, pp.rating_avg, pp.availability
+    const sql = `SELECT u.id, u.name, u.phone, u.avatar_url, pp.hourly_rate, pp.rating_avg, pp.availability, pp.service_wards
        FROM users u
        JOIN provider_profiles pp ON u.id = pp.user_id
-       WHERE (u.ward = $1 OR u.ward ILIKE $2) AND u.is_active = TRUE AND u.is_verified = TRUE AND pp.availability = TRUE
-       ${category_id ? 'AND pp.category_id = $3' : ''}
+       WHERE (u.ward = $1 OR u.ward ILIKE $2 OR pp.service_wards ILIKE $3 OR pp.service_wards ILIKE $4) AND u.is_active = TRUE AND u.is_verified = TRUE AND pp.availability = TRUE
+       ${category_id ? 'AND pp.category_id = $5' : ''}
        ORDER BY pp.rating_avg DESC`;
 
-    const params = category_id ? [ward, `${cityName}%Whole City%`, category_id] : [ward, `${cityName}%Whole City%`];
+    const params = category_id ? [ward, `${cityName}%Whole City%`, `%${ward}%`, `%Whole City%`, category_id] : [ward, `${cityName}%Whole City%`, `%${ward}%`, `%Whole City%`];
 
     const result = await query(sql, params);
 

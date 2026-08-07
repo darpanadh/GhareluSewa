@@ -78,7 +78,7 @@ const startServer = async () => {
     await initializeDatabase();
 
     // Start server
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`\n✅ Gharelu Sewa Backend Server Running`);
       console.log(`📍 Server: http://localhost:${PORT}`);
       console.log(`🔗 API Docs: http://localhost:${PORT}/api`);

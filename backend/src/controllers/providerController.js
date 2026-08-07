@@ -49,7 +49,7 @@ export const getProviderProfile = async (req, res) => {
 
     const result = await query(
       `SELECT pp.id, pp.user_id, pp.category_id, pp.hourly_rate, pp.availability,
-              pp.rating_avg, pp.total_reviews, sc.name as service_category
+              pp.rating_avg, pp.total_reviews, pp.service_wards, sc.name as service_category
        FROM provider_profiles pp
        JOIN service_categories sc ON pp.category_id = sc.id
        WHERE pp.user_id = $1`,
@@ -70,16 +70,17 @@ export const getProviderProfile = async (req, res) => {
 // Update provider profile
 export const updateProviderProfile = async (req, res) => {
   try {
-    const { category_id, hourly_rate, availability } = req.body;
+    const { category_id, hourly_rate, availability, service_wards } = req.body;
 
     const result = await query(
       `UPDATE provider_profiles 
        SET category_id = COALESCE($1, category_id),
            hourly_rate = COALESCE($2, hourly_rate),
-           availability = COALESCE($3, availability)
-       WHERE user_id = $4
-       RETURNING id, user_id, category_id, hourly_rate, availability, rating_avg, total_reviews`,
-      [category_id, hourly_rate, availability, req.userId]
+           availability = COALESCE($3, availability),
+           service_wards = COALESCE($4, service_wards)
+       WHERE user_id = $5
+       RETURNING id, user_id, category_id, hourly_rate, availability, service_wards, rating_avg, total_reviews`,
+      [category_id, hourly_rate, availability, service_wards, req.userId]
     );
 
     if (result.rows.length === 0) {
