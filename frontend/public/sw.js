@@ -1,5 +1,5 @@
 // Gharelu Sewa Service Worker - Offline/Low-Data Mode
-const CACHE_NAME = 'gharelu-sewa-v1';
+const CACHE_NAME = 'gharelu-sewa-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Static assets to pre-cache on install
