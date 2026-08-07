@@ -15,7 +15,7 @@ export const register = async (req, res) => {
     // Full Name Validation: Must contain at least 2 words (first & last name), each at least 2 characters long
     const nameParts = name.trim().split(/\s+/);
     if (nameParts.length < 2 || nameParts.some(part => part.length < 2)) {
-      return res.status(400).json({ error: 'Please enter your full name (both first and last name, each at least 2 characters long)' });
+      return res.status(400).json({ error: 'Please enter your full name' });
     }
 
     // Phone Number Validation: Must be a valid 10-digit number

@@ -108,7 +108,7 @@ export default function RegisterPage() {
     // Full Name Validation: Must contain at least 2 words (first & last name), each at least 2 characters long
     const nameParts = formData.name.trim().split(/\s+/);
     if (nameParts.length < 2 || nameParts.some(part => part.length < 2)) {
-      return setError('Please enter your full name (both first and last name, each at least 2 characters long)');
+      return setError('Please enter your full name');
     }
 
     // Phone Number Validation: Must be a valid 10-digit phone number
