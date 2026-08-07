@@ -13,6 +13,11 @@ export const registerValidationRules = [
     .isEmail().withMessage('Enter a valid email address')
     .normalizeEmail(),
 
+  body('phone')
+    .trim()
+    .notEmpty().withMessage('Phone number is compulsory for registration')
+    .matches(/^\d{10}$/).withMessage('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)'),
+
   body('password')
     .notEmpty().withMessage('Password is required')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),

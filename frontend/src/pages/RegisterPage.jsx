@@ -5,27 +5,38 @@ import ResidenceSelector from '../components/ResidenceSelector';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
-import { validateRegisterForm } from '../utils/validation';
-import { AlertCircle, ShieldCheck, Upload, CheckSquare, Square, BadgeCheck, X } from 'lucide-react';
-
-function handleSubmit(e) {
-  e.preventDefault();
-  const validationErrors = validateRegisterForm(formData);
-
-  if (Object.keys(validationErrors).length > 0) {
-    setErrors(validationErrors); // show these under each field
-    return; // stop — don't call the API
-  }
-
-  // proceed with your existing fetch/axios call to /api/auth/register
-}
+import {
+  AlertCircle,
+  ShieldCheck,
+  Upload,
+  CheckSquare,
+  Square,
+  BadgeCheck,
+  X,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+} from 'lucide-react';
 
 const SKILL_OPTIONS = [
-  'Pipe Repair', 'Drain Cleaning', 'Water Heater', 'Tap Installation',
-  'Wiring', 'Switch Installation', 'Appliance Repair', 'Power Backup',
-  'Deep Cleaning', 'Kitchen Cleaning', 'Bathroom Sanitization',
-  'AC Installation', 'AC Gas Refill', 'AC Filter Cleaning',
-  'Carpentry', 'Painting', 'Tiling', 'General Handyman',
+  'Pipe Repair',
+  'Drain Cleaning',
+  'Water Heater',
+  'Tap Installation',
+  'Wiring',
+  'Switch Installation',
+  'Appliance Repair',
+  'Power Backup',
+  'Deep Cleaning',
+  'Kitchen Cleaning',
+  'Bathroom Sanitization',
+  'AC Installation',
+  'AC Gas Refill',
+  'AC Filter Cleaning',
+  'Carpentry',
+  'Painting',
+  'Tiling',
+  'General Handyman',
 ];
 
 export default function RegisterPage() {
@@ -33,11 +44,22 @@ export default function RegisterPage() {
   const roleParam = searchParams.get('role') === 'provider' ? 'provider' : 'customer';
 
   const [formData, setFormData] = useState({
-    name: '', email: '', phone: '', password: '',
-    confirmPassword: '', role: roleParam, ward: '',
-    categoryId: '1', experience: '', bio: '', citizenshipNo: '',
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    role: roleParam,
+    ward: '',
+    categoryId: '1',
+    experience: '',
+    hourlyRate: '500',
+    bio: '',
+    citizenshipNo: '',
   });
 
+  // Step state for Service Provider multi-step form (1: Basic & Residence, 2: Trust & KYC)
+  const [step, setStep] = useState(1);
   const [skillBadges, setSkillBadges] = useState([]);
   const [bgCheckConsent, setBgCheckConsent] = useState(false);
   const [idImagePreview, setIdImagePreview] = useState(null);
@@ -45,7 +67,8 @@ export default function RegisterPage() {
   const fileInputRef = useRef();
 
   useEffect(() => {
-    setFormData(prev => ({ ...prev, role: roleParam }));
+    setFormData((prev) => ({ ...prev, role: roleParam }));
+    setStep(1);
   }, [roleParam]);
 
   const [loading, setLoading] = useState(false);
@@ -55,12 +78,18 @@ export default function RegisterPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRoleChange = (selectedRole) => {
+    setFormData((prev) => ({ ...prev, role: selectedRole }));
+    setStep(1);
+    setError('');
   };
 
   const toggleSkill = (skill) => {
-    setSkillBadges(prev =>
-      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    setSkillBadges((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
     );
   };
 
@@ -95,31 +124,93 @@ export default function RegisterPage() {
         const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
         setIdImagePreview(compressedBase64);
         setIdImageBase64(compressedBase64);
+        setError('');
       };
       img.src = event.target.result;
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Step 1 Validation before moving to Step 2
+  const handleNextStep = () => {
     setError('');
 
-    // Full Name Validation: Must contain at least 2 words (first & last name), each at least 2 characters long
+    // Full Name Validation
     const nameParts = formData.name.trim().split(/\s+/);
-    if (nameParts.length < 2 || nameParts.some(part => part.length < 2)) {
-      return setError('Please enter your full name');
+    if (nameParts.length < 2 || nameParts.some((part) => part.length < 2)) {
+      return setError('Please enter your full name (both first & last name)');
     }
 
-    // Phone Number Validation: Must be a valid 10-digit phone number
+    // Email Validation
+    if (!formData.email.trim()) {
+      return setError('Email address is required');
+    }
+
+    // Phone Number Validation (Compulsory)
     const phoneClean = formData.phone.trim();
+    if (!phoneClean) {
+      return setError('Phone number is compulsory for registration');
+    }
     if (!/^\d{10}$/.test(phoneClean)) {
       return setError('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)');
     }
 
-    if (formData.password !== formData.confirmPassword) return setError('Passwords do not match');
-    if (formData.password.length < 6) return setError('Password must be at least 6 characters');
-    if (formData.role === 'provider' && !bgCheckConsent) return setError('Please consent to background check to register as a provider');
+    // Residence Location Validation (For Provider)
+    if (formData.role === 'provider' && !formData.ward) {
+      return setError('Please select your Residence Province and District');
+    }
+
+    // Password Validation
+    if (!formData.password) {
+      return setError('Password is required');
+    }
+    if (formData.password.length < 6) {
+      return setError('Password must be at least 6 characters long');
+    }
+    if (formData.password !== formData.confirmPassword) {
+      return setError('Passwords do not match');
+    }
+
+    // Move to Step 2
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // If Customer: Validate Step 1 fields before submit
+    if (formData.role === 'customer') {
+      const nameParts = formData.name.trim().split(/\s+/);
+      if (nameParts.length < 2 || nameParts.some((part) => part.length < 2)) {
+        return setError('Please enter your full name');
+      }
+
+      const phoneClean = formData.phone.trim();
+      if (!phoneClean) {
+        return setError('Phone number is compulsory for registration');
+      }
+      if (!/^\d{10}$/.test(phoneClean)) {
+        return setError('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)');
+      }
+
+      if (formData.password.length < 6) return setError('Password must be at least 6 characters');
+      if (formData.password !== formData.confirmPassword) return setError('Passwords do not match');
+    }
+
+    // If Provider Step 2 Validation:
+    if (formData.role === 'provider') {
+      if (!formData.citizenshipNo.trim()) {
+        return setError('Citizenship / License Number is required for KYC');
+      }
+      if (!idImageBase64) {
+        return setError('ID Document Photo is compulsory. Please upload a clear photo of your Citizenship/License ID');
+      }
+      if (!bgCheckConsent) {
+        return setError('Please consent to the background check to register as a provider');
+      }
+    }
 
     setLoading(true);
     try {
@@ -135,7 +226,7 @@ export default function RegisterPage() {
         setError(result.error);
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      setError('An unexpected error occurred during registration');
     } finally {
       setLoading(false);
     }
@@ -145,38 +236,82 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#07535f]/5 to-[#07535f]/10 flex items-center justify-center p-4 py-10">
       <div className="w-full max-w-lg">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-[#07535f] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 bg-[#07535f] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
             <span className="text-white text-2xl font-bold font-serif">G</span>
           </div>
-          <h1 className="text-3xl font-extrabold text-gray-900">
-            {formData.role === 'provider' ? 'Become a Tasker' : 'Join Gharelu Sewa'}
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
+            {formData.role === 'provider' ? 'Become a Verified Tasker' : 'Join Gharelu Sewa'}
           </h1>
-          <p className="text-gray-500 mt-2 text-sm">
-            {formData.role === 'provider' ? 'Complete KYC to start earning as a verified provider' : 'Create your account in minutes'}
+          <p className="text-gray-500 mt-1 text-xs sm:text-sm">
+            {formData.role === 'provider'
+              ? 'Complete registration & KYC to start offering home services'
+              : 'Create your customer account in 30 seconds'}
           </p>
         </div>
 
+        {/* Multi-step progress indicator for Service Provider */}
+        {formData.role === 'provider' && (
+          <div className="mb-6 bg-white p-3.5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-around">
+            <div
+              onClick={() => setStep(1)}
+              className={`flex items-center gap-2 cursor-pointer transition-colors ${
+                step === 1 ? 'text-[#07535f] font-black' : 'text-emerald-700 font-bold'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold ${
+                  step === 1
+                    ? 'bg-[#07535f] text-white shadow-sm'
+                    : 'bg-emerald-600 text-white'
+                }`}
+              >
+                {step > 1 ? <Check className="w-4 h-4" /> : '1'}
+              </div>
+              <span className="text-xs">1. Account & Residence</span>
+            </div>
+
+            <div className="h-0.5 w-12 bg-gray-200 rounded-full" />
+
+            <div
+              className={`flex items-center gap-2 transition-colors ${
+                step === 2 ? 'text-[#07535f] font-black' : 'text-gray-400 font-medium'
+              }`}
+            >
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold ${
+                  step === 2
+                    ? 'bg-[#07535f] text-white shadow-sm'
+                    : 'bg-gray-200 text-gray-600'
+                }`}
+              >
+                2
+              </div>
+              <span className="text-xs">2. Verified Trust & KYC</span>
+            </div>
+          </div>
+        )}
+
         <Card className="w-full">
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex gap-3">
+            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex gap-3 animate-in fade-in duration-150">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-xs sm:text-sm font-semibold text-red-700">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Role Toggle */}
-            <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-2">
-              {['customer', 'provider'].map(r => (
+            <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-3 p-1 bg-gray-50/80">
+              {['customer', 'provider'].map((r) => (
                 <button
                   key={r}
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, role: r }))}
-                  className={`flex-1 py-2.5 text-sm font-bold transition-all ${
+                  onClick={() => handleRoleChange(r)}
+                  className={`flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
                     formData.role === r
-                      ? 'bg-[#07535f] text-white'
-                      : 'bg-white text-gray-500 hover:bg-gray-50'
+                      ? 'bg-[#07535f] text-white shadow-sm'
+                      : 'bg-transparent text-gray-500 hover:text-gray-800'
                   }`}
                 >
                   {r === 'provider' ? '🔧 Service Provider' : '🏠 Customer'}
@@ -184,37 +319,119 @@ export default function RegisterPage() {
               ))}
             </div>
 
-            <Input label="Full Name" type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Enter your full name" required />
-            <Input label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Enter your email" required />
-            <Input label="Phone Number" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="98XXXXXXXX" />
+            {/* ── STEP 1: Basic Information & Residence (Customer & Provider) ── */}
+            {(formData.role === 'customer' || step === 1) && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <Input
+                  label="Full Name *"
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Enter your full name"
+                  required
+                />
+                <Input
+                  label="Email Address *"
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter your email"
+                  required
+                />
+                <Input
+                  label="Phone Number *"
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="98XXXXXXXX (Compulsory 10 digits)"
+                  required
+                />
 
-            <div>
-              <p className="text-xs font-semibold text-[#07535f] mb-1 flex items-center gap-1">
-                📍 Enter your Residence Location:
-              </p>
-              <ResidenceSelector
-                value={formData.ward}
-                onChange={(residence) => setFormData(prev => ({ ...prev, ward: residence }))}
-                required
-                layout="row"
-              />
-            </div>
+                {/* Residence Location: Province & District (Only for Service Provider) */}
+                {formData.role === 'provider' && (
+                  <div>
+                    <p className="text-xs font-bold text-[#07535f] mb-1.5 flex items-center gap-1">
+                      📍 Enter your Residence Location (Province & District) *
+                    </p>
+                    <ResidenceSelector
+                      value={formData.ward}
+                      onChange={(residence) =>
+                        setFormData((prev) => ({ ...prev, ward: residence }))
+                      }
+                      required
+                      layout="row"
+                    />
+                  </div>
+                )}
 
-            <Input label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="At least 6 characters" required />
-            <Input label="Confirm Password" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm your password" required />
+                <Input
+                  label="Password *"
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="At least 6 characters"
+                  required
+                />
+                <Input
+                  label="Confirm Password *"
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm your password"
+                  required
+                />
 
-            {/* ── Provider Trust Section ─────────────────────────────────── */}
-            {formData.role === 'provider' && (
-              <div className="space-y-5 pt-4 border-t-2 border-[#07535f]/10 mt-4">
-                <div className="flex items-center gap-2">
+                {/* Button Action for Step 1 */}
+                {formData.role === 'provider' ? (
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="w-full mt-3 py-3 bg-[#07535f] hover:bg-[#06424b] text-white rounded-xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+                  >
+                    Next: Verified Trust Details <ArrowRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    loading={loading}
+                    disabled={loading}
+                    className="w-full mt-2 py-3 text-xs sm:text-sm font-extrabold"
+                  >
+                    {loading ? 'Creating Customer Account...' : 'Create Customer Account'}
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* ── STEP 2: Provider Verified Trust & KYC System ── */}
+            {formData.role === 'provider' && step === 2 && (
+              <div className="space-y-5 pt-2 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
                   <ShieldCheck className="w-5 h-5 text-[#07535f]" />
-                  <h3 className="text-sm font-extrabold text-[#07535f] uppercase tracking-wide">Verified Trust System</h3>
+                  <h3 className="text-sm font-extrabold text-[#07535f] uppercase tracking-wide">
+                    Verified Trust System & KYC
+                  </h3>
                 </div>
 
-                {/* Service Category */}
+                {/* Primary Service Category */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Primary Service Category *</label>
-                  <select name="categoryId" value={formData.categoryId} onChange={handleChange} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#07535f]/30" required>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Primary Service Category *
+                  </label>
+                  <select
+                    name="categoryId"
+                    value={formData.categoryId}
+                    onChange={handleChange}
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#07535f]"
+                    required
+                  >
                     <option value="1">🔧 Plumbing</option>
                     <option value="2">⚡ Electrical</option>
                     <option value="3">🧹 Cleaning</option>
@@ -222,78 +439,135 @@ export default function RegisterPage() {
                   </select>
                 </div>
 
-                {/* Experience & Rate */}
+                {/* Experience & Hourly Rate */}
                 <div className="grid grid-cols-2 gap-3">
-                  <Input label="Years of Experience" type="number" name="experience" value={formData.experience} onChange={handleChange} placeholder="e.g. 5" min="0" required />
-                  <Input label="Hourly Rate (Rs.)" type="number" name="hourlyRate" value={formData.hourlyRate || ''} onChange={handleChange} placeholder="e.g. 600" min="100" />
-                </div>
-
-                {/* Bio */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Bio / Qualifications *</label>
-                  <textarea
-                    name="bio" value={formData.bio} onChange={handleChange}
-                    placeholder="Describe your qualifications, certifications, and experience..."
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#07535f]/30 resize-none h-24"
+                  <Input
+                    label="Years of Experience *"
+                    type="number"
+                    name="experience"
+                    value={formData.experience}
+                    onChange={handleChange}
+                    placeholder="e.g. 5"
+                    min="0"
+                    required
+                  />
+                  <Input
+                    label="Hourly Rate (Rs.) *"
+                    type="number"
+                    name="hourlyRate"
+                    value={formData.hourlyRate}
+                    onChange={handleChange}
+                    placeholder="e.g. 600"
+                    min="100"
                     required
                   />
                 </div>
 
-                {/* Citizenship No */}
-                <Input label="Citizenship / License Number *" type="text" name="citizenshipNo" value={formData.citizenshipNo} onChange={handleChange} placeholder="Required for KYC verification" required />
-
-                {/* ID Document Upload */}
+                {/* Bio / Qualifications */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    ID Document Photo
-                    <span className="ml-1.5 text-xs text-gray-400 font-normal">(Citizenship / License)</span>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Bio / Qualifications *
+                  </label>
+                  <textarea
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleChange}
+                    placeholder="Describe your qualifications, certifications, and experience..."
+                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#07535f] resize-none h-24"
+                    required
+                  />
+                </div>
+
+                {/* Citizenship / License Number */}
+                <Input
+                  label="Citizenship / License Number *"
+                  type="text"
+                  name="citizenshipNo"
+                  value={formData.citizenshipNo}
+                  onChange={handleChange}
+                  placeholder="Required for official KYC verification"
+                  required
+                />
+
+                {/* Compulsory ID Document Upload */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                    <span>
+                      ID Document Photo <span className="text-red-500 font-extrabold">* (Compulsory)</span>
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-normal">Citizenship / License</span>
                   </label>
                   {idImagePreview ? (
-                    <div className="relative">
-                      <img src={idImagePreview} alt="ID Preview" className="w-full h-32 object-cover rounded-xl border border-gray-200" />
-                      <button type="button" onClick={() => { setIdImagePreview(null); setIdImageBase64(''); }} className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
-                        <X className="w-4 h-4 text-gray-600" />
-                      </button>
+                    <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+                      <img
+                        src={idImagePreview}
+                        alt="ID Document Preview"
+                        className="w-full h-36 object-cover"
+                      />
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-bold text-emerald-700 shadow-sm">
+                        <Check className="w-3.5 h-3.5 text-emerald-600" /> Photo Uploaded
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIdImagePreview(null);
+                            setIdImageBase64('');
+                          }}
+                          className="ml-1 text-gray-400 hover:text-red-600"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full border-2 border-dashed border-gray-200 rounded-xl py-6 flex flex-col items-center gap-2 text-gray-400 hover:border-[#07535f] hover:text-[#07535f] transition-colors"
+                      className="w-full border-2 border-dashed border-[#07535f]/30 hover:border-[#07535f] bg-gray-50/70 rounded-2xl py-6 flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-[#07535f] transition-all cursor-pointer"
                     >
-                      <Upload className="w-6 h-6" />
-                      <span className="text-xs font-semibold">Click to upload ID document</span>
-                      <span className="text-[10px]">JPG, PNG up to 5MB</span>
+                      <div className="w-10 h-10 rounded-full bg-[#07535f]/10 text-[#07535f] flex items-center justify-center">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-extrabold">Click to Upload ID Document Photo *</span>
+                      <span className="text-[10px] text-gray-400">JPG, PNG, WebP up to 5MB (Required)</span>
                     </button>
                   )}
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleIdImageChange} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleIdImageChange}
+                  />
                 </div>
 
                 {/* Skill Badges */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Skill Badges
-                    <span className="ml-1.5 text-xs text-gray-400 font-normal">(select all that apply)</span>
+                  <label className="block text-xs font-bold text-gray-700 mb-2">
+                    Skill Badges <span className="text-gray-400 font-normal">(select all that apply)</span>
                   </label>
-                  <div className="flex flex-wrap gap-2">
-                    {SKILL_OPTIONS.map(skill => (
+                  <div className="flex flex-wrap gap-1.5">
+                    {SKILL_OPTIONS.map((skill) => (
                       <button
                         key={skill}
                         type="button"
                         onClick={() => toggleSkill(skill)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
                           skillBadges.includes(skill)
                             ? 'bg-[#07535f] text-white border-[#07535f]'
                             : 'bg-white text-gray-600 border-gray-200 hover:border-[#07535f]'
                         }`}
                       >
-                        {skillBadges.includes(skill) ? <CheckSquare className="w-3 h-3" /> : <Square className="w-3 h-3" />}
+                        {skillBadges.includes(skill) ? (
+                          <CheckSquare className="w-3 h-3" />
+                        ) : (
+                          <Square className="w-3 h-3" />
+                        )}
                         {skill}
                       </button>
                     ))}
                   </div>
                   {skillBadges.length > 0 && (
-                    <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+                    <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600 font-bold">
                       <BadgeCheck className="w-4 h-4" />
                       {skillBadges.length} skill{skillBadges.length > 1 ? 's' : ''} selected
                     </div>
@@ -302,47 +576,62 @@ export default function RegisterPage() {
 
                 {/* Background Check Consent */}
                 <div
-                  onClick={() => setBgCheckConsent(p => !p)}
-                  className={`cursor-pointer flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
-                    bgCheckConsent ? 'border-[#07535f] bg-[#07535f]/5' : 'border-gray-200 hover:border-[#07535f]/40'
+                  onClick={() => setBgCheckConsent((p) => !p)}
+                  className={`cursor-pointer flex items-start gap-3 p-3.5 rounded-xl border-2 transition-all ${
+                    bgCheckConsent
+                      ? 'border-[#07535f] bg-[#07535f]/5'
+                      : 'border-gray-200 hover:border-[#07535f]/40'
                   }`}
                 >
-                  <div className={`w-5 h-5 rounded flex items-center justify-center border-2 mt-0.5 shrink-0 ${
-                    bgCheckConsent ? 'bg-[#07535f] border-[#07535f]' : 'border-gray-300'
-                  }`}>
+                  <div
+                    className={`w-5 h-5 rounded flex items-center justify-center border-2 mt-0.5 shrink-0 ${
+                      bgCheckConsent ? 'bg-[#07535f] border-[#07535f]' : 'border-gray-300'
+                    }`}
+                  >
                     {bgCheckConsent && <span className="text-white text-xs">✓</span>}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-gray-800">I consent to a background check</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Gharelu Sewa will verify your identity, criminal record, and professional credentials. This is required for all providers.</p>
+                    <p className="text-xs font-bold text-gray-800">I consent to a background check *</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Gharelu Sewa will verify your identity, citizenship record, and credentials. Required for provider verification.
+                    </p>
                   </div>
                 </div>
 
-                {/* Trust Info Banner */}
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <p className="text-xs font-bold text-emerald-800">What happens after registration?</p>
-                  </div>
-                  <ul className="text-xs text-emerald-700 space-y-1">
-                    <li>✓ Admin verifies your ID and citizenship number</li>
-                    <li>✓ Background check is conducted within 48 hours</li>
-                    <li>✓ Skill badges are reviewed and approved</li>
-                    <li>✓ You get a verified badge visible to customers</li>
-                  </ul>
+                {/* Buttons for Step 2 */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep(1);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back to Step 1
+                  </button>
+
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    loading={loading}
+                    disabled={loading}
+                    className="flex-1 py-3 text-xs sm:text-sm font-extrabold"
+                  >
+                    {loading ? 'Submitting Application...' : 'Submit Application & Complete KYC'}
+                  </Button>
                 </div>
               </div>
             )}
-
-            <Button type="submit" variant="primary" size="md" loading={loading} disabled={loading} className="w-full mt-2">
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </Button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-            <p className="text-gray-600 text-sm">
+          <div className="mt-6 pt-5 border-t border-gray-200 text-center">
+            <p className="text-gray-600 text-xs sm:text-sm">
               Already have an account?{' '}
-              <Link to="/login" className="text-[#07535f] hover:text-[#06424b] font-bold">Sign in here</Link>
+              <Link to="/login" className="text-[#07535f] hover:text-[#06424b] font-extrabold">
+                Sign in here
+              </Link>
             </p>
           </div>
         </Card>

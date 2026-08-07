@@ -244,6 +244,7 @@ export default function ManageProviders() {
                     <span className="hidden sm:inline">View ID</span>
                   </button>
                 </div>
+              </div>
 
                 {/* Details Grid */}
                 <div className="bg-gray-50/70 rounded-xl p-3.5 space-y-2 text-xs text-gray-600">
