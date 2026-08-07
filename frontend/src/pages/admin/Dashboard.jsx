@@ -6,7 +6,7 @@ import {
   Users, Calendar, Shield, ShieldCheck, CreditCard,
   RefreshCw, Check, X, AlertCircle, ArrowUpRight,
   ArrowDownRight, Download, LayoutGrid, Eye, FileText,
-  CheckCircle, XCircle, Award, Star
+  CheckCircle, XCircle, Award, Star, FileSpreadsheet
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -146,6 +146,13 @@ export default function AdminDashboard() {
             <p className="text-gray-500 text-sm mt-0.5">Manage users, providers, and overall platform operations.</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            <Link
+              to="/admin/reports"
+              className="flex items-center gap-2 bg-[#07535f] hover:bg-[#06424b] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+              Master Reports & Excel
+            </Link>
             <button
               onClick={loadData}
               className="flex items-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm cursor-pointer"

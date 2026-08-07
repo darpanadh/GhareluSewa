@@ -5,7 +5,7 @@ import { notificationAPI } from '../services/api';
 import { onNotification } from '../services/socket';
 import { 
   LayoutDashboard, Users, Calendar, ShieldCheck, 
-  BarChart2, LogOut, Settings, Bell, Menu, X, ArrowLeft, CreditCard
+  BarChart2, LogOut, Settings, Bell, Menu, X, ArrowLeft, CreditCard, FileSpreadsheet
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
@@ -62,6 +62,7 @@ export default function AdminLayout({ children }) {
     { label: 'Users', path: '/admin/users', icon: Users },
     { label: 'Bookings', path: '/admin/bookings', icon: Calendar },
     { label: 'Payments & Revenue', path: '/admin/payments', icon: CreditCard },
+    { label: 'Master Reports & Export', path: '/admin/reports', icon: FileSpreadsheet },
   ];
 
   return (

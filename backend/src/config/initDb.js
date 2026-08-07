@@ -55,6 +55,8 @@ export const initializeDatabase = async () => {
       await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS citizenship_image_url TEXT`);
       await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS skill_badges TEXT DEFAULT ''`);
       await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS background_check_status VARCHAR(50) DEFAULT 'pending'`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS negative_since TIMESTAMP DEFAULT NULL`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS is_frozen BOOLEAN DEFAULT FALSE`);
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS photo_url TEXT`);
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS completion_status VARCHAR(100) DEFAULT 'completed_on_time'`);
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_repeated_customer BOOLEAN DEFAULT FALSE`);

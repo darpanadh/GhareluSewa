@@ -37,6 +37,7 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   reverifyKYC: (data) => api.post('/auth/reverify-kyc', data),
+  googleLogin: (data) => api.post('/auth/google', data),
   getCurrentUser: () => api.get('/auth/me'),
 };
 
@@ -107,7 +108,9 @@ export const adminAPI = {
   getAllProviders: (params) => api.get('/admin/providers/all', { params }),
   verifyProvider: (userId) => api.patch(`/admin/providers/${userId}/verify`),
   rejectProvider: (userId, data) => api.patch(`/admin/providers/${userId}/reject`, data),
+  clearProviderDues: (userId) => api.patch(`/admin/providers/${userId}/clear-dues`),
   getAllBookings: (params) => api.get('/admin/bookings', { params }),
+  getBookingsExport: (params) => api.get('/admin/bookings/export', { params }),
   getAnalytics: (params) => api.get('/admin/analytics', { params }),
   getAllUsers: (params) => api.get('/admin/users', { params }),
   deactivateUser: (userId, data) => api.patch(`/admin/users/${userId}/deactivate`, data),

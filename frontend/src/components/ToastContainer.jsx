@@ -58,6 +58,12 @@ export const ToastContainer = forwardRef((props, ref) => {
           icon: <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />,
           title: 'New Review'
         };
+      case 'new_message':
+        return {
+          bg: 'bg-teal-50 border-teal-200 text-teal-900 shadow-teal-100',
+          icon: <Bell className="w-5 h-5 text-[#07535f]" />,
+          title: '💬 New Message'
+        };
       default:
         return {
           bg: 'bg-white border-gray-150 text-gray-800 shadow-md',

@@ -438,7 +438,7 @@ export const getAllProviders = async (req, res) => {
 
     const result = await query(
       `SELECT u.id, u.name, u.email, u.phone, u.ward, u.avatar_url, u.bio, u.is_verified, u.is_active, u.created_at,
-              pp.hourly_rate, pp.citizenship_no, pp.citizenship_image_url, pp.rating_avg, pp.total_reviews, sc.name as service_category
+              pp.hourly_rate, pp.citizenship_no, pp.citizenship_image_url, pp.rating_avg, pp.total_reviews, pp.is_frozen, pp.negative_since, sc.name as service_category
        FROM users u
        LEFT JOIN provider_profiles pp ON u.id = pp.user_id
        LEFT JOIN service_categories sc ON pp.category_id = sc.id
@@ -468,7 +468,39 @@ export const getAllPayoutRequests = async (req, res) => {
   }
 };
 
-// Update payout request status (admin)
+// Clear provider dues & unfreeze account (Admin action)
+export const clearProviderDues = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await query(
+      `UPDATE provider_profiles
+       SET is_frozen = FALSE, negative_since = NULL, availability = TRUE
+       WHERE user_id = $1
+       RETURNING id, user_id, is_frozen, negative_since, availability`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Provider profile not found' });
+    }
+
+    // Notify provider
+    await query(
+      `INSERT INTO notifications (user_id, message, type)
+       VALUES ($1, $2, $3)`,
+      [userId, '✅ Your negative balance dues have been cleared by Admin! Account unfrozen.', 'dues_cleared']
+    );
+
+    res.json({
+      message: 'Provider dues cleared and account unfrozen successfully',
+      profile: result.rows[0],
+    });
+  } catch (error) {
+    console.error('Clear provider dues error:', error);
+    res.status(500).json({ error: 'Failed to clear provider dues' });
+  }
+};
 export const updatePayoutStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -497,3 +529,93 @@ export const updatePayoutStatus = async (req, res) => {
   }
 };
 
+// Get ALL bookings with full details for export/reports
+export const getBookingsExport = async (req, res) => {
+  try {
+    const { status, from, to, search } = req.query;
+
+    let sql = `
+      SELECT 
+        b.id as booking_id,
+        b.status,
+        b.booking_date,
+        b.created_at as booked_at,
+        b.updated_at as last_updated,
+        b.location,
+        b.description,
+        b.is_emergency,
+        b.total_price,
+        sc.name as service_category,
+        cu.name as customer_name,
+        cu.phone as customer_phone,
+        cu.email as customer_email,
+        cu.ward as customer_ward,
+        pu.name as provider_name,
+        pu.phone as provider_phone,
+        pu.email as provider_email,
+        pu.ward as provider_ward,
+        pay.status as payment_status,
+        pay.amount as amount_paid,
+        pay.commission as platform_commission,
+        pay.payment_method,
+        pay.transaction_id,
+        pay.paid_at,
+        r.rating as review_rating,
+        r.comment as review_comment
+      FROM bookings b
+      JOIN users cu ON b.customer_id = cu.id
+      JOIN users pu ON b.provider_id = pu.id
+      JOIN service_categories sc ON b.category_id = sc.id
+      LEFT JOIN payments pay ON b.id = pay.booking_id
+      LEFT JOIN reviews r ON b.id = r.booking_id
+      WHERE 1=1
+    `;
+
+    const params = [];
+
+    if (status) {
+      params.push(status);
+      sql += ` AND b.status = $${params.length}`;
+    }
+
+    if (from) {
+      params.push(from);
+      sql += ` AND b.booking_date >= $${params.length}::date`;
+    }
+
+    if (to) {
+      params.push(to);
+      sql += ` AND b.booking_date <= ($${params.length}::date + INTERVAL '1 day')`;
+    }
+
+    if (search) {
+      params.push(`%${search}%`);
+      sql += ` AND (cu.name ILIKE $${params.length} OR pu.name ILIKE $${params.length} OR sc.name ILIKE $${params.length} OR b.location ILIKE $${params.length})`;
+    }
+
+    sql += ` ORDER BY b.created_at DESC LIMIT 5000`;
+
+    const result = await query(sql, params);
+
+    // Summary stats
+    const totalAmount = result.rows.reduce((sum, r) => sum + Number(r.amount_paid || r.total_price || 0), 0);
+    const totalCommission = result.rows.reduce((sum, r) => sum + Number(r.platform_commission || 0), 0);
+    const avgRating = result.rows.filter(r => r.review_rating).reduce((sum, r, _, arr) => sum + Number(r.review_rating) / arr.length, 0);
+
+    res.json({
+      bookings: result.rows,
+      summary: {
+        total_records: result.rows.length,
+        total_amount: Math.round(totalAmount),
+        total_commission: Math.round(totalCommission),
+        avg_rating: Math.round(avgRating * 100) / 100,
+        completed: result.rows.filter(r => r.status === 'completed').length,
+        pending: result.rows.filter(r => r.status === 'pending').length,
+        cancelled: result.rows.filter(r => r.status === 'cancelled').length,
+      }
+    });
+  } catch (error) {
+    console.error('Get bookings export error:', error);
+    res.status(500).json({ error: 'Failed to fetch export data' });
+  }
+};

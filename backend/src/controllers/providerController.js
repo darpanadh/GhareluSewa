@@ -101,6 +101,20 @@ export const toggleAvailability = async (req, res) => {
   try {
     const { available } = req.body;
 
+    // Check if account is frozen due to overdue negative balance (>3 days)
+    const profileCheck = await query(
+      `SELECT is_frozen, negative_since FROM provider_profiles WHERE user_id = $1`,
+      [req.userId]
+    );
+
+    const prof = profileCheck.rows[0];
+
+    if (prof?.is_frozen) {
+      return res.status(403).json({
+        error: 'Your account is frozen due to overdue negative balance. Please contact Admin to clear your dues.'
+      });
+    }
+
     const result = await query(
       `UPDATE provider_profiles 
        SET availability = $1
@@ -226,6 +240,69 @@ export const getProviderEarnings = async (req, res) => {
       }));
     }
 
+    // Fetch payout requests and provider profile flags (is_frozen, negative_since)
+    const profileRes = await query(
+      `SELECT is_frozen, negative_since FROM provider_profiles WHERE user_id = $1`,
+      [req.userId]
+    );
+    const profData = profileRes.rows[0] || {};
+
+    const payoutsRes = await query(
+      `SELECT amount, status FROM payout_requests WHERE provider_id = $1`,
+      [req.userId]
+    );
+
+    const pendingPayouts = payoutsRes.rows
+      .filter(r => r.status === 'pending')
+      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+    const completedPayouts = payoutsRes.rows
+      .filter(r => r.status === 'completed')
+      .reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+    const commissionFee = Math.round(totalEarnings * 0.10);
+    const netEarnings = totalEarnings - commissionFee;
+
+    // Available balance (can be negative if 10% commission on cash exceeds online earnings)
+    const availableBalance = netEarnings - pendingPayouts - completedPayouts;
+
+    let isFrozen = profData.is_frozen || false;
+    let negativeSince = profData.negative_since || null;
+    let daysRemaining = 3;
+
+    // Evaluate negative balance & 3-day trial/freeze timer
+    if (availableBalance < 0) {
+      if (!negativeSince) {
+        // Set negative_since timestamp to NOW
+        negativeSince = new Date();
+        await query(
+          `UPDATE provider_profiles SET negative_since = CURRENT_TIMESTAMP WHERE user_id = $1`,
+          [req.userId]
+        );
+      }
+
+      const diffMs = new Date() - new Date(negativeSince);
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      daysRemaining = Math.max(0, Math.ceil(3 - diffDays));
+
+      // If negative > 3 days, auto-freeze account & set availability offline
+      if (diffDays >= 3 && !isFrozen) {
+        isFrozen = true;
+        await query(
+          `UPDATE provider_profiles SET is_frozen = TRUE, availability = FALSE WHERE user_id = $1`,
+          [req.userId]
+        );
+      }
+    } else if (availableBalance >= 0 && (negativeSince || isFrozen)) {
+      // Balance cleared! Reset negative_since & unfreeze
+      isFrozen = false;
+      negativeSince = null;
+      await query(
+        `UPDATE provider_profiles SET negative_since = NULL, is_frozen = FALSE WHERE user_id = $1`,
+        [req.userId]
+      );
+    }
+
     res.json({
       total_bookings: Number(row.total_bookings || 0),
       completed_bookings: completedJobs,
@@ -233,6 +310,13 @@ export const getProviderEarnings = async (req, res) => {
       cancelled_bookings: Number(row.cancelled_bookings || 0),
       estimated_earnings: totalEarnings,
       total: totalEarnings,
+      net_earnings: netEarnings,
+      commission: commissionFee,
+      available_balance: availableBalance,
+      is_negative: availableBalance < 0,
+      is_frozen: isFrozen,
+      negative_since: negativeSince,
+      days_remaining: daysRemaining,
       jobs: completedJobs,
       avg: completedJobs > 0 ? Math.round(totalEarnings / completedJobs) : 0,
       chartData,

@@ -203,10 +203,36 @@ export default function ManageProviders() {
                             Pending KYC
                           </span>
                         )}
+                        {p.is_frozen && (
+                          <span className="flex items-center gap-1 bg-red-100 text-red-800 border border-red-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse">
+                            🛑 Account Frozen (Negative Dues)
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{p.email}</p>
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-2">
+                    {p.is_frozen && (
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`Clear negative dues and unfreeze ${p.name}'s account?`)) {
+                            try {
+                              await adminAPI.clearProviderDues(p.id);
+                              alert(`✅ ${p.name}'s account has been unfrozen and set to active online status.`);
+                              fetchProviders();
+                            } catch (err) {
+                              alert('Failed to unfreeze provider profile.');
+                            }
+                          }
+                        }}
+                        className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition-all flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0 shadow-sm"
+                        title="Clear Negative Dues & Unfreeze"
+                      >
+                        <CheckCircle className="w-4 h-4" /> Clear Dues
+                      </button>
+                    )}
 
                   {/* Eye Button to Inspect Full Details */}
                   <button
