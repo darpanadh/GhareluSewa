@@ -171,18 +171,6 @@ export default function ProviderDashboard() {
             </div>
 
             <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                onClick={handleToggleAvailability}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all"
-              >
-                <Bell className="w-4 h-4" />
-                Notifications
-                {newRequests.length > 0 && (
-                  <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full leading-none">
-                    {newRequests.length}
-                  </span>
-                )}
-              </button>
               <Link
                 to="/provider/bookings"
                 className="flex items-center gap-2 bg-white text-[#07535f] px-4 py-2.5 rounded-xl text-xs font-bold shadow hover:bg-gray-50 transition-all"
