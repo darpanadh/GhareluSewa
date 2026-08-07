@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, providerAPI } from '../services/api';
-import CityWardSelector from './CityWardSelector';
+import ResidenceSelector from './ResidenceSelector';
 import Button from './Button';
 import { X, Camera, Upload, User, Phone, MapPin, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -269,17 +269,17 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }) {
               </div>
             </div>
 
-            {/* Workplace / Ward Selector */}
+            {/* Residence Location / Province & District */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
-                {user?.role === 'provider' ? 'Workplace / Service Area (Specific Ward or Whole City) *' : 'Location / Ward *'}
+                📍 Residence Location / Service Area *
               </label>
-              <CityWardSelector
+              <ResidenceSelector
                 value={ward}
                 onChange={(w) => setWard(w)}
                 required
                 layout="col"
-                showLabels={false}
+                showLabels={true}
               />
             </div>
 

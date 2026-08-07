@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import CityWardSelector from '../components/CityWardSelector';
+import ResidenceSelector from '../components/ResidenceSelector';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
@@ -189,14 +189,12 @@ export default function RegisterPage() {
             <Input label="Phone Number" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="98XXXXXXXX" />
 
             <div>
-              {formData.role === 'provider' && (
-                <p className="text-xs font-semibold text-[#07535f] mb-1">
-                  📍 Workplace / Coverage Area (Select Specific Ward or Whole City):
-                </p>
-              )}
-              <CityWardSelector
+              <p className="text-xs font-semibold text-[#07535f] mb-1 flex items-center gap-1">
+                📍 Enter your Residence Location:
+              </p>
+              <ResidenceSelector
                 value={formData.ward}
-                onChange={(w) => setFormData(prev => ({ ...prev, ward: w }))}
+                onChange={(residence) => setFormData(prev => ({ ...prev, ward: residence }))}
                 required
                 layout="row"
               />
