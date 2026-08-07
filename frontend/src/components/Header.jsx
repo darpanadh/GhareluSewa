@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Bell, LogOut, Home, Search, Calendar, User, ChevronDown, Shield, BarChart2, LayoutGrid, Clock, TrendingUp, CreditCard, Wrench } from 'lucide-react';
+import { Menu, X, Bell, LogOut, Home, Search, Calendar, User, ChevronDown, Shield, BarChart2, LayoutGrid, Clock, TrendingUp, CreditCard, Wrench, UserCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { notificationAPI } from '../services/api';
 import { onNotification } from '../services/socket';
@@ -76,20 +76,6 @@ export const Header = () => {
     }
   };
 
-  const getRolePath = () => {
-    if (!user) return '/';
-    switch (user.role) {
-      case 'customer':
-        return '/customer';
-      case 'provider':
-        return '/provider';
-      case 'admin':
-        return '/admin';
-      default:
-        return '/';
-    }
-  };
-
   const getRoleBadge = () => {
     if (!user) return null;
     switch (user.role) {
@@ -103,10 +89,9 @@ export const Header = () => {
   };
   const roleBadge = getRoleBadge();
 
-
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
 
@@ -160,38 +145,61 @@ export const Header = () => {
             </div>
 
             {/* Center Navigation — role-aware */}
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+            <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-gray-600">
               {user?.role === 'provider' ? (
                 /* Provider Nav */
                 <>
                   <Link
                     to="/provider"
-                    className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${location.pathname === '/provider' ? 'text-[#07535f] font-semibold' : ''
-                      }`}
+                    className={
+                      location.pathname === '/provider'
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-3.5 py-1.5 rounded-full font-semibold shadow-2xs transition-all"
+                        : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3 py-1.5 rounded-full transition-all"
+                    }
                   >
                     <Home className="w-4 h-4" />
                     <span>Dashboard</span>
                   </Link>
                   <Link
+                    to="/provider/profile"
+                    className={
+                      location.pathname.startsWith('/provider/profile')
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-3.5 py-1.5 rounded-full font-semibold shadow-2xs transition-all"
+                        : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3 py-1.5 rounded-full transition-all"
+                    }
+                  >
+                    <User className="w-4 h-4" />
+                    <span>My Profile</span>
+                  </Link>
+                  <Link
                     to="/provider/bookings"
-                    className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${location.pathname === '/provider/bookings' ? 'text-[#07535f] font-semibold' : ''
-                      }`}
+                    className={
+                      location.pathname.startsWith('/provider/bookings')
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-3.5 py-1.5 rounded-full font-semibold shadow-2xs transition-all"
+                        : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3 py-1.5 rounded-full transition-all"
+                    }
                   >
                     <Calendar className="w-4 h-4" />
-                    <span>My Bookings</span>
+                    <span>Bookings</span>
                   </Link>
                   <Link
                     to="/provider/schedule"
-                    className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${location.pathname === '/provider/schedule' ? 'text-[#07535f] font-semibold' : ''
-                      }`}
+                    className={
+                      location.pathname.startsWith('/provider/schedule')
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-3.5 py-1.5 rounded-full font-semibold shadow-2xs transition-all"
+                        : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3 py-1.5 rounded-full transition-all"
+                    }
                   >
                     <Clock className="w-4 h-4" />
                     <span>Schedule</span>
                   </Link>
                   <Link
                     to="/provider/earnings"
-                    className={`flex items-center gap-1.5 hover:text-[#07535f] transition-colors ${location.pathname === '/provider/earnings' ? 'text-[#07535f] font-semibold' : ''
-                      }`}
+                    className={
+                      location.pathname.startsWith('/provider/earnings')
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-3.5 py-1.5 rounded-full font-semibold shadow-2xs transition-all"
+                        : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3 py-1.5 rounded-full transition-all"
+                    }
                   >
                     <TrendingUp className="w-4 h-4" />
                     <span>Earnings</span>
@@ -204,7 +212,7 @@ export const Header = () => {
                     to="/admin"
                     className={
                       location.pathname === '/admin'
-                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-2xs transition-all hover:bg-[#06424b]"
                         : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
                     }
                   >
@@ -215,7 +223,7 @@ export const Header = () => {
                     to="/admin/bookings"
                     className={
                       location.pathname.startsWith('/admin/bookings')
-                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-2xs transition-all hover:bg-[#06424b]"
                         : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
                     }
                   >
@@ -226,7 +234,7 @@ export const Header = () => {
                     to="/admin/payments"
                     className={
                       location.pathname.startsWith('/admin/payments')
-                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-2xs transition-all hover:bg-[#06424b]"
                         : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
                     }
                   >
@@ -241,7 +249,7 @@ export const Header = () => {
                     to="/customer"
                     className={
                       location.pathname === '/customer' || location.pathname === '/'
-                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-2xs transition-all hover:bg-[#06424b]"
                         : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
                     }
                   >
@@ -252,7 +260,7 @@ export const Header = () => {
                     to="/services"
                     className={
                       location.pathname.startsWith('/services') || location.pathname.startsWith('/browse') || location.pathname.startsWith('/customer/browse')
-                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-2xs transition-all hover:bg-[#06424b]"
                         : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
                     }
                   >
@@ -263,7 +271,7 @@ export const Header = () => {
                     to="/customer/history"
                     className={
                       location.pathname.startsWith('/customer/history')
-                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-sm transition-all hover:bg-[#06424b]"
+                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-4 py-2 rounded-full font-semibold shadow-2xs transition-all hover:bg-[#06424b]"
                         : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3.5 py-2 rounded-full transition-all font-medium"
                     }
                   >
@@ -280,7 +288,7 @@ export const Header = () => {
               {/* User Profile & Notifications / Auth Buttons */}
               {isAuthenticated ? (
                 <div className="flex items-center gap-3">
-                  {/* Notifications - Only shown when logged in */}
+                  {/* Notifications */}
                   <div className="relative" ref={notificationRef}>
                     <button
                       onClick={() => setShowNotifications(!showNotifications)}
@@ -328,11 +336,17 @@ export const Header = () => {
                   </div>
 
                   <div className="flex items-center gap-2 border-l border-gray-100 pl-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditModalOpen(true)}
+                    {/* User profile link button */}
+                    <Link
+                      to={user?.role === 'provider' ? '/provider/profile' : '#'}
+                      onClick={(e) => {
+                        if (user?.role !== 'provider') {
+                          e.preventDefault();
+                          setIsEditModalOpen(true);
+                        }
+                      }}
                       className="group flex items-center gap-2 text-left p-1 rounded-xl hover:bg-gray-100/80 transition-all cursor-pointer relative"
-                      title="Click to edit profile & photo"
+                      title={user?.role === 'provider' ? 'View & edit provider profile' : 'Edit profile'}
                     >
                       <div className="relative">
                         <img
@@ -347,13 +361,13 @@ export const Header = () => {
                       <div className="hidden lg:flex flex-col min-w-0">
                         <span className="text-xs font-bold text-gray-800 truncate max-w-[90px] group-hover:text-[#07535f] transition-colors">{user?.name}</span>
                         <span className="text-[10px] text-[#07535f] font-semibold hover:underline">
-                          Edit Profile
+                          {user?.role === 'provider' ? 'My Profile' : 'Edit Profile'}
                         </span>
                       </div>
-                    </button>
+                    </Link>
                     <button
                       onClick={() => { logout(); navigate('/login'); }}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-all"
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-all cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       Sign Out
@@ -376,7 +390,7 @@ export const Header = () => {
                   </Link>
                   <Link
                     to="/register?role=provider"
-                    className="border border-[#07535f] text-[#07535f] hover:bg-[#07535f] hover:text-white px-5 py-2 rounded-full font-semibold text-sm transition-all shadow-xs"
+                    className="border border-[#07535f] text-[#07535f] hover:bg-[#07535f] hover:text-white px-5 py-2 rounded-full font-semibold text-sm transition-all shadow-2xs"
                   >
                     Become a Tasker
                   </Link>
@@ -386,7 +400,7 @@ export const Header = () => {
               {/* Mobile menu toggle */}
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="md:hidden p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                className="md:hidden p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
               >
                 {showMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -427,7 +441,10 @@ export const Header = () => {
                 ) : user?.role === 'provider' ? (
                   <>
                     <Link to="/provider" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                      <LayoutGrid className="w-4 h-4" /> Dashboard
+                      <Home className="w-4 h-4" /> Dashboard
+                    </Link>
+                    <Link to="/provider/profile" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                      <User className="w-4 h-4 text-[#07535f]" /> My Profile
                     </Link>
                     <Link to="/provider/bookings" onClick={() => setShowMenu(false)} className="px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2">
                       <Calendar className="w-4 h-4" /> My Bookings
@@ -457,7 +474,7 @@ export const Header = () => {
                       onClick={() => setShowMenu(false)}
                       className={
                         location.pathname.startsWith('/services') || location.pathname.startsWith('/browse') || location.pathname.startsWith('/customer/browse')
-                          ? "px-3 py-2 rounded-lg bg-[#07535f] text-white flex items-center gap-2 font-bold"
+                          ? "px-3 py-2 rounded-lg bg-[#07535f] text-[#07535f] flex items-center gap-2 font-bold"
                           : "px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
                       }
                     >
@@ -495,7 +512,7 @@ export const Header = () => {
                         setShowMenu(false);
                         navigate('/login');
                       }}
-                      className="w-full px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2 font-bold"
+                      className="w-full px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2 font-bold cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" /> Sign Out
                     </button>
