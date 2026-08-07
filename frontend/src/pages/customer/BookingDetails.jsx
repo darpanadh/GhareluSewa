@@ -117,6 +117,7 @@ export default function BookingDetails() {
     try {
       await reviewAPI.createReview({
         booking_id: booking.id,
+        provider_id: booking.provider_id,
         rating: reviewRating,
         comment: reviewComment,
       });
