@@ -1,4 +1,5 @@
 import { query } from '../config/database.js';
+import { sendNotification } from '../config/socketHelper.js';
 
 // Send message
 export const sendMessage = async (req, res) => {
@@ -36,10 +37,14 @@ export const sendMessage = async (req, res) => {
 
     // Notify the other party
     const otherUserId = req.userId === booking.customer_id ? booking.provider_id : booking.customer_id;
-    await query(
-      `INSERT INTO notifications (user_id, booking_id, message, type)
-       VALUES ($1, $2, $3, $4)`,
-      [otherUserId, booking_id, 'New message in booking', 'new_message']
+    const senderUser = await query('SELECT name FROM users WHERE id = $1', [req.userId]);
+    const senderName = senderUser.rows[0]?.name || 'User';
+
+    await sendNotification(
+      otherUserId,
+      booking_id,
+      `💬 New message from ${senderName}: "${content.substring(0, 50)}${content.length > 50 ? '...' : ''}"`,
+      'new_message'
     );
 
     res.status(201).json(message);
