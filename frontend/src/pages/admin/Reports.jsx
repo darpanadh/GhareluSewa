@@ -50,7 +50,7 @@ export default function Reports() {
     } catch (err) {
       console.error('Failed to fetch report data', err);
       setData([]);
-    } flex {
+    } finally {
       setLoading(false);
     }
   };
