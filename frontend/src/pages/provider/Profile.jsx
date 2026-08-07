@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { providerAPI, userAPI } from '../../services/api';
 import CityWardSelector from '../../components/CityWardSelector';
+import EditProfileModal from '../../components/EditProfileModal';
 import Card from '../../components/Card';
 import {
   User, Phone, MapPin, Briefcase, Star, Edit3,
@@ -29,6 +30,7 @@ export default function ProviderProfile() {
   const [editing, setEditing] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [form, setForm] = useState({
     full_name: '',
@@ -165,14 +167,28 @@ export default function ProviderProfile() {
       {/* Profile Card */}
       <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #f1f5f9', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '1.5rem' }}>
         {/* Avatar band */}
-        <div style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', flexShrink: 0, border: '3px solid rgba(255,255,255,0.4)' }}>
-            {(form.full_name || 'P')[0].toUpperCase()}
+        <div style={{ background: 'linear-gradient(135deg, #07535f 0%, #0a7587 100%)', padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div
+            onClick={() => setIsModalOpen(true)}
+            style={{ position: 'relative', cursor: 'pointer' }}
+            title="Click to edit profile photo"
+            className="group"
+          >
+            <div style={{ width: 84, height: 84, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', flexShrink: 0, border: '3px solid rgba(255,255,255,0.6)', color: 'white', fontWeight: 700 }}>
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt={user?.name || 'Provider'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                (form.full_name || user?.name || 'P')[0].toUpperCase()
+              )}
+            </div>
+            <div style={{ position: 'absolute', bottom: 0, right: 0, background: '#ffffff', color: '#07535f', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+              <Camera style={{ width: 14, height: 14 }} />
+            </div>
           </div>
           <div>
-            <div style={{ color: 'white', fontSize: '1.4rem', fontWeight: 700 }}>{form.full_name || 'Provider'}</div>
+            <div style={{ color: 'white', fontSize: '1.4rem', fontWeight: 700 }}>{form.full_name || user?.name || 'Provider'}</div>
             <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem' }}>{user?.email}</div>
-            <div style={{ marginTop: '0.5rem' }}>
+            <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               {verificationStatus === 'verified' ? (
                 <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', padding: '3px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                   <Shield style={{ width: 12, height: 12 }} /> KYC Verified
@@ -182,6 +198,13 @@ export default function ProviderProfile() {
                   <Clock style={{ width: 12, height: 12 }} /> Verification {verificationStatus}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', padding: '3px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <Camera style={{ width: 12, height: 12 }} /> Change Photo
+              </button>
             </div>
           </div>
         </div>
@@ -336,6 +359,7 @@ export default function ProviderProfile() {
           </>
         )}
       </div>
+      <EditProfileModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSaveSuccess={fetchProfile} />
     </div>
   );
 }

@@ -28,12 +28,18 @@ export const CITIES_MAP = CITIES.reduce((acc, city) => {
   return acc;
 }, {});
 
-// Helper to convert full ward string ("Kathmandu Ward No. 2") to city & ward object
+// Helper to convert full ward string ("Kathmandu Ward No. 2" or "Kathmandu (Whole City)") to city & ward object
 export function parseWardString(fullWardStr) {
   if (!fullWardStr) return { city: '', ward: '' };
   
   for (const cityObj of CITIES) {
     if (fullWardStr.toLowerCase().includes(cityObj.name.toLowerCase())) {
+      if (fullWardStr.toLowerCase().includes('whole city')) {
+        return {
+          city: cityObj.id,
+          ward: 'Whole City'
+        };
+      }
       const wardMatch = fullWardStr.match(/Ward\s+No\.\s*\d+/i);
       return {
         city: cityObj.id,
@@ -44,11 +50,12 @@ export function parseWardString(fullWardStr) {
   return { city: '', ward: fullWardStr };
 }
 
-// Helper to construct full ward string ("Kathmandu Ward No. 2")
+// Helper to construct full ward string ("Kathmandu Ward No. 2" or "Kathmandu (Whole City)")
 export function buildWardString(city, ward) {
   if (!city && !ward) return '';
   if (!city) return ward;
   if (!ward) return city;
+  if (ward === 'Whole City') return `${city} (Whole City)`;
   if (ward.toLowerCase().includes(city.toLowerCase())) return ward;
   return `${city} ${ward}`;
 }

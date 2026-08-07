@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { bookingAPI, providerAPI } from '../../services/api';
+import InteractiveChart from '../../components/InteractiveChart';
 import {
   Bell, Calendar, Clock, MapPin, Check, X,
   Phone, Eye, TrendingUp, AlertCircle, Star,
@@ -55,11 +56,18 @@ export default function ProviderDashboard() {
   const [loading, setLoading] = useState(true);
   const [availability, setAvailability] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [chartPeriod, setChartPeriod] = useState('week');
+  const [earningsData, setEarningsData] = useState(null);
+  const [chartLoading, setChartLoading] = useState(false);
 
   useEffect(() => {
     refreshUser();
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    fetchEarningsChart();
+  }, [chartPeriod]);
 
   const fetchDashboardData = async () => {
     try {
@@ -72,6 +80,18 @@ export default function ProviderDashboard() {
       console.error('Failed to load bookings', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchEarningsChart = async () => {
+    setChartLoading(true);
+    try {
+      const res = await providerAPI.getEarnings({ period: chartPeriod });
+      setEarningsData(res.data || {});
+    } catch (err) {
+      console.warn('Could not load earnings chart', err);
+    } finally {
+      setChartLoading(false);
     }
   };
 
@@ -95,15 +115,12 @@ export default function ProviderDashboard() {
   const activeJobs  = bookings.filter(b => b.status === 'accepted' || b.status === 'in_progress');
   const completedJobs = bookings.filter(b => b.status === 'completed');
   const hourlyRate  = parseFloat(user?.hourly_rate || 650);
-  const totalMonthly = completedJobs.length * hourlyRate;
+  // Use real API earnings when available
+  const totalEarnings = earningsData?.total ?? (completedJobs.length * hourlyRate);
+  const totalMonthly = totalEarnings;
   const netPayout   = Math.round(totalMonthly * 0.93);
-
-  const weeklyData = [
-    { day: 'Mon', value: 1200 }, { day: 'Tue', value: 800  },
-    { day: 'Wed', value: 2100 }, { day: 'Thu', value: 1500 },
-    { day: 'Fri', value: 3200 }, { day: 'Sat', value: 3800 },
-    { day: 'Sun', value: 1900 },
-  ];
+  const liveChartData = earningsData?.chartData || [];
+  const PERIOD_LABELS = { week: 'This Week', month: 'This Month', year: 'This Year', all: 'All Time' };
 
   const todaySchedule = [...activeJobs, ...completedJobs].slice(0, 5);
 
@@ -383,29 +400,48 @@ export default function ProviderDashboard() {
 
           {/* ── Col 3: Earnings & Payouts ── */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h2 className="font-bold text-gray-900 text-sm mb-4">Earnings & Payouts</h2>
+            <h2 className="font-bold text-gray-900 text-sm mb-3">Earnings & Payouts</h2>
 
-            {/* Weekly Chart */}
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-1">
-                <p className="text-xs font-bold text-gray-700">Weekly Earnings</p>
-                <span className="text-[10px] text-gray-400 font-medium">This Week</span>
-              </div>
-              <WeeklyEarningsChart data={weeklyData} />
-              <div className="flex justify-between mt-1 px-1">
-                {weeklyData.map(d => (
-                  <span key={d.day} className="text-[9px] text-gray-400">{d.day}</span>
-                ))}
-              </div>
+            {/* Period Toggle */}
+            <div className="flex gap-1 mb-3 bg-gray-100/70 p-1 rounded-xl w-fit">
+              {['week', 'month', 'year'].map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setChartPeriod(p)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                    chartPeriod === p
+                      ? 'bg-white text-[#07535f] shadow-xs'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {p === 'week' ? 'Week' : p === 'month' ? 'Month' : 'Year'}
+                </button>
+              ))}
+            </div>
+
+            {/* Dynamic Interactive Chart */}
+            <div className={`transition-opacity duration-300 ${chartLoading ? 'opacity-50' : 'opacity-100'} mb-3`}>
+              <InteractiveChart
+                data={liveChartData}
+                title=""
+                subtitle={chartLoading ? 'Loading real data...' : `${PERIOD_LABELS[chartPeriod]} income from completed jobs`}
+                valuePrefix="Rs. "
+                metricKey="value"
+                height={120}
+                defaultChartType="bar"
+                showControls={true}
+                className="!p-0 !border-0 !shadow-none"
+              />
             </div>
 
             {/* Quick stats */}
             <div className="grid grid-cols-2 gap-2.5 mb-4">
               {[
-                { icon: <TrendingUp className="w-3.5 h-3.5 text-[#07535f]" />, val: `Rs. ${totalMonthly.toLocaleString()}`, label: 'This Week' },
-                { icon: <Activity className="w-3.5 h-3.5 text-blue-500" />,     val: `Rs. ${(totalMonthly * 4).toLocaleString()}`, label: 'This Month' },
-                { icon: <Clock className="w-3.5 h-3.5 text-amber-500" />,        val: 'Rs. 0',                                           label: 'Pending' },
-                { icon: <Check className="w-3.5 h-3.5 text-emerald-500" />,      val: `${completedJobs.length}`,                        label: 'Jobs Done' },
+                { icon: <TrendingUp className="w-3.5 h-3.5 text-[#07535f]" />, val: `Rs. ${totalMonthly.toLocaleString()}`, label: PERIOD_LABELS[chartPeriod] },
+                { icon: <Activity className="w-3.5 h-3.5 text-blue-500" />,     val: `${earningsData?.completed_bookings ?? completedJobs.length}`, label: 'Jobs Completed' },
+                { icon: <Clock className="w-3.5 h-3.5 text-amber-500" />,        val: `${earningsData?.active_bookings ?? activeJobs.length}`,              label: 'In Progress' },
+                { icon: <Check className="w-3.5 h-3.5 text-emerald-500" />,      val: `Rs. ${earningsData?.avg?.toLocaleString() ?? 0}`,                        label: 'Avg. Per Job' },
               ].map((s, i) => (
                 <div key={i} className="bg-gray-50 rounded-xl p-3">
                   <div className="mb-1">{s.icon}</div>

@@ -25,6 +25,8 @@ export default function BrowseServices() {
   const [minRating, setMinRating] = useState(0);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [sortBy, setSortBy] = useState('highest_rated'); // 'highest_rated' | 'most_reviewed' | 'price_low' | 'price_high'
+  const [onlyTopRated, setOnlyTopRated] = useState(false); // TaskRabbit Elite / 4.8+ Super Pros Filter
 
   const [backendProviders, setBackendProviders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -177,11 +179,27 @@ export default function BrowseServices() {
     // Min Rating
     if (minRating > 0 && p.rating < minRating) return false;
 
+    // TaskRabbit Style: Only 4.8+ Top Rated Pros
+    if (onlyTopRated && p.rating < 4.8) return false;
+
     // Price range
     if (minPrice && p.hourlyRate < parseFloat(minPrice)) return false;
     if (maxPrice && p.hourlyRate > parseFloat(maxPrice)) return false;
 
     return true;
+  }).sort((a, b) => {
+    if (sortBy === 'highest_rated') {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return b.reviewsCount - a.reviewsCount;
+    } else if (sortBy === 'most_reviewed') {
+      if (b.reviewsCount !== a.reviewsCount) return b.reviewsCount - a.reviewsCount;
+      return b.rating - a.rating;
+    } else if (sortBy === 'price_low') {
+      return a.hourlyRate - b.hourlyRate;
+    } else if (sortBy === 'price_high') {
+      return b.hourlyRate - a.hourlyRate;
+    }
+    return 0;
   });
 
   const handleResetFilters = () => {
@@ -191,6 +209,8 @@ export default function BrowseServices() {
     setMinRating(0);
     setMinPrice('');
     setMaxPrice('');
+    setSortBy('highest_rated');
+    setOnlyTopRated(false);
   };
 
   const handleBookNow = (provider) => {
@@ -272,8 +292,8 @@ export default function BrowseServices() {
               layout="col"
             />
 
-            {/* Filter 3: Min Rating */}
-            <div className="space-y-2">
+            {/* Filter 3: Min Rating & Quick Badges */}
+            <div className="space-y-3">
               <div className="flex justify-between items-center text-xs font-bold text-gray-700">
                 <span className="flex items-center gap-1.5">
                   <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
@@ -294,6 +314,43 @@ export default function BrowseServices() {
                 <span>2.5★</span>
                 <span>5★</span>
               </div>
+
+              {/* TaskRabbit Style: 4.8+ Top Rated Filter Badge */}
+              <button
+                type="button"
+                onClick={() => setOnlyTopRated(!onlyTopRated)}
+                className={`w-full py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                  onlyTopRated
+                    ? 'bg-amber-50 border-amber-300 text-amber-800 shadow-xs'
+                    : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  Top Rated Pros (4.8★+)
+                </span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${onlyTopRated ? 'bg-amber-200 text-amber-900' : 'bg-gray-200 text-gray-600'}`}>
+                  {onlyTopRated ? 'ACTIVE' : 'OFF'}
+                </span>
+              </button>
+            </div>
+
+            {/* Filter 4: Sort By Rating & Reviews */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400" />
+                Sort By
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full bg-gray-50/70 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#07535f] cursor-pointer"
+              >
+                <option value="highest_rated">⭐ Highest Rating First</option>
+                <option value="most_reviewed">🔥 Most Reviewed First</option>
+                <option value="price_low">💰 Price: Low to High</option>
+                <option value="price_high">💎 Price: High to Low</option>
+              </select>
             </div>
 
             {/* Filter 4: Hourly Rate */}

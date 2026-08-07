@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { providerAPI } from '../../services/api';
+import InteractiveChart from '../../components/InteractiveChart';
 import { submitPayoutRequest, getProviderPayoutRequests, fetchProviderPayoutRequestsAsync } from '../../services/payoutStore';
 import {
   TrendingUp, DollarSign, Calendar, Clock,
@@ -20,6 +21,7 @@ export default function MyEarnings() {
   const { user } = useAuth();
   const [period, setPeriod] = useState('month');
   const [earnings, setEarnings] = useState(null);
+  const [chartData, setChartData] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -77,10 +79,12 @@ export default function MyEarnings() {
         jobs: jobsCnt,
         avg: jobsCnt > 0 ? Math.round(totalAmt / jobsCnt) : 0,
       });
+      setChartData(Array.isArray(data.chartData) ? data.chartData : []);
       setPayments(Array.isArray(data.payments) ? data.payments : []);
     } catch (err) {
       console.warn('Could not load server earnings', err);
       setEarnings({ total: 0, jobs: 0, avg: 0 });
+      setChartData([]);
       setPayments([]);
     } finally {
       setLoading(false);
@@ -309,6 +313,21 @@ export default function MyEarnings() {
                   <p className="text-xl font-extrabold text-gray-900 mt-0.5">{jobsCount}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Dynamic Interactive Chart */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xs">
+              <InteractiveChart
+                data={chartData}
+                title="Earnings Trend & Performance"
+                subtitle={`Completed job revenues for ${PERIOD_OPTIONS.find(p => p.value === period)?.label || period}`}
+                valuePrefix="Rs. "
+                metricKey="value"
+                height={200}
+                defaultChartType="bar"
+                showControls={true}
+                className="!p-0 !border-0 !shadow-none"
+              />
             </div>
 
             {/* Average Job Income Banner */}

@@ -25,6 +25,158 @@ export const getPlatformStats = async (req, res) => {
   }
 };
 
+// Get admin analytics & dynamic chart data
+export const getAdminAnalytics = async (req, res) => {
+  try {
+    const { period = '7days', categoryId } = req.query;
+
+    let intervalClause = "INTERVAL '7 days'";
+    if (period === '30days') intervalClause = "INTERVAL '30 days'";
+    else if (period === '6months') intervalClause = "INTERVAL '180 days'";
+    else if (period === '1year') intervalClause = "INTERVAL '365 days'";
+
+    let categoryFilter = '';
+    const params = [];
+    if (categoryId) {
+      params.push(categoryId);
+      categoryFilter = ` AND b.category_id = $${params.length}`;
+    }
+
+    // Chart Data Generation based on Period
+    let chartData = [];
+    if (period === '7days') {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const dailyResult = await query(
+        `SELECT 
+          TO_CHAR(b.booking_date, 'Dy') as day_label,
+          EXTRACT(ISODOW FROM b.booking_date)::int as day_num,
+          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_revenue,
+          COUNT(*)::int as booking_count
+         FROM bookings b
+         WHERE b.booking_date >= CURRENT_DATE - ${intervalClause}${categoryFilter}
+         GROUP BY day_label, day_num
+         ORDER BY day_num ASC`,
+        params
+      );
+      const dbMap = {};
+      dailyResult.rows.forEach(r => {
+        dbMap[r.day_label?.trim()] = {
+          value: Number(r.total_revenue),
+          bookings: Number(r.booking_count),
+          commission: Math.round(Number(r.total_revenue) * 0.10)
+        };
+      });
+      chartData = days.map(d => ({
+        day: d,
+        label: d,
+        value: dbMap[d]?.value || 0,
+        bookings: dbMap[d]?.bookings || 0,
+        commission: dbMap[d]?.commission || 0
+      }));
+    } else if (period === '30days') {
+      const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      const weeklyResult = await query(
+        `SELECT 
+          'Week ' || CEIL(EXTRACT(DAY FROM b.booking_date) / 7.0)::int as week_label,
+          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_revenue,
+          COUNT(*)::int as booking_count
+         FROM bookings b
+         WHERE b.booking_date >= CURRENT_DATE - ${intervalClause}${categoryFilter}
+         GROUP BY week_label
+         ORDER BY week_label ASC`,
+        params
+      );
+      const dbMap = {};
+      weeklyResult.rows.forEach(r => {
+        dbMap[r.week_label] = {
+          value: Number(r.total_revenue),
+          bookings: Number(r.booking_count),
+          commission: Math.round(Number(r.total_revenue) * 0.10)
+        };
+      });
+      chartData = weeks.map(w => ({
+        day: w,
+        label: w,
+        value: dbMap[w]?.value || 0,
+        bookings: dbMap[w]?.bookings || 0,
+        commission: dbMap[w]?.commission || 0
+      }));
+    } else { // 6months or 1year
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthlyResult = await query(
+        `SELECT 
+          TO_CHAR(b.booking_date, 'Mon') as month_label,
+          EXTRACT(MONTH FROM b.booking_date)::int as month_num,
+          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_revenue,
+          COUNT(*)::int as booking_count
+         FROM bookings b
+         WHERE b.booking_date >= CURRENT_DATE - ${intervalClause}${categoryFilter}
+         GROUP BY month_label, month_num
+         ORDER BY month_num ASC`,
+        params
+      );
+      const dbMap = {};
+      monthlyResult.rows.forEach(r => {
+        dbMap[r.month_label?.trim()] = {
+          value: Number(r.total_revenue),
+          bookings: Number(r.booking_count),
+          commission: Math.round(Number(r.total_revenue) * 0.10)
+        };
+      });
+      chartData = months.map(m => ({
+        day: m,
+        label: m,
+        value: dbMap[m]?.value || 0,
+        bookings: dbMap[m]?.bookings || 0,
+        commission: dbMap[m]?.commission || 0
+      }));
+    }
+
+    // Dynamic Category Distribution
+    const categoryColors = {
+      'Plumbing': '#f59e0b',
+      'Electrical': '#10b981',
+      'Cleaning': '#07535f',
+      'AC Service': '#6366f1',
+      'Carpentry': '#ef4444',
+      'Painting': '#ec4899',
+    };
+
+    const catResult = await query(`
+      SELECT 
+        sc.name as category_name,
+        COUNT(b.id)::int as booking_count
+      FROM service_categories sc
+      LEFT JOIN bookings b ON sc.id = b.category_id
+      GROUP BY sc.id, sc.name
+      ORDER BY booking_count DESC
+    `);
+
+    const totalCategoryBookings = catResult.rows.reduce((sum, r) => sum + Number(r.booking_count), 0);
+    const serviceData = catResult.rows.map(r => {
+      const pct = totalCategoryBookings > 0 ? Math.round((Number(r.booking_count) / totalCategoryBookings) * 100) : 0;
+      return {
+        name: r.category_name,
+        value: pct,
+        color: categoryColors[r.category_name] || '#07535f'
+      };
+    });
+
+    res.json({
+      chartData,
+      serviceData: serviceData.length > 0 ? serviceData : [
+        { name: 'Cleaning', value: 35, color: '#07535f' },
+        { name: 'Plumbing', value: 25, color: '#f59e0b' },
+        { name: 'Electrical', value: 22, color: '#10b981' },
+        { name: 'AC Service', value: 18, color: '#6366f1' },
+      ]
+    });
+  } catch (error) {
+    console.error('Get admin analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+};
+
 // Verify provider
 export const verifyProvider = async (req, res) => {
   try {

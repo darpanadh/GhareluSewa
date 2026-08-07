@@ -123,46 +123,119 @@ export const toggleAvailability = async (req, res) => {
   }
 };
 
-// Get provider earnings/stats
+// Get provider earnings/stats with dynamic chart data
 export const getProviderEarnings = async (req, res) => {
   try {
-    const { start_date, end_date } = req.query;
+    const { period = 'month', start_date, end_date } = req.query;
 
-    let sql = `
-      SELECT 
+    let intervalClause = "INTERVAL '30 days'";
+    if (period === 'week') intervalClause = "INTERVAL '7 days'";
+    else if (period === 'year') intervalClause = "INTERVAL '365 days'";
+    else if (period === 'all') intervalClause = "INTERVAL '50 years'";
+
+    // Summary stats
+    const statsResult = await query(
+      `SELECT 
         COUNT(*)::int as total_bookings,
         COALESCE(SUM(CASE WHEN b.status = 'completed' THEN 1 ELSE 0 END), 0)::int as completed_bookings,
         COALESCE(SUM(CASE WHEN b.status = 'in_progress' THEN 1 ELSE 0 END), 0)::int as active_bookings,
         COALESCE(SUM(CASE WHEN b.status = 'cancelled' THEN 1 ELSE 0 END), 0)::int as cancelled_bookings,
         COALESCE(SUM(CASE WHEN b.status = 'completed' THEN COALESCE(NULLIF(b.total_price, 0), NULLIF(pp.hourly_rate, 0), 650) ELSE 0 END), 0)::int as estimated_earnings
-      FROM bookings b
-      LEFT JOIN provider_profiles pp ON b.provider_id = pp.user_id
-      WHERE b.provider_id = $1
-    `;
+       FROM bookings b
+       LEFT JOIN provider_profiles pp ON b.provider_id = pp.user_id
+       WHERE b.provider_id = $1 AND b.created_at >= CURRENT_DATE - ${intervalClause}`,
+      [req.userId]
+    );
 
-    const params = [req.userId];
+    const row = statsResult.rows[0] || {};
+    const totalEarnings = Number(row.estimated_earnings || 0);
+    const completedJobs = Number(row.completed_bookings || 0);
 
-    if (start_date) {
-      sql += ` AND b.created_at >= $${params.length + 1}`;
-      params.push(start_date);
+    // Dynamic Chart Data Generation based on Period
+    let chartData = [];
+    if (period === 'week') {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const dailyResult = await query(
+        `SELECT 
+          TO_CHAR(b.booking_date, 'Dy') as day_label,
+          EXTRACT(ISODOW FROM b.booking_date)::int as day_num,
+          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_amount,
+          COUNT(*)::int as job_count
+         FROM bookings b
+         WHERE b.provider_id = $1 AND b.status = 'completed' AND b.booking_date >= CURRENT_DATE - INTERVAL '7 days'
+         GROUP BY day_label, day_num
+         ORDER BY day_num ASC`,
+        [req.userId]
+      );
+      const dbMap = {};
+      dailyResult.rows.forEach(r => {
+        dbMap[r.day_label?.trim()] = { value: Number(r.total_amount), jobs: Number(r.job_count) };
+      });
+      chartData = days.map(d => ({
+        day: d,
+        label: d,
+        value: dbMap[d]?.value || 0,
+        jobs: dbMap[d]?.jobs || 0
+      }));
+    } else if (period === 'month') {
+      const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+      const weeklyResult = await query(
+        `SELECT 
+          'Week ' || CEIL(EXTRACT(DAY FROM b.booking_date) / 7.0)::int as week_label,
+          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_amount,
+          COUNT(*)::int as job_count
+         FROM bookings b
+         WHERE b.provider_id = $1 AND b.status = 'completed' AND b.booking_date >= CURRENT_DATE - INTERVAL '30 days'
+         GROUP BY week_label
+         ORDER BY week_label ASC`,
+        [req.userId]
+      );
+      const dbMap = {};
+      weeklyResult.rows.forEach(r => {
+        dbMap[r.week_label] = { value: Number(r.total_amount), jobs: Number(r.job_count) };
+      });
+      chartData = weeks.map(w => ({
+        day: w,
+        label: w,
+        value: dbMap[w]?.value || 0,
+        jobs: dbMap[w]?.jobs || 0
+      }));
+    } else { // year or all
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthlyResult = await query(
+        `SELECT 
+          TO_CHAR(b.booking_date, 'Mon') as month_label,
+          EXTRACT(MONTH FROM b.booking_date)::int as month_num,
+          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_amount,
+          COUNT(*)::int as job_count
+         FROM bookings b
+         WHERE b.provider_id = $1 AND b.status = 'completed'
+         GROUP BY month_label, month_num
+         ORDER BY month_num ASC`,
+        [req.userId]
+      );
+      const dbMap = {};
+      monthlyResult.rows.forEach(r => {
+        dbMap[r.month_label?.trim()] = { value: Number(r.total_amount), jobs: Number(r.job_count) };
+      });
+      chartData = months.map(m => ({
+        day: m,
+        label: m,
+        value: dbMap[m]?.value || 0,
+        jobs: dbMap[m]?.jobs || 0
+      }));
     }
-
-    if (end_date) {
-      sql += ` AND b.created_at <= $${params.length + 1}`;
-      params.push(end_date);
-    }
-
-    const result = await query(sql, params);
-    const row = result.rows[0] || {};
 
     res.json({
       total_bookings: Number(row.total_bookings || 0),
-      completed_bookings: Number(row.completed_bookings || 0),
+      completed_bookings: completedJobs,
       active_bookings: Number(row.active_bookings || 0),
       cancelled_bookings: Number(row.cancelled_bookings || 0),
-      estimated_earnings: Number(row.estimated_earnings || 0),
-      total: Number(row.estimated_earnings || 0),
-      jobs: Number(row.completed_bookings || 0),
+      estimated_earnings: totalEarnings,
+      total: totalEarnings,
+      jobs: completedJobs,
+      avg: completedJobs > 0 ? Math.round(totalEarnings / completedJobs) : 0,
+      chartData,
       payments: []
     });
   } catch (error) {

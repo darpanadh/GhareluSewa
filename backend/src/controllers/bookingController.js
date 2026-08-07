@@ -281,12 +281,15 @@ export const createEmergencyBooking = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Get all available providers in the ward
+    // Get all available providers in the ward or covering whole city
+    const cityMatch = ward.match(/^(Kathmandu|Pokhara|Bharatpur)/i);
+    const cityName = cityMatch ? cityMatch[1] : ward.split(' ')[0];
+
     const providersResult = await query(
       `SELECT u.id FROM users u
        JOIN provider_profiles pp ON u.id = pp.user_id
-       WHERE u.ward = $1 AND pp.category_id = $2 AND u.is_verified = TRUE AND pp.availability = TRUE`,
-      [ward, category_id]
+       WHERE (u.ward = $1 OR u.ward ILIKE $2) AND pp.category_id = $3 AND u.is_verified = TRUE AND pp.availability = TRUE`,
+      [ward, `${cityName}%Whole City%`, category_id]
     );
 
     if (providersResult.rows.length === 0) {

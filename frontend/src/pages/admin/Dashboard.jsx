@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../../services/api';
+import InteractiveChart from '../../components/InteractiveChart';
 import {
   Users, Calendar, Shield, ShieldCheck, CreditCard,
   RefreshCw, Check, X, AlertCircle, ArrowUpRight,
@@ -8,45 +9,6 @@ import {
   CheckCircle, XCircle, Award, Star
 } from 'lucide-react';
 import { format } from 'date-fns';
-
-// ── Bar Chart (SVG) ──────────────────────────────────────────────────────
-function BarChart({ data }) {
-  const max = Math.max(...data.map(d => d.value), 1);
-  const W = 500, H = 180, PAD = { t: 10, b: 30, l: 40, r: 10 };
-  const bW = (W - PAD.l - PAD.r) / data.length * 0.6;
-  const gap = (W - PAD.l - PAD.r) / data.length;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-48">
-      {/* Gridlines */}
-      {[0.25, 0.5, 0.75, 1].map(f => {
-        const y = PAD.t + (1 - f) * (H - PAD.t - PAD.b);
-        return (
-          <g key={f}>
-            <line x1={PAD.l} x2={W - PAD.r} y1={y} y2={y} stroke="#e5e7eb" strokeDasharray="3 3" />
-            <text x={PAD.l - 4} y={y + 3} textAnchor="end" fontSize="8" fill="#9ca3af">
-              {Math.round(max * f / 1000)}k
-            </text>
-          </g>
-        );
-      })}
-      {/* Bars */}
-      {data.map((d, i) => {
-        const bH = (d.value / max) * (H - PAD.t - PAD.b);
-        const x = PAD.l + i * gap + (gap - bW) / 2;
-        const y = H - PAD.b - bH;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={bW} height={bH} rx="4" fill="#07535f" opacity="0.85" />
-            <text x={x + bW / 2} y={H - PAD.b + 14} textAnchor="middle" fontSize="8" fill="#6b7280">
-              {d.day}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function AdminDashboard() {
@@ -56,12 +18,30 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [actionMessage, setActionMessage] = useState(null);
+  const [adminChartPeriod, setAdminChartPeriod] = useState('7days');
+  const [adminChartData, setAdminChartData] = useState([]);
+  const [adminChartLoading, setAdminChartLoading] = useState(false);
 
   // Selected Provider Modal for detailed KYC inspection
   const [selectedProviderModal, setSelectedProviderModal] = useState(null);
 
+  const fetchAdminChart = async (periodVal = adminChartPeriod) => {
+    setAdminChartLoading(true);
+    try {
+      const res = await adminAPI.getAnalytics({ period: periodVal });
+      if (res.data && res.data.chartData) {
+        setAdminChartData(res.data.chartData);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch admin chart analytics', err);
+    } finally {
+      setAdminChartLoading(false);
+    }
+  };
+
   const loadData = () => {
     setLoading(true);
+    fetchAdminChart();
     Promise.allSettled([
       adminAPI.getPlatformStats(),
       adminAPI.getAllBookings({ limit: 8 }),
@@ -236,10 +216,51 @@ export default function AdminDashboard() {
         {activeTab === 'overview' && (
           <>
             {/* Charts row */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="font-bold text-gray-900 text-base mb-1">Revenue & Bookings Growth</h3>
-              <p className="text-xs text-teal-600 font-medium mb-4">Visualizing platform activity over the last 7 days.</p>
-              <BarChart data={revenueData} />
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Revenue & Bookings Analytics</h3>
+                  <p className="text-xs text-teal-600 font-medium">Real-time database metrics & total system revenue overview</p>
+                </div>
+                <div className="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl w-fit">
+                  {[
+                    { label: '7 Days', val: '7days' },
+                    { label: '30 Days', val: '30days' },
+                    { label: '6 Months', val: '6months' },
+                    { label: '1 Year', val: '1year' },
+                  ].map(p => (
+                    <button
+                      key={p.val}
+                      type="button"
+                      onClick={() => {
+                        setAdminChartPeriod(p.val);
+                        fetchAdminChart(p.val);
+                      }}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        adminChartPeriod === p.val
+                          ? 'bg-white text-[#07535f] shadow-xs'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`transition-opacity duration-300 ${adminChartLoading ? 'opacity-50' : 'opacity-100'}`}>
+                <InteractiveChart
+                  data={adminChartData}
+                  title=""
+                  subtitle={`Revenue and completed bookings stats for ${adminChartPeriod}`}
+                  valuePrefix="Rs. "
+                  metricKey="value"
+                  height={180}
+                  defaultChartType="bar"
+                  showControls={true}
+                  className="!p-0 !border-0 !shadow-none"
+                />
+              </div>
             </div>
 
             {/* Pending KYC */}

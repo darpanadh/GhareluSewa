@@ -1,5 +1,18 @@
-import { query, getPool } from '../config/database.js';
-import { sendNotification, notifyAllAdmins } from '../config/socketHelper.js';
+// List of profanity and inappropriate words to block/auto-delete
+const BAD_WORDS = [
+  'fuck', 'shit', 'asshole', 'bitch', 'bastard', 'cunt', 'dick', 'pussy',
+  'slut', 'whore', 'scam', 'fraud', 'idiot', 'stupid', 'dumb', 'bullshit',
+  'radi', 'khalasi', 'machikne', 'randi', 'muji', 'lado', 'chada', 'ghate'
+];
+
+export const containsBadWords = (text) => {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return BAD_WORDS.some(word => {
+    const regex = new RegExp(`\\b${word}\\b`, 'i');
+    return regex.test(lower) || lower.includes(word);
+  });
+};
 
 // Create review (Customer only)
 export const createReview = async (req, res) => {
@@ -15,6 +28,13 @@ export const createReview = async (req, res) => {
 
     if (rating < 1 || rating > 5) {
       return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+    }
+
+    // Check for inappropriate / bad language
+    if (comment && containsBadWords(comment)) {
+      return res.status(400).json({
+        error: 'Your review contains inappropriate or offensive language. Please keep reviews constructive and respectful.'
+      });
     }
 
     // Get booking details
@@ -49,7 +69,7 @@ export const createReview = async (req, res) => {
       return res.status(409).json({ error: 'Review already exists for this booking' });
     }
 
-    // Detect repeated customer: has this customer booked this provider before (other than current booking)?
+    // Detect repeated customer
     const repeatCheck = await query(
       `SELECT COUNT(*) as cnt FROM bookings
        WHERE customer_id = $1 AND provider_id = $2 AND id != $3 AND status = 'completed'`,
@@ -123,11 +143,28 @@ export const createReview = async (req, res) => {
   }
 };
 
-// Get reviews for provider
+// Get reviews for provider with sorting & rating filters
 export const getProviderReviews = async (req, res) => {
   try {
     const { providerId } = req.params;
-    const { limit = 20, offset = 0 } = req.query;
+    const { limit = 20, offset = 0, sortBy = 'newest', minRating } = req.query;
+
+    let orderByClause = 'r.created_at DESC';
+    if (sortBy === 'highest') {
+      orderByClause = 'r.rating DESC, r.created_at DESC';
+    } else if (sortBy === 'lowest') {
+      orderByClause = 'r.rating ASC, r.created_at DESC';
+    }
+
+    let filterClause = '';
+    const params = [providerId];
+
+    if (minRating && !isNaN(parseFloat(minRating))) {
+      params.push(parseFloat(minRating));
+      filterClause += ` AND r.rating >= $${params.length}`;
+    }
+
+    params.push(limit, offset);
 
     const result = await query(
       `SELECT r.id, r.booking_id, r.rating, r.comment, r.photo_url,
@@ -135,16 +172,60 @@ export const getProviderReviews = async (req, res) => {
               u.name as customer_name, u.avatar_url as customer_avatar
        FROM reviews r
        JOIN users u ON r.customer_id = u.id
-       WHERE r.provider_id = $1
-       ORDER BY r.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [providerId, limit, offset]
+       WHERE r.provider_id = $1${filterClause}
+       ORDER BY ${orderByClause}
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
     );
 
     res.json(result.rows);
   } catch (error) {
     console.error('Get reviews error:', error);
     res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+};
+
+// Delete abusive/bad word review (Admin or system moderation)
+export const deleteReview = async (req, res) => {
+  const pool = getPool();
+  let client;
+
+  try {
+    const { reviewId } = req.params;
+
+    const reviewRes = await query('SELECT provider_id FROM reviews WHERE id = $1', [reviewId]);
+    if (reviewRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+
+    const providerId = reviewRes.rows[0].provider_id;
+
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    await client.query('DELETE FROM reviews WHERE id = $1', [reviewId]);
+
+    // Recalculate provider average rating
+    const avgRating = await client.query(
+      `SELECT ROUND(AVG(rating)::numeric, 2) as avg_rating, COUNT(*) as total_reviews FROM reviews WHERE provider_id = $1`,
+      [providerId]
+    );
+
+    const ratingData = avgRating.rows[0];
+    await client.query(
+      `UPDATE provider_profiles SET rating_avg = COALESCE($1, 0), total_reviews = $2 WHERE user_id = $3`,
+      [ratingData.avg_rating || 0, ratingData.total_reviews || 0, providerId]
+    );
+
+    await client.query('COMMIT');
+
+    res.json({ message: 'Review removed and rating score updated successfully' });
+  } catch (error) {
+    if (client) await client.query('ROLLBACK');
+    console.error('Delete review error:', error);
+    res.status(500).json({ error: 'Failed to delete review' });
+  } finally {
+    if (client) client.release();
   }
 };
 

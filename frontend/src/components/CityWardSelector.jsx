@@ -88,8 +88,13 @@ export default function CityWardSelector({
             }`}
           >
             <option value="">
-              {!selectedCity ? 'Choose Ward' : 'Choose Ward'}
+              {!selectedCity ? 'Choose Ward / City Area' : 'Select Specific Ward or Whole City'}
             </option>
+            {selectedCity && (
+              <option value="Whole City" className="font-bold text-[#07535f]">
+                🌟 {selectedCity} - Whole City (All Wards / Workplace)
+              </option>
+            )}
             {activeCityData?.wards.map((w) => (
               <option key={w} value={w}>
                 {selectedCity} - {w}

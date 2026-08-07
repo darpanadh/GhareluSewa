@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI, paymentAPI } from '../../services/api';
+import InteractiveChart from '../../components/InteractiveChart';
 import {
   TrendingUp, Users, Calendar, DollarSign, Star,
   Shield, BarChart2, ArrowUp, ArrowDown, Loader,
@@ -54,9 +55,17 @@ export default function Analytics() {
     setLoading(true);
     setError('');
     try {
+      const backendPeriodMap = {
+        week: '7days',
+        month: '30days',
+        year: '1year',
+        all: '1year',
+      };
+      const apiPeriod = backendPeriodMap[period] || '30days';
+
       const [statsRes, analyticsRes, paymentsRes] = await Promise.allSettled([
         adminAPI.getPlatformStats(),
-        adminAPI.getAnalytics({ period }),
+        adminAPI.getAnalytics({ period: apiPeriod }),
         paymentAPI.getAllPayments({ limit: 10 }),
       ]);
 
@@ -205,19 +214,18 @@ export default function Analytics() {
 
       {/* Charts Row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-        {/* Bookings by Category */}
+        {/* Bookings by Category / Revenue & Bookings Chart */}
         <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #f1f5f9', padding: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-          <h3 style={{ fontWeight: 700, color: '#1e293b', marginBottom: '1.25rem', fontSize: '0.95rem' }}>
-            Bookings by Category
-          </h3>
-          {bookingsByCategory.length > 0 ? (
-            <MiniBar data={bookingsByCategory} color="#6366f1" labelKey="label" valueKey="value" />
-          ) : (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-              <BarChart2 style={{ width: 32, height: 32, margin: '0 auto 0.75rem', opacity: 0.3 }} />
-              <p style={{ fontSize: '0.875rem' }}>No booking data yet</p>
-            </div>
-          )}
+          <InteractiveChart
+            data={analytics?.chartData || []}
+            title="Revenue & Bookings Trend"
+            subtitle={`Real-time platform activity for ${period}`}
+            valuePrefix="Rs. "
+            metricKey="value"
+            height={180}
+            defaultChartType="bar"
+            showControls={true}
+          />
         </div>
 
         {/* Payment Summary */}

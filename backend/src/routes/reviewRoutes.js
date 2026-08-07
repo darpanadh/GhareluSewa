@@ -8,5 +8,6 @@ router.post('/', verifyAuth, authorize(['customer']), reviewController.createRev
 router.get('/provider/:providerId', reviewController.getProviderReviews);
 router.get('/booking/:bookingId', reviewController.getBookingReview);
 router.get('/stats/:providerId', reviewController.getProviderStats);
+router.delete('/:reviewId', verifyAuth, authorize(['admin']), reviewController.deleteReview);
 
 export default router;

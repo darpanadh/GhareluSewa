@@ -64,7 +64,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={isAuthenticated && user?.role !== 'customer' ? <Navigate to={getDashboardPath()} replace /> : <HomePage />} />
       <Route path="/login" element={isAuthenticated ? <Navigate to={getDashboardPath()} replace /> : <LoginPage />} />
       <Route path="/register" element={isAuthenticated ? <Navigate to={getDashboardPath()} replace /> : <RegisterPage />} />
       <Route path="/services" element={<BrowseServices />} />

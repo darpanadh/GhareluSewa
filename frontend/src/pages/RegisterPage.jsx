@@ -163,12 +163,19 @@ export default function RegisterPage() {
             <Input label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Enter your email" required />
             <Input label="Phone Number" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="98XXXXXXXX" />
 
-            <CityWardSelector
-              value={formData.ward}
-              onChange={(w) => setFormData(prev => ({ ...prev, ward: w }))}
-              required
-              layout="row"
-            />
+            <div>
+              {formData.role === 'provider' && (
+                <p className="text-xs font-semibold text-[#07535f] mb-1">
+                  📍 Workplace / Coverage Area (Select Specific Ward or Whole City):
+                </p>
+              )}
+              <CityWardSelector
+                value={formData.ward}
+                onChange={(w) => setFormData(prev => ({ ...prev, ward: w }))}
+                required
+                layout="row"
+              />
+            </div>
 
             <Input label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="At least 6 characters" required />
             <Input label="Confirm Password" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm your password" required />

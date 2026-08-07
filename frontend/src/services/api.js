@@ -70,6 +70,7 @@ export const reviewAPI = {
   getProviderReviews: (providerId, params) => api.get(`/reviews/provider/${providerId}`, { params }),
   getBookingReview: (bookingId) => api.get(`/reviews/booking/${bookingId}`),
   getProviderStats: (providerId) => api.get(`/reviews/stats/${providerId}`),
+  deleteReview: (reviewId) => api.delete(`/reviews/${reviewId}`),
 };
 
 // Message endpoints

@@ -13,7 +13,7 @@ router.get('/providers/all', adminController.getAllProviders);
 router.patch('/providers/:userId/verify', adminController.verifyProvider);
 router.patch('/providers/:userId/reject', adminController.rejectProvider);
 router.get('/bookings', adminController.getAllBookings);
-router.get('/analytics', adminController.getAnalytics);
+router.get('/analytics', adminController.getAdminAnalytics);
 router.get('/users', adminController.getAllUsers);
 router.patch('/users/:userId/deactivate', adminController.deactivateUser);
 router.patch('/users/:userId/activate', adminController.activateUser);

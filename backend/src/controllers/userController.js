@@ -82,8 +82,10 @@ export const getAllProviders = async (req, res) => {
     }
 
     if (ward) {
-      sql += ` AND u.ward = $${params.length + 1}`;
-      params.push(ward);
+      const cityMatch = ward.match(/^(Kathmandu|Pokhara|Bharatpur)/i);
+      const cityName = cityMatch ? cityMatch[1] : ward.split(' ')[0];
+      sql += ` AND (u.ward = $${params.length + 1} OR u.ward ILIKE $${params.length + 2})`;
+      params.push(ward, `${cityName}%Whole City%`);
     }
 
     if (rating_min) {
@@ -105,16 +107,19 @@ export const getAllProviders = async (req, res) => {
 export const getProvidersByWard = async (req, res) => {
   try {
     const { ward, category_id } = req.params;
+    const cityMatch = ward.match(/^(Kathmandu|Pokhara|Bharatpur)/i);
+    const cityName = cityMatch ? cityMatch[1] : ward.split(' ')[0];
 
-    const result = await query(
-      `SELECT u.id, u.name, u.phone, u.avatar_url, pp.hourly_rate, pp.rating_avg, pp.availability
+    const sql = `SELECT u.id, u.name, u.phone, u.avatar_url, pp.hourly_rate, pp.rating_avg, pp.availability
        FROM users u
        JOIN provider_profiles pp ON u.id = pp.user_id
-       WHERE u.ward = $1 AND u.is_active = TRUE AND u.is_verified = TRUE AND pp.availability = TRUE
-       ${category_id ? 'AND pp.category_id = $2' : ''}
-       ORDER BY pp.rating_avg DESC`,
-      category_id ? [ward, category_id] : [ward]
-    );
+       WHERE (u.ward = $1 OR u.ward ILIKE $2) AND u.is_active = TRUE AND u.is_verified = TRUE AND pp.availability = TRUE
+       ${category_id ? 'AND pp.category_id = $3' : ''}
+       ORDER BY pp.rating_avg DESC`;
+
+    const params = category_id ? [ward, `${cityName}%Whole City%`, category_id] : [ward, `${cityName}%Whole City%`];
+
+    const result = await query(sql, params);
 
     res.json(result.rows);
   } catch (error) {

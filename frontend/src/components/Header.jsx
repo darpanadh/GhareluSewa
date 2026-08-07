@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { notificationAPI } from '../services/api';
 import { onNotification } from '../services/socket';
 import { ToastContainer } from './ToastContainer';
+import EditProfileModal from './EditProfileModal';
 
 export const Header = () => {
   const { user, logout, isAuthenticated, login } = useAuth();
@@ -15,6 +16,20 @@ export const Header = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const notificationRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -266,7 +281,7 @@ export const Header = () => {
               {isAuthenticated ? (
                 <div className="flex items-center gap-3">
                   {/* Notifications - Only shown when logged in */}
-                  <div className="relative">
+                  <div className="relative" ref={notificationRef}>
                     <button
                       onClick={() => setShowNotifications(!showNotifications)}
                       className="relative p-2 text-gray-500 hover:text-gray-800 transition-colors rounded-full hover:bg-gray-100"
@@ -313,20 +328,29 @@ export const Header = () => {
                   </div>
 
                   <div className="flex items-center gap-2 border-l border-gray-100 pl-3">
-                    <img
-                      src={user?.avatar_url || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150"}
-                      alt={user?.name || 'User'}
-                      className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-100"
-                    />
-                    <div className="hidden lg:flex flex-col min-w-0">
-                      <span className="text-xs font-bold text-gray-800 truncate max-w-[90px]">{user?.name}</span>
-                      <Link
-                        to={getRolePath()}
-                        className="text-[10px] text-[#07535f] font-semibold hover:underline"
-                      >
-                        Dashboard
-                      </Link>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="group flex items-center gap-2 text-left p-1 rounded-xl hover:bg-gray-100/80 transition-all cursor-pointer relative"
+                      title="Click to edit profile & photo"
+                    >
+                      <div className="relative">
+                        <img
+                          src={user?.avatar_url || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150"}
+                          alt={user?.name || 'User'}
+                          className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-100 group-hover:ring-[#07535f] transition-all"
+                        />
+                        <span className="absolute -bottom-0.5 -right-0.5 bg-[#07535f] text-white p-0.5 rounded-full text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">
+                          ✏️
+                        </span>
+                      </div>
+                      <div className="hidden lg:flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-gray-800 truncate max-w-[90px] group-hover:text-[#07535f] transition-colors">{user?.name}</span>
+                        <span className="text-[10px] text-[#07535f] font-semibold hover:underline">
+                          Edit Profile
+                        </span>
+                      </div>
+                    </button>
                     <button
                       onClick={() => { logout(); navigate('/login'); }}
                       className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-all"
@@ -496,6 +520,7 @@ export const Header = () => {
           )}
         </div>
       </header>
+      <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
       <ToastContainer ref={toastRef} />
     </>
   );
