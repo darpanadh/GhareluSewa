@@ -497,3 +497,93 @@ export const updatePayoutStatus = async (req, res) => {
   }
 };
 
+// Get ALL bookings with full details for export/reports
+export const getBookingsExport = async (req, res) => {
+  try {
+    const { status, from, to, search } = req.query;
+
+    let sql = `
+      SELECT 
+        b.id as booking_id,
+        b.status,
+        b.booking_date,
+        b.created_at as booked_at,
+        b.updated_at as last_updated,
+        b.location,
+        b.description,
+        b.is_emergency,
+        b.total_price,
+        sc.name as service_category,
+        cu.name as customer_name,
+        cu.phone as customer_phone,
+        cu.email as customer_email,
+        cu.ward as customer_ward,
+        pu.name as provider_name,
+        pu.phone as provider_phone,
+        pu.email as provider_email,
+        pu.ward as provider_ward,
+        pay.status as payment_status,
+        pay.amount as amount_paid,
+        pay.commission as platform_commission,
+        pay.payment_method,
+        pay.transaction_id,
+        pay.paid_at,
+        r.rating as review_rating,
+        r.comment as review_comment
+      FROM bookings b
+      JOIN users cu ON b.customer_id = cu.id
+      JOIN users pu ON b.provider_id = pu.id
+      JOIN service_categories sc ON b.category_id = sc.id
+      LEFT JOIN payments pay ON b.id = pay.booking_id
+      LEFT JOIN reviews r ON b.id = r.booking_id
+      WHERE 1=1
+    `;
+
+    const params = [];
+
+    if (status) {
+      params.push(status);
+      sql += ` AND b.status = $${params.length}`;
+    }
+
+    if (from) {
+      params.push(from);
+      sql += ` AND b.booking_date >= $${params.length}::date`;
+    }
+
+    if (to) {
+      params.push(to);
+      sql += ` AND b.booking_date <= ($${params.length}::date + INTERVAL '1 day')`;
+    }
+
+    if (search) {
+      params.push(`%${search}%`);
+      sql += ` AND (cu.name ILIKE $${params.length} OR pu.name ILIKE $${params.length} OR sc.name ILIKE $${params.length} OR b.location ILIKE $${params.length})`;
+    }
+
+    sql += ` ORDER BY b.created_at DESC LIMIT 5000`;
+
+    const result = await query(sql, params);
+
+    // Summary stats
+    const totalAmount = result.rows.reduce((sum, r) => sum + Number(r.amount_paid || r.total_price || 0), 0);
+    const totalCommission = result.rows.reduce((sum, r) => sum + Number(r.platform_commission || 0), 0);
+    const avgRating = result.rows.filter(r => r.review_rating).reduce((sum, r, _, arr) => sum + Number(r.review_rating) / arr.length, 0);
+
+    res.json({
+      bookings: result.rows,
+      summary: {
+        total_records: result.rows.length,
+        total_amount: Math.round(totalAmount),
+        total_commission: Math.round(totalCommission),
+        avg_rating: Math.round(avgRating * 100) / 100,
+        completed: result.rows.filter(r => r.status === 'completed').length,
+        pending: result.rows.filter(r => r.status === 'pending').length,
+        cancelled: result.rows.filter(r => r.status === 'cancelled').length,
+      }
+    });
+  } catch (error) {
+    console.error('Get bookings export error:', error);
+    res.status(500).json({ error: 'Failed to fetch export data' });
+  }
+};

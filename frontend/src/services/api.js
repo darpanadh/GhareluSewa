@@ -108,6 +108,7 @@ export const adminAPI = {
   verifyProvider: (userId) => api.patch(`/admin/providers/${userId}/verify`),
   rejectProvider: (userId, data) => api.patch(`/admin/providers/${userId}/reject`, data),
   getAllBookings: (params) => api.get('/admin/bookings', { params }),
+  getBookingsExport: (params) => api.get('/admin/bookings/export', { params }),
   getAnalytics: (params) => api.get('/admin/analytics', { params }),
   getAllUsers: (params) => api.get('/admin/users', { params }),
   deactivateUser: (userId, data) => api.patch(`/admin/users/${userId}/deactivate`, data),
