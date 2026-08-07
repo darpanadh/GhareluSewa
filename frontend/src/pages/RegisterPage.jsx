@@ -540,39 +540,7 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                {/* Skill Badges */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-2">
-                    Skill Badges <span className="text-gray-400 font-normal">(select all that apply)</span>
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SKILL_OPTIONS.map((skill) => (
-                      <button
-                        key={skill}
-                        type="button"
-                        onClick={() => toggleSkill(skill)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
-                          skillBadges.includes(skill)
-                            ? 'bg-[#07535f] text-white border-[#07535f]'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#07535f]'
-                        }`}
-                      >
-                        {skillBadges.includes(skill) ? (
-                          <CheckSquare className="w-3 h-3" />
-                        ) : (
-                          <Square className="w-3 h-3" />
-                        )}
-                        {skill}
-                      </button>
-                    ))}
-                  </div>
-                  {skillBadges.length > 0 && (
-                    <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600 font-bold">
-                      <BadgeCheck className="w-4 h-4" />
-                      {skillBadges.length} skill{skillBadges.length > 1 ? 's' : ''} selected
-                    </div>
-                  )}
-                </div>
+
 
                 {/* Background Check Consent */}
                 <div
