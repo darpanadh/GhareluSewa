@@ -64,7 +64,7 @@ export default function ResidenceSelector({
         {showLabels && (
           <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
             <Building2 className="w-3.5 h-3.5 text-[#07535f]" />
-            Select Province *
+            Select Province
           </label>
         )}
         <div className="relative">
@@ -89,7 +89,7 @@ export default function ResidenceSelector({
         {showLabels && (
           <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-[#07535f]" />
-            Select District *
+            Select District
           </label>
         )}
         <div className="relative">

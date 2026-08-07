@@ -9,35 +9,12 @@ import {
   AlertCircle,
   ShieldCheck,
   Upload,
-  CheckSquare,
-  Square,
-  BadgeCheck,
+  CheckCircle,
   X,
   ArrowRight,
   ArrowLeft,
   Check,
 } from 'lucide-react';
-
-const SKILL_OPTIONS = [
-  'Pipe Repair',
-  'Drain Cleaning',
-  'Water Heater',
-  'Tap Installation',
-  'Wiring',
-  'Switch Installation',
-  'Appliance Repair',
-  'Power Backup',
-  'Deep Cleaning',
-  'Kitchen Cleaning',
-  'Bathroom Sanitization',
-  'AC Installation',
-  'AC Gas Refill',
-  'AC Filter Cleaning',
-  'Carpentry',
-  'Painting',
-  'Tiling',
-  'General Handyman',
-];
 
 export default function RegisterPage() {
   const [searchParams] = useSearchParams();
@@ -60,7 +37,6 @@ export default function RegisterPage() {
 
   // Step state for Service Provider multi-step form (1: Basic & Residence, 2: Trust & KYC)
   const [step, setStep] = useState(1);
-  const [skillBadges, setSkillBadges] = useState([]);
   const [bgCheckConsent, setBgCheckConsent] = useState(false);
   const [idImagePreview, setIdImagePreview] = useState(null);
   const [idImageBase64, setIdImageBase64] = useState('');
@@ -85,12 +61,6 @@ export default function RegisterPage() {
     setFormData((prev) => ({ ...prev, role: selectedRole }));
     setStep(1);
     setError('');
-  };
-
-  const toggleSkill = (skill) => {
-    setSkillBadges((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
-    );
   };
 
   const handleIdImageChange = (e) => {
@@ -131,47 +101,53 @@ export default function RegisterPage() {
     reader.readAsDataURL(file);
   };
 
-  // Step 1 Validation before moving to Step 2
+  // Strict Validation for Step 1 before proceeding
   const handleNextStep = () => {
     setError('');
 
-    // Full Name Validation
+    // Full Name
+    if (!formData.name.trim()) {
+      return setError('Please enter your full name');
+    }
     const nameParts = formData.name.trim().split(/\s+/);
     if (nameParts.length < 2 || nameParts.some((part) => part.length < 2)) {
-      return setError('Please enter your full name (both first & last name)');
+      return setError('Please enter both your first and last name (e.g. Ram Sharma)');
     }
 
-    // Email Validation
+    // Email Address
     if (!formData.email.trim()) {
-      return setError('Email address is required');
+      return setError('Please enter your email address');
     }
 
-    // Phone Number Validation (Compulsory)
+    // Phone Number
     const phoneClean = formData.phone.trim();
     if (!phoneClean) {
-      return setError('Phone number is compulsory for registration');
+      return setError('Please enter your 10-digit phone number');
     }
     if (!/^\d{10}$/.test(phoneClean)) {
       return setError('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)');
     }
 
-    // Residence Location Validation (For Provider)
-    if (formData.role === 'provider' && !formData.ward) {
-      return setError('Please select your Residence Province and District');
+    // Residence Location (Required for Provider)
+    if (formData.role === 'provider' && (!formData.ward || !formData.ward.includes(','))) {
+      return setError('Please select both your Residence Province and District');
     }
 
-    // Password Validation
+    // Password
     if (!formData.password) {
-      return setError('Password is required');
+      return setError('Please enter a password');
     }
     if (formData.password.length < 6) {
       return setError('Password must be at least 6 characters long');
     }
+    if (!formData.confirmPassword) {
+      return setError('Please confirm your password');
+    }
     if (formData.password !== formData.confirmPassword) {
-      return setError('Passwords do not match');
+      return setError('Passwords do not match. Please re-enter your password');
     }
 
-    // Move to Step 2
+    // All clear -> Proceed to Step 2
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -180,35 +156,49 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
-    // If Customer: Validate Step 1 fields before submit
+    // If Customer: Validate Step 1 fields
     if (formData.role === 'customer') {
+      if (!formData.name.trim()) return setError('Please enter your full name');
       const nameParts = formData.name.trim().split(/\s+/);
       if (nameParts.length < 2 || nameParts.some((part) => part.length < 2)) {
-        return setError('Please enter your full name');
+        return setError('Please enter both your first and last name (e.g. Ram Sharma)');
       }
 
+      if (!formData.email.trim()) return setError('Please enter your email address');
+
       const phoneClean = formData.phone.trim();
-      if (!phoneClean) {
-        return setError('Phone number is compulsory for registration');
-      }
+      if (!phoneClean) return setError('Please enter your 10-digit phone number');
       if (!/^\d{10}$/.test(phoneClean)) {
         return setError('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)');
       }
 
+      if (!formData.password) return setError('Please enter a password');
       if (formData.password.length < 6) return setError('Password must be at least 6 characters');
       if (formData.password !== formData.confirmPassword) return setError('Passwords do not match');
     }
 
     // If Provider Step 2 Validation:
     if (formData.role === 'provider') {
+      if (!formData.categoryId) {
+        return setError('Please select your primary service category');
+      }
+      if (!formData.experience || Number(formData.experience) < 0) {
+        return setError('Please enter your years of experience');
+      }
+      if (!formData.hourlyRate || Number(formData.hourlyRate) <= 0) {
+        return setError('Please enter your expected hourly rate in Rs.');
+      }
+      if (!formData.bio.trim()) {
+        return setError('Please provide a short description of your qualifications / bio');
+      }
       if (!formData.citizenshipNo.trim()) {
-        return setError('Citizenship / License Number is required for KYC');
+        return setError('Please enter your Citizenship or License Number for KYC verification');
       }
       if (!idImageBase64) {
-        return setError('ID Document Photo is compulsory. Please upload a clear photo of your Citizenship/License ID');
+        return setError('Please upload a clear photo of your ID document (Citizenship / License)');
       }
       if (!bgCheckConsent) {
-        return setError('Please consent to the background check to register as a provider');
+        return setError('Please check the box consenting to the background check before submitting');
       }
     }
 
@@ -217,7 +207,6 @@ export default function RegisterPage() {
       const { confirmPassword, ...submitData } = formData;
       const result = await register({
         ...submitData,
-        skill_badges: skillBadges.join(','),
         citizenship_image_url: idImageBase64 || '',
       });
       if (result.success) {
@@ -246,7 +235,7 @@ export default function RegisterPage() {
           <p className="text-gray-500 mt-1 text-xs sm:text-sm">
             {formData.role === 'provider'
               ? 'Complete registration & KYC to start offering home services'
-              : 'Create your customer account in 30 seconds'}
+              : 'Create your customer account in seconds'}
           </p>
         </div>
 
@@ -295,8 +284,8 @@ export default function RegisterPage() {
         <Card className="w-full">
           {error && (
             <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl flex gap-3 animate-in fade-in duration-150">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <p className="text-xs sm:text-sm font-semibold text-red-700">{error}</p>
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs sm:text-sm font-semibold text-red-700 leading-snug">{error}</p>
             </div>
           )}
 
@@ -323,7 +312,7 @@ export default function RegisterPage() {
             {(formData.role === 'customer' || step === 1) && (
               <div className="space-y-4 animate-in fade-in duration-200">
                 <Input
-                  label="Full Name *"
+                  label="Full Name"
                   type="text"
                   name="name"
                   value={formData.name}
@@ -332,16 +321,16 @@ export default function RegisterPage() {
                   required
                 />
                 <Input
-                  label="Email Address *"
+                  label="Email Address"
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="Enter your email"
+                  placeholder="Enter your email address"
                   required
                 />
                 <Input
-                  label="Phone Number *"
+                  label="Phone Number"
                   type="tel"
                   name="phone"
                   value={formData.phone}
@@ -354,7 +343,7 @@ export default function RegisterPage() {
                 {formData.role === 'provider' && (
                   <div>
                     <p className="text-xs font-bold text-[#07535f] mb-1.5 flex items-center gap-1">
-                      📍 Enter your Residence Location (Province & District) *
+                      📍 Residence Location (Province & District)
                     </p>
                     <ResidenceSelector
                       value={formData.ward}
@@ -368,7 +357,7 @@ export default function RegisterPage() {
                 )}
 
                 <Input
-                  label="Password *"
+                  label="Password"
                   type="password"
                   name="password"
                   value={formData.password}
@@ -377,7 +366,7 @@ export default function RegisterPage() {
                   required
                 />
                 <Input
-                  label="Confirm Password *"
+                  label="Confirm Password"
                   type="password"
                   name="confirmPassword"
                   value={formData.confirmPassword}
@@ -423,7 +412,7 @@ export default function RegisterPage() {
                 {/* Primary Service Category */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    Primary Service Category *
+                    Primary Service Category
                   </label>
                   <select
                     name="categoryId"
@@ -442,7 +431,7 @@ export default function RegisterPage() {
                 {/* Experience & Hourly Rate */}
                 <div className="grid grid-cols-2 gap-3">
                   <Input
-                    label="Years of Experience *"
+                    label="Years of Experience"
                     type="number"
                     name="experience"
                     value={formData.experience}
@@ -452,7 +441,7 @@ export default function RegisterPage() {
                     required
                   />
                   <Input
-                    label="Hourly Rate (Rs.) *"
+                    label="Hourly Rate (Rs.)"
                     type="number"
                     name="hourlyRate"
                     value={formData.hourlyRate}
@@ -466,7 +455,7 @@ export default function RegisterPage() {
                 {/* Bio / Qualifications */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    Bio / Qualifications *
+                    Bio / Qualifications
                   </label>
                   <textarea
                     name="bio"
@@ -480,7 +469,7 @@ export default function RegisterPage() {
 
                 {/* Citizenship / License Number */}
                 <Input
-                  label="Citizenship / License Number *"
+                  label="Citizenship / License Number"
                   type="text"
                   name="citizenshipNo"
                   value={formData.citizenshipNo}
@@ -489,12 +478,10 @@ export default function RegisterPage() {
                   required
                 />
 
-                {/* Compulsory ID Document Upload */}
+                {/* ID Document Upload */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
-                    <span>
-                      ID Document Photo <span className="text-red-500 font-extrabold">*</span>
-                    </span>
+                    <span>ID Document Photo</span>
                     <span className="text-[10px] text-gray-400 font-normal">Citizenship / License</span>
                   </label>
                   {idImagePreview ? (
@@ -527,8 +514,8 @@ export default function RegisterPage() {
                       <div className="w-10 h-10 rounded-full bg-[#07535f]/10 text-[#07535f] flex items-center justify-center">
                         <Upload className="w-5 h-5" />
                       </div>
-                      <span className="text-xs font-extrabold">Click to Upload ID Document Photo *</span>
-                      <span className="text-[10px] text-gray-400">JPG, PNG, WebP up to 5MB (Required)</span>
+                      <span className="text-xs font-extrabold">Click to Upload ID Document Photo</span>
+                      <span className="text-[10px] text-gray-400">JPG, PNG, WebP up to 5MB</span>
                     </button>
                   )}
                   <input
@@ -539,8 +526,6 @@ export default function RegisterPage() {
                     onChange={handleIdImageChange}
                   />
                 </div>
-
-
 
                 {/* Background Check Consent */}
                 <div
@@ -559,7 +544,7 @@ export default function RegisterPage() {
                     {bgCheckConsent && <span className="text-white text-xs">✓</span>}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-800">I consent to a background check *</p>
+                    <p className="text-xs font-bold text-gray-800">I consent to a background check</p>
                     <p className="text-[11px] text-gray-500 mt-0.5">
                       Gharelu Sewa will verify your identity, citizenship record, and credentials. Required for provider verification.
                     </p>
