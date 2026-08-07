@@ -26,6 +26,10 @@ export default function MyEarnings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Server earnings state (for cash deduction / freeze logic)
+  const [serverEarnings, setServerEarnings] = useState(null);
+  const [showContactAdminModal, setShowContactAdminModal] = useState(false);
+
   // Withdraw Modal State
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawMethod, setWithdrawMethod] = useState('esewa'); // 'esewa' | 'khalti' | 'bank'
@@ -72,6 +76,7 @@ export default function MyEarnings() {
     try {
       const res = await providerAPI.getEarnings({ period });
       const data = res.data || {};
+      setServerEarnings(data);
       const totalAmt = Number(data.estimated_earnings ?? data.total ?? 0);
       const jobsCnt = Number(data.completed_bookings ?? data.total_bookings ?? data.jobs ?? 0);
       setEarnings({
@@ -196,6 +201,14 @@ export default function MyEarnings() {
 
   const barMax = mergedPayments.length ? Math.max(...mergedPayments.map(p => Number(p.amount) || 0)) : 1;
 
+  // ── Cash deduction / negative balance / freeze logic ──
+  const calcAvailableBalance = serverEarnings?.available_balance !== undefined
+    ? serverEarnings.available_balance
+    : netTotal - pendingPayouts - completedPayouts;
+  const isNegative    = calcAvailableBalance < 0;
+  const isFrozen      = serverEarnings?.is_frozen || false;
+  const daysRemaining = serverEarnings?.days_remaining ?? 3;
+
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl mx-auto space-y-8">
@@ -224,63 +237,6 @@ export default function MyEarnings() {
             ))}
           </div>
         </div>
-
-  const [serverEarnings, setServerEarnings] = useState(null);
-  const [showContactAdminModal, setShowContactAdminModal] = useState(false);
-
-  useEffect(() => {
-    fetchEarnings();
-  }, [period]);
-
-  const fetchEarnings = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await providerAPI.getEarnings({ period });
-      const data = res.data || {};
-      setServerEarnings(data);
-      const totalAmt = Number(data.estimated_earnings ?? data.total ?? 0);
-      const jobsCnt = Number(data.completed_bookings ?? data.total_bookings ?? data.jobs ?? 0);
-      setEarnings({
-        total: totalAmt,
-        jobs: jobsCnt,
-        avg: jobsCnt > 0 ? Math.round(totalAmt / jobsCnt) : 0,
-      });
-      setChartData(Array.isArray(data.chartData) ? data.chartData : []);
-      setPayments(Array.isArray(data.payments) ? data.payments : []);
-    } catch (err) {
-      console.warn('Could not load server earnings', err);
-      setEarnings({ total: 0, jobs: 0, avg: 0 });
-      setChartData([]);
-      setPayments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const total      = Number(earnings?.total ?? 0);
-  const jobsCount  = Number(earnings?.jobs ?? 0);
-  const avg        = jobsCount > 0 ? Math.round(total / jobsCount) : 0;
-  const commission = Math.round(total * 0.10);
-  const netTotal   = total - commission;
-  
-  // Calculate Pending and Completed Withdrawals for exact financial consistency
-  const pendingPayouts = payoutRequests
-    .filter(r => r.status === 'pending')
-    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-
-  const completedPayouts = payoutRequests
-    .filter(r => r.status === 'completed')
-    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-
-  // Available balance (real-time from server calculations to properly reflect cash deductions)
-  const calcAvailableBalance = serverEarnings?.available_balance !== undefined 
-    ? serverEarnings.available_balance 
-    : netTotal - pendingPayouts - completedPayouts;
-
-  const isNegative = calcAvailableBalance < 0;
-  const isFrozen = serverEarnings?.is_frozen || false;
-  const daysRemaining = serverEarnings?.days_remaining ?? 3;
 
         {/* Withdrawal / Negative Balance Highlight Banner */}
         <div className={`rounded-3xl p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden transition-all ${

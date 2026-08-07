@@ -92,6 +92,18 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    // Full Name Validation: Must contain at least 2 words (first & last name), each at least 2 characters long
+    const nameParts = formData.name.trim().split(/\s+/);
+    if (nameParts.length < 2 || nameParts.some(part => part.length < 2)) {
+      return setError('Please enter your full name (both first and last name, each at least 2 characters long)');
+    }
+
+    // Phone Number Validation: Must be a valid 10-digit phone number
+    const phoneClean = formData.phone.trim();
+    if (!/^\d{10}$/.test(phoneClean)) {
+      return setError('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)');
+    }
+
     if (formData.password !== formData.confirmPassword) return setError('Passwords do not match');
     if (formData.password.length < 6) return setError('Password must be at least 6 characters');
     if (formData.role === 'provider' && !bgCheckConsent) return setError('Please consent to background check to register as a provider');
