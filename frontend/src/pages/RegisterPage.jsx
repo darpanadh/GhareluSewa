@@ -5,7 +5,20 @@ import CityWardSelector from '../components/CityWardSelector';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
+import { validateRegisterForm } from '../utils/validation';
 import { AlertCircle, ShieldCheck, Upload, CheckSquare, Square, BadgeCheck, X } from 'lucide-react';
+
+function handleSubmit(e) {
+  e.preventDefault();
+  const validationErrors = validateRegisterForm(formData);
+
+  if (Object.keys(validationErrors).length > 0) {
+    setErrors(validationErrors); // show these under each field
+    return; // stop — don't call the API
+  }
+
+  // proceed with your existing fetch/axios call to /api/auth/register
+}
 
 const SKILL_OPTIONS = [
   'Pipe Repair', 'Drain Cleaning', 'Water Heater', 'Tap Installation',
