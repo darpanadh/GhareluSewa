@@ -346,7 +346,7 @@ export default function RegisterPage() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="98XXXXXXXX (Compulsory 10 digits)"
+                  placeholder="98XXXXXXXX"
                   required
                 />
 
@@ -493,7 +493,7 @@ export default function RegisterPage() {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
                     <span>
-                      ID Document Photo <span className="text-red-500 font-extrabold">* (Compulsory)</span>
+                      ID Document Photo <span className="text-red-500 font-extrabold">*</span>
                     </span>
                     <span className="text-[10px] text-gray-400 font-normal">Citizenship / License</span>
                   </label>
