@@ -187,11 +187,15 @@ export const initializeDatabase = async () => {
     `);
 
     // Seed Users (Password is 'password')
+    const defaultPasswordHash = '$2a$10$teqRfVbninW74qnlE1t70uPijlHZXOuMIApnoCyJTdruqfqLTbuv2'; // bcrypt hash for 'password'
     await query(`
-      INSERT INTO users (id, name, email, phone, password_hash, role, ward, avatar_url, bio, is_verified) VALUES
-      (1, 'Admin User', 'admin@gharelusewa.com', '9801234567', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'admin', 'Kathmandu Ward No. 10', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'Platform Administrator', true),
-      (2, 'Rajesh Shrestha', 'rajesh@gmail.com', '9841123456', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'provider', 'Pokhara Ward No. 12', 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150', 'Professional plumber with over 10 years of experience in leak repairs.', true),
-      (3, 'Priya M.', 'priya@gmail.com', '9813987654', '$2a$10$n38mLJi1G9Gsg1mu97vJ8O9oKWS10Bucsxz0Jp33cITuMb0EVj2Da', 'customer', 'Pokhara Ward No. 12', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Homeowner looking for reliable services', true)
+      INSERT INTO users (name, email, phone, password_hash, role, ward, avatar_url, bio, is_verified) VALUES
+      ('Admin User', 'admin@gharelusewa.com', '9801234567', '${defaultPasswordHash}', 'admin', 'Kathmandu Ward No. 10', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'Platform Administrator', true),
+      ('Rajesh Shrestha', 'rajesh@gmail.com', '9841123456', '${defaultPasswordHash}', 'provider', 'Pokhara Ward No. 12', 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150', 'Professional plumber with over 10 years of experience in leak repairs.', true),
+      ('Priya M.', 'priya@gmail.com', '9813987654', '${defaultPasswordHash}', 'customer', 'Pokhara Ward No. 12', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Homeowner looking for reliable services', true),
+      ('Admin Demo', 'admin@test.com', '9800000001', '${defaultPasswordHash}', 'admin', 'Kathmandu Ward No. 1', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin2', 'Platform Administrator', true),
+      ('Provider Demo', 'provider@test.com', '9800000002', '${defaultPasswordHash}', 'provider', 'Pokhara Ward No. 1', 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150', 'Professional Plumber', true),
+      ('Customer Demo', 'customer@test.com', '9800000003', '${defaultPasswordHash}', 'customer', 'Kathmandu Ward No. 5', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Customer Account', true)
       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, is_active = true, ward = EXCLUDED.ward
     `);
     
