@@ -2,31 +2,24 @@ import { body, validationResult } from 'express-validator';
 
 // Rules for the registration route
 export const registerValidationRules = [
-  body('firstName')
+  body('name')
     .trim()
-    .notEmpty().withMessage('First name is required')
-    .isLength({ min: 2 }).withMessage('First name must be at least 2 characters')
-    .matches(/^[A-Za-z\s]+$/).withMessage('First name can only contain letters'),
-
-  body('lastName')
-    .trim()
-    .notEmpty().withMessage('Last name is required')
-    .isLength({ min: 2 }).withMessage('Last name must be at least 2 characters')
-    .matches(/^[A-Za-z\s]+$/).withMessage('Last name can only contain letters'),
+    .notEmpty().withMessage('Full name is required')
+    .isLength({ min: 2 }).withMessage('at least 2 characters required')
+    .matches(/^[A-Za-z\s]+$/).withMessage('Full name can only contain letters'),
 
   body('email')
     .trim()
     .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Enter a valid email address')
-    .normalizeEmail(),
+    .matches(/^[a-zA-Z0-9._%+-]+@gmail\.com$/i).withMessage('Must be a valid @gmail.com address'),
+
+  body('phone')
+    .optional({ checkFalsy: true })
+    .matches(/^\d{10}$/).withMessage('Phone number must be exactly 10 digits'),
 
   body('password')
     .notEmpty().withMessage('Password is required')
-    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
-    .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
-    .matches(/[0-9]/).withMessage('Password must contain at least one number')
-    .matches(/[!@#$%^&*(),.?":{}|<>]/).withMessage('Password must contain at least one special character'),
+    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
 ];
 
 // Middleware to check results and stop the request if invalid

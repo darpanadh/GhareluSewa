@@ -5,20 +5,8 @@ import CityWardSelector from '../components/CityWardSelector';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
-import { validateRegisterForm } from '../utils/validation';
+import { validateRegisterForm, evaluatePasswordStrength } from '../utils/validation';
 import { AlertCircle, ShieldCheck, Upload, CheckSquare, Square, BadgeCheck, X } from 'lucide-react';
-
-function handleSubmit(e) {
-  e.preventDefault();
-  const validationErrors = validateRegisterForm(formData);
-
-  if (Object.keys(validationErrors).length > 0) {
-    setErrors(validationErrors); // show these under each field
-    return; // stop — don't call the API
-  }
-
-  // proceed with your existing fetch/axios call to /api/auth/register
-}
 
 const SKILL_OPTIONS = [
   'Pipe Repair', 'Drain Cleaning', 'Water Heater', 'Tap Installation',
@@ -50,12 +38,45 @@ export default function RegisterPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  const validateField = (fieldName, value, currentFormData = formData) => {
+    let err = '';
+    const trimmed = (value || '').trim();
+
+    if (fieldName === 'name') {
+      if (!trimmed || trimmed.length < 2) {
+        err = 'at least 2 characters required';
+      }
+    } else if (fieldName === 'email') {
+      if (!trimmed || !/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(trimmed)) {
+        err = 'Must be a valid @gmail.com address';
+      }
+    } else if (fieldName === 'phone') {
+      if (trimmed && !/^\d{10}$/.test(trimmed)) {
+        err = 'Phone number must be exactly 10 digits';
+      }
+    } else if (fieldName === 'password') {
+      if (!value || value.length < 6) {
+        err = 'Password must be at least 6 characters';
+      }
+    } else if (fieldName === 'confirmPassword') {
+      if (value !== currentFormData.password) {
+        err = 'Passwords do not match';
+      }
+    }
+    return err;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+
+    const err = validateField(name, value, updated);
+    setFieldErrors(prev => ({ ...prev, [name]: err }));
   };
 
   const toggleSkill = (skill) => {
@@ -85,7 +106,7 @@ export default function RegisterPage() {
         } else {
           if (height > MAX_HEIGHT) {
             width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
+            width = MAX_HEIGHT;
           }
         }
         canvas.width = width;
@@ -105,8 +126,32 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
-    if (formData.password !== formData.confirmPassword) return setError('Passwords do not match');
-    if (formData.password.length < 6) return setError('Password must be at least 6 characters');
+    const newFieldErrors = {
+      name: validateField('name', formData.name),
+      email: validateField('email', formData.email),
+      phone: validateField('phone', formData.phone),
+      password: validateField('password', formData.password),
+      confirmPassword: validateField('confirmPassword', formData.confirmPassword),
+    };
+
+    Object.keys(newFieldErrors).forEach(key => {
+      if (!newFieldErrors[key]) delete newFieldErrors[key];
+    });
+
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      if (newFieldErrors.name) {
+        setError('at least 2 characters required');
+      } else if (newFieldErrors.email) {
+        setError('Must be a valid @gmail.com address');
+      } else if (newFieldErrors.phone) {
+        setError('Phone number must be exactly 10 digits');
+      } else {
+        setError('Please fix the errors below before submitting');
+      }
+      return;
+    }
+
     if (formData.role === 'provider' && !bgCheckConsent) return setError('Please consent to background check to register as a provider');
 
     setLoading(true);
@@ -120,7 +165,7 @@ export default function RegisterPage() {
       if (result.success) {
         navigate('/');
       } else {
-        setError(result.error);
+        setError(result.error || 'Registration failed');
       }
     } catch (err) {
       setError('An unexpected error occurred');
@@ -153,7 +198,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form noValidate onSubmit={handleSubmit} className="space-y-4">
             {/* Role Toggle */}
             <div className="flex rounded-xl border border-gray-200 overflow-hidden mb-2">
               {['customer', 'provider'].map(r => (
@@ -172,9 +217,9 @@ export default function RegisterPage() {
               ))}
             </div>
 
-            <Input label="Full Name" type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Enter your full name" required />
-            <Input label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Enter your email" required />
-            <Input label="Phone Number" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="98XXXXXXXX" />
+            <Input label="Full Name" type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Enter your full name" error={fieldErrors.name} required />
+            <Input label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Enter your email (@gmail.com)" error={fieldErrors.email} required />
+            <Input label="Phone Number" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="98XXXXXXXX (10 digits)" error={fieldErrors.phone} />
 
             <div>
               {formData.role === 'provider' && (
@@ -190,8 +235,8 @@ export default function RegisterPage() {
               />
             </div>
 
-            <Input label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="At least 6 characters" required />
-            <Input label="Confirm Password" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm your password" required />
+            <Input label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="At least 6 characters" error={fieldErrors.password} required />
+            <Input label="Confirm Password" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Confirm your password" error={fieldErrors.confirmPassword} required />
 
             {/* ── Provider Trust Section ─────────────────────────────────── */}
             {formData.role === 'provider' && (

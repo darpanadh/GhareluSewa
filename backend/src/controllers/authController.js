@@ -12,6 +12,18 @@ export const register = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    if (name.trim().length < 2) {
+      return res.status(400).json({ error: 'at least 2 characters required' });
+    }
+
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test((email || '').trim())) {
+      return res.status(400).json({ error: 'Must be a valid @gmail.com address' });
+    }
+
+    if (phone && !/^\d{10}$/.test(phone.trim())) {
+      return res.status(400).json({ error: 'Phone number must be exactly 10 digits' });
+    }
+
     if (!['customer', 'provider', 'admin'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
