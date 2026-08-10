@@ -474,7 +474,7 @@ export const Header = () => {
                       onClick={() => setShowMenu(false)}
                       className={
                         location.pathname.startsWith('/services') || location.pathname.startsWith('/browse') || location.pathname.startsWith('/customer/browse')
-                          ? "px-3 py-2 rounded-lg bg-[#07535f] text-[#07535f] flex items-center gap-2 font-bold"
+                          ? "px-3 py-2 rounded-lg bg-[#07535f] text-white flex items-center gap-2 font-bold"
                           : "px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
                       }
                     >
