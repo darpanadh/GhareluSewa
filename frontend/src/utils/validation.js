@@ -1,19 +1,15 @@
-export function validateRegisterForm({ firstName, lastName, email, password }) {
+export function validateRegisterForm({ firstName, lastName, name, email, password }) {
   const errors = {};
 
-  if (!firstName || firstName.trim().length < 2) {
-    errors.firstName = 'First name must be at least 2 characters';
-  } else if (!/^[A-Za-z\s]+$/.test(firstName)) {
-    errors.firstName = 'First name can only contain letters';
+  const fullName = (name || `${firstName || ''} ${lastName || ''}`).trim();
+  if (!fullName) {
+    errors.name = 'Full name is required';
+  } else if (fullName.length < 2 || fullName.length > 70) {
+    errors.name = 'Full name must be between 2 and 70 characters';
   }
 
-  if (!lastName || lastName.trim().length < 2) {
-    errors.lastName = 'Last name must be at least 2 characters';
-  } else if (!/^[A-Za-z\s]+$/.test(lastName)) {
-    errors.lastName = 'Last name can only contain letters';
-  }
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailPattern.test(email.trim())) {
     errors.email = 'Enter a valid email address';
   }
 

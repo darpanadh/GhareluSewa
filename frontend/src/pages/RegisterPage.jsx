@@ -122,14 +122,22 @@ export default function RegisterPage() {
     setError('');
 
     // Full Name
-    const nameParts = formData.name.trim().split(/\s+/);
-    if (nameParts.length < 2 || nameParts.some((part) => part.length < 2)) {
-      return setError('Please enter both your first and last name (e.g. Ram Sharma)');
+    const trimmedName = formData.name.trim();
+    if (!trimmedName) {
+      return setError('Please enter your full name');
+    }
+    if (trimmedName.length < 2 || trimmedName.length > 70) {
+      return setError('Full name must be between 2 and 70 characters');
     }
 
     // Email Address
-    if (!formData.email.trim()) {
+    const trimmedEmail = formData.email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail) {
       return setError('Please enter your email address');
+    }
+    if (!emailRegex.test(trimmedEmail)) {
+      return setError('Please enter a valid email address');
     }
 
     // Phone Number
@@ -170,13 +178,18 @@ export default function RegisterPage() {
     setError('');
 
     if (formData.role === 'customer') {
-      if (!formData.name.trim()) return setError('Please enter your full name');
-      const nameParts = formData.name.trim().split(/\s+/);
-      if (nameParts.length < 2 || nameParts.some((part) => part.length < 2)) {
-        return setError('Please enter both your first and last name (e.g. Ram Sharma)');
+      const trimmedName = formData.name.trim();
+      if (!trimmedName) return setError('Please enter your full name');
+      if (trimmedName.length < 2 || trimmedName.length > 70) {
+        return setError('Full name must be between 2 and 70 characters');
       }
 
-      if (!formData.email.trim()) return setError('Please enter your email address');
+      const trimmedEmail = formData.email.trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!trimmedEmail) return setError('Please enter your email address');
+      if (!emailRegex.test(trimmedEmail)) {
+        return setError('Please enter a valid email address');
+      }
 
       const phoneClean = formData.phone.trim();
       if (!phoneClean) return setError('Please enter your 10-digit phone number');

@@ -5,12 +5,12 @@ export const registerValidationRules = [
   body('name')
     .trim()
     .notEmpty().withMessage('Full name is required')
-    .isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
+    .isLength({ min: 2, max: 70 }).withMessage('Full name must be between 2 and 70 characters'),
 
   body('email')
     .trim()
     .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Enter a valid email address')
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/).withMessage('Enter a valid email address')
     .normalizeEmail(),
 
   body('phone')

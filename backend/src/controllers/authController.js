@@ -12,15 +12,17 @@ export const register = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Full Name Validation: Must contain at least 2 words (first & last name), each at least 2 characters long
-    const nameParts = name.trim().split(/\s+/);
-    if (nameParts.length < 2 || nameParts.some(part => part.length < 2)) {
-      return res.status(400).json({ error: 'Please enter your full name' });
+    // Full Name Validation: Trimmed length must be between 2 and 70 characters (allowing all Unicode characters)
+    const trimmedName = name ? name.trim() : '';
+    if (!trimmedName || trimmedName.length < 2 || trimmedName.length > 70) {
+      return res.status(400).json({ error: 'Full name must be between 2 and 70 characters' });
     }
 
-    // Phone Number Validation: Must be a valid 10-digit number
-    if (phone && !/^\d{10}$/.test(phone.trim())) {
-      return res.status(400).json({ error: 'Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)' });
+    // Email Validation: Pattern /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const trimmedEmail = email ? email.trim() : '';
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail || !emailPattern.test(trimmedEmail)) {
+      return res.status(400).json({ error: 'Enter a valid email address' });
     }
 
     if (!['customer', 'provider', 'admin'].includes(role)) {
