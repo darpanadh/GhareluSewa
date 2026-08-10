@@ -19,6 +19,14 @@ export const AuthProvider = ({ children }) => {
       return freshUser;
     } catch (err) {
       console.warn('Failed to refresh user data', err);
+      if (err.response?.status === 401) {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+        disconnectSocket();
+      }
       return null;
     }
   }, []);
