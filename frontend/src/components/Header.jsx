@@ -161,17 +161,6 @@ export const Header = () => {
                     <span>Dashboard</span>
                   </Link>
                   <Link
-                    to="/provider/profile"
-                    className={
-                      location.pathname.startsWith('/provider/profile')
-                        ? "flex items-center gap-1.5 bg-[#07535f] text-white px-3.5 py-1.5 rounded-full font-semibold shadow-2xs transition-all"
-                        : "flex items-center gap-1.5 text-gray-600 hover:text-[#07535f] hover:bg-gray-100/60 px-3 py-1.5 rounded-full transition-all"
-                    }
-                  >
-                    <User className="w-4 h-4" />
-                    <span>My Profile</span>
-                  </Link>
-                  <Link
                     to="/provider/bookings"
                     className={
                       location.pathname.startsWith('/provider/bookings')
