@@ -136,3 +136,16 @@ export const emitAvailabilityChanged = (isAvailable) => {
     socket.emit('availability_changed', { isAvailable });
   }
 };
+
+// Emit provider GPS location (used by provider-side components)
+export const emitLocationUpdate = (bookingId, lat, lng, distance, timeRemaining) => {
+  if (socket) {
+    socket.emit('provider_location_update', {
+      bookingId,
+      lat,
+      lng,
+      distance,
+      timeRemaining,
+    });
+  }
+};
