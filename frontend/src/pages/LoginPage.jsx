@@ -20,12 +20,36 @@ const CATEGORY_OPTIONS = [
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [touched, setTouched] = useState({ email: false, password: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const redirectPath = new URLSearchParams(location.search).get('redirect') || '/';
+
+  // Live Field Validations
+  const validateEmail = (val) => {
+    if (!val || !val.trim()) return '';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(val.trim())) return 'Please enter a valid email address';
+    return '';
+  };
+
+  const validatePassword = (val) => {
+    if (!val) return '';
+    if (val.length < 6) return 'Password must be at least 6 characters';
+    return '';
+  };
+
+  const emailError = touched.email ? validateEmail(email) : '';
+  const emailSuccess = touched.email && email.trim().length > 0 && !validateEmail(email);
+  const passwordError = touched.password ? validatePassword(password) : '';
+  const passwordSuccess = touched.password && password.length > 0 && !validatePassword(password);
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
 
   // KYC Re-verification Modal state
   const [showReverifyModal, setShowReverifyModal] = useState(false);
@@ -47,6 +71,24 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setTouched({ email: true, password: true });
+
+    if (!email || !email.trim()) {
+      setError('Please enter your email address');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password');
+      return;
+    }
+
+    const eErr = validateEmail(email);
+    const pErr = validatePassword(password);
+    if (eErr || pErr) {
+      setError(eErr || pErr);
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -196,7 +238,10 @@ export default function LoginPage() {
             label="Email Address"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); if (error) setError(''); }}
+            onBlur={() => handleBlur('email')}
+            error={emailError}
+            success={emailSuccess}
             placeholder="Enter your email"
             required
           />
@@ -205,7 +250,10 @@ export default function LoginPage() {
             label="Password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); if (error) setError(''); }}
+            onBlur={() => handleBlur('password')}
+            error={passwordError}
+            success={passwordSuccess}
             placeholder="Enter your password"
             required
           />
