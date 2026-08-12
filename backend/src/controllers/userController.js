@@ -5,6 +5,22 @@ export const updateProfile = async (req, res) => {
   try {
     const { name, phone, ward, bio, avatar_url } = req.body;
 
+    // Validation checks for name
+    if (name) {
+      const nameParts = name.trim().split(/\s+/);
+      if (nameParts.length < 2 || nameParts.some(part => part.length < 2)) {
+        return res.status(400).json({ error: 'Please enter your full name (both first and last name, each at least 2 characters long)' });
+      }
+    }
+
+    // Validation checks for phone
+    if (phone) {
+      const phoneClean = phone.trim();
+      if (!/^\d{10}$/.test(phoneClean)) {
+        return res.status(400).json({ error: 'Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)' });
+      }
+    }
+
     const result = await query(
       `UPDATE users 
        SET name = COALESCE($1, name), 

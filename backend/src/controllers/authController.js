@@ -156,7 +156,7 @@ export const getCurrentUser = async (req, res) => {
   try {
     const result = await query(
       `SELECT u.id, u.name, u.email, u.phone, u.role, u.ward, u.avatar_url, u.bio, u.is_verified,
-              pp.hourly_rate, pp.rating_avg, pp.availability
+              pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability
        FROM users u
        LEFT JOIN provider_profiles pp ON u.id = pp.user_id
        WHERE u.id = $1`,

@@ -6,6 +6,7 @@ import { notificationAPI } from '../services/api';
 import { onNotification } from '../services/socket';
 import { ToastContainer } from './ToastContainer';
 import EditProfileModal from './EditProfileModal';
+import FloatingChat from './FloatingChat';
 
 export const Header = () => {
   const { user, logout, isAuthenticated, login } = useAuth();
@@ -52,6 +53,9 @@ export const Header = () => {
         setNotifications(prev => [{ ...data, id: Date.now(), created_at: new Date().toISOString() }, ...prev]);
         setUnreadCount(prev => prev + 1);
         toastRef.current?.addToast(data.message, data.type, data.bookingId);
+        if (data.type === 'new_message') {
+          window.dispatchEvent(new CustomEvent('new_chat_notification', { detail: data }));
+        }
       });
     }
   }, [isAuthenticated]);
@@ -537,6 +541,7 @@ export const Header = () => {
       </header>
       <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
       <ToastContainer ref={toastRef} />
+      <FloatingChat />
     </>
   );
 };

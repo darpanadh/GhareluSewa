@@ -158,10 +158,10 @@ export default function ProviderDashboard() {
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className="flex">
                     {[1,2,3,4,5].map(i => (
-                      <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      <Star key={i} className={`w-3 h-3 ${i <= Math.round(parseFloat(user?.rating_avg || 0)) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`} />
                     ))}
                   </div>
-                  <span className="text-white/60 text-[11px]">4.9 (142 reviews)</span>
+                  <span className="text-white/60 text-[11px]">{parseFloat(user?.rating_avg || 0).toFixed(1)} ({user?.total_reviews || 0} reviews)</span>
                   <span className={`w-2 h-2 rounded-full ${availability ? 'bg-emerald-400' : 'bg-gray-400'}`}></span>
                   <span className={`text-[11px] font-bold ${availability ? 'text-emerald-300' : 'text-gray-300'}`}>
                     {availability ? 'Online' : 'Offline'}
