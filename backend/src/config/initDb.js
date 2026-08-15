@@ -159,7 +159,13 @@ export const initializeDatabase = async () => {
     try {
       await query(`CREATE INDEX IF NOT EXISTS idx_payments_booking_id ON payments(booking_id)`);
       await query(`CREATE INDEX IF NOT EXISTS idx_payments_customer_id ON payments(customer_id)`);
-    } catch(e) { /* indexes may already exist */ }
+      // Platform payment model — new columns
+      await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'esewa'`);
+      await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS manual_ref_id VARCHAR(255)`);
+      await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS escrow_released BOOLEAN DEFAULT FALSE`);
+      await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS escrow_released_at TIMESTAMP`);
+    } catch(e) { /* indexes/columns may already exist */ }
+
 
 
     // Create indexes for better performance

@@ -1,30 +1,38 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { adminAPI } from '../../services/api';
+import { paymentAPI } from '../../services/api';
 import {
   getAllPayoutRequests, fetchAllPayoutRequestsAsync, markPayoutCompleted, markPayoutRejected, getPayoutStats
 } from '../../services/payoutStore';
 import {
   CreditCard, DollarSign, TrendingUp, CheckCircle, XCircle,
-  Building, Smartphone, ArrowUpRight, Search, Filter, RefreshCw, Send,
-  ShieldCheck, Loader, AlertTriangle, Users, Wallet, X
+  Building, Smartphone, RefreshCw, Send,
+  ShieldCheck, Loader, AlertTriangle, Wallet, X, Lock, ArrowDownLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ManagePayments() {
   const [payoutRequests, setPayoutRequests] = useState([]);
+  const [customerPayments, setCustomerPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [releasingId, setReleasingId] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'completed'
+  const [escrowFilter, setEscrowFilter] = useState('pending'); // 'all' | 'pending' | 'released'
   const [stats, setStats] = useState(null);
 
   // Custom Confirmation Modal State: null | { type: 'approve' | 'reject', requestId, providerName, amount, method, accountDetails }
   const [confirmModal, setConfirmModal] = useState(null);
+  const [releaseModal, setReleaseModal] = useState(null);
 
   // Load data from backend server & shared store
   const refreshData = useCallback(async () => {
-    const requests = await fetchAllPayoutRequestsAsync();
+    const [requests, paymentsRes] = await Promise.all([
+      fetchAllPayoutRequestsAsync(),
+      paymentAPI.getAllPayments({ limit: 100 }).catch(() => ({ data: [] })),
+    ]);
     setPayoutRequests(requests);
+    setCustomerPayments(Array.isArray(paymentsRes.data) ? paymentsRes.data : []);
     setStats(getPayoutStats());
     setLoading(false);
   }, []);
@@ -96,6 +104,35 @@ export default function ManagePayments() {
   const filteredRequests = payoutRequests.filter(p => filter === 'all' || p.status === filter);
   const pendingRequests = payoutRequests.filter(p => p.status === 'pending');
 
+  const pendingEscrow = customerPayments.filter(p => !p.escrow_released);
+  const filteredEscrow = customerPayments.filter(p => {
+    if (escrowFilter === 'pending') return !p.escrow_released;
+    if (escrowFilter === 'released') return p.escrow_released;
+    return true;
+  });
+
+  const handleReleaseEscrow = async () => {
+    if (!releaseModal) return;
+    setReleasingId(releaseModal.id);
+    try {
+      await paymentAPI.releaseEscrow(releaseModal.id);
+      setSuccessMsg(`✅ Rs. ${Number(releaseModal.provider_payout).toLocaleString()} released to ${releaseModal.provider_name} for booking #${releaseModal.booking_id}.`);
+      refreshData();
+      setTimeout(() => setSuccessMsg(''), 5000);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to release escrow. Please try again.');
+    } finally {
+      setReleasingId(null);
+      setReleaseModal(null);
+    }
+  };
+
+  const methodLabel = (method) => ({
+    esewa: 'eSewa',
+    bank_transfer: 'Bank Transfer',
+    cash_deposit: 'Cash Deposit',
+  }[method] || method);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300 relative">
 
@@ -106,8 +143,8 @@ export default function ManagePayments() {
             <CreditCard className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Payments & Professional Payouts</h1>
-            <p className="text-sm text-gray-500">Review withdrawal requests from professionals and disburse payments</p>
+            <h1 className="text-2xl font-bold text-gray-900">Payments & Escrow</h1>
+            <p className="text-sm text-gray-500">Customer payments to Gharelu Sewa and provider payout releases</p>
           </div>
         </div>
 
@@ -126,6 +163,120 @@ export default function ManagePayments() {
           {successMsg}
         </div>
       )}
+
+      {/* Urgent: Pending Escrow Alert */}
+      {pendingEscrow.length > 0 && (
+        <div className="p-4 bg-[#07535f]/5 border border-[#07535f]/20 rounded-2xl flex items-center gap-3">
+          <Lock className="w-5 h-5 text-[#07535f] flex-shrink-0" />
+          <div className="text-sm">
+            <span className="font-bold text-[#07535f]">{pendingEscrow.length} payment{pendingEscrow.length > 1 ? 's' : ''} in escrow</span>
+            <span className="text-gray-600"> — Rs. {pendingEscrow.reduce((s, p) => s + Number(p.provider_payout || 0), 0).toLocaleString()} awaiting release to providers.</span>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Payments to Gharelu Sewa (Escrow) */}
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-xs overflow-hidden">
+        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <ArrowDownLeft className="w-5 h-5 text-[#07535f]" />
+              Customer Payments to Gharelu Sewa
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">Funds held in platform escrow — verify and release to providers</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {['pending', 'released', 'all'].map(f => (
+              <button
+                key={f}
+                onClick={() => setEscrowFilter(f)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize ${
+                  escrowFilter === f
+                    ? 'bg-[#07535f] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {f === 'pending' ? `Pending (${pendingEscrow.length})` : f === 'released' ? 'Released' : 'All'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="py-12 text-center text-gray-400">
+            <Loader className="w-8 h-8 animate-spin mx-auto mb-2 text-[#07535f]" />
+            <p className="text-sm font-semibold">Loading customer payments...</p>
+          </div>
+        ) : filteredEscrow.length === 0 ? (
+          <div className="py-12 text-center text-gray-400 space-y-2">
+            <Lock className="w-12 h-12 mx-auto opacity-30" />
+            <p className="text-sm font-semibold">
+              {escrowFilter === 'pending' ? 'No payments awaiting release.' : 'No customer payments found.'}
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {filteredEscrow.map(payment => (
+              <div key={payment.id} className="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-gray-50/30 transition-colors">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-gray-900 text-sm">Booking #{payment.booking_id}</span>
+                    <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                      payment.status === 'pending'
+                        ? 'bg-amber-100 text-amber-800'
+                        : payment.status === 'completed'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {payment.status}
+                    </span>
+                    <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                      {methodLabel(payment.payment_method)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    <span className="font-semibold text-gray-700">{payment.customer_name}</span>
+                    {' → Gharelu Sewa → '}
+                    <span className="font-semibold text-[#07535f]">{payment.provider_name}</span>
+                  </p>
+                  {payment.manual_ref_id && (
+                    <p className="text-xs text-gray-400 font-mono">Ref: {payment.manual_ref_id}</p>
+                  )}
+                  {payment.esewa_ref_id && (
+                    <p className="text-xs text-gray-400 font-mono">eSewa: {payment.esewa_ref_id}</p>
+                  )}
+                  <p className="text-[11px] text-gray-400">
+                    {payment.created_at ? format(new Date(payment.created_at), 'dd MMM yyyy, hh:mm a') : '—'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4 lg:gap-6 flex-shrink-0">
+                  <div className="text-right text-xs space-y-0.5">
+                    <p className="text-lg font-black text-gray-900">Rs. {Number(payment.amount).toLocaleString()}</p>
+                    <p className="text-gray-400">Commission: Rs. {Number(payment.commission).toLocaleString()}</p>
+                    <p className="font-bold text-emerald-600">Payout: Rs. {Number(payment.provider_payout).toLocaleString()}</p>
+                  </div>
+
+                  {payment.escrow_released ? (
+                    <span className="text-emerald-600 text-xs font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-4 h-4" /> Released
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setReleaseModal(payment)}
+                      disabled={releasingId === payment.id}
+                      className="bg-[#07535f] hover:bg-[#06424b] disabled:opacity-50 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      {releasingId === payment.id ? 'Releasing…' : payment.status === 'pending' ? 'Verify & Release' : 'Release to Provider'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Urgent: Pending Requests Alert */}
       {pendingRequests.length > 0 && (
@@ -341,15 +492,51 @@ export default function ManagePayments() {
       </div>
 
       {/* Platform Commission Info */}
-      <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4 text-xs text-amber-900 space-y-1">
-        <p className="font-bold">💡 How Payout Processing Works:</p>
+      <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4 text-xs text-amber-900 space-y-2">
+        <p className="font-bold">💡 How Platform Payments Work:</p>
         <p className="text-amber-800 leading-relaxed">
-          When a professional requests a withdrawal from their Earnings page, it appears here as a "Pending" request.
-          Click <strong>"Send Payment"</strong> to disburse funds via their chosen method (eSewa / Khalti / Bank).
-          The professional's dashboard will instantly update to show "Paid" status.
-          Platform retains 10% commission from each job automatically.
+          Customers pay <strong>Gharelu Sewa directly</strong> (eSewa, bank transfer, or cash deposit) — not the professional.
+          Funds are held in escrow until you verify and click <strong>"Release to Provider"</strong>.
+          Platform retains 10% commission automatically; the remainder goes to the service provider.
+        </p>
+        <p className="text-amber-800 leading-relaxed">
+          Professionals can also request withdrawals from their Earnings page — those appear in the withdrawal section below.
         </p>
       </div>
+
+      {/* Escrow Release Modal */}
+      {releaseModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95 duration-150 border border-gray-100">
+            <button
+              onClick={() => setReleaseModal(null)}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#07535f]/10 text-[#07535f] flex items-center justify-center">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-gray-900">Release Escrow to Provider</h3>
+                <p className="text-xs text-gray-500">Booking #{releaseModal.booking_id}</p>
+              </div>
+            </div>
+            <div className="bg-gray-50/80 rounded-2xl p-4 border border-gray-100 space-y-2.5 text-xs text-gray-700">
+              <div className="flex justify-between"><span className="text-gray-500">Customer paid GS</span><span className="font-bold">Rs. {Number(releaseModal.amount).toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Platform commission</span><span>Rs. {Number(releaseModal.commission).toLocaleString()}</span></div>
+              <div className="flex justify-between border-t border-gray-200 pt-2"><span className="text-gray-500 font-semibold">Release to {releaseModal.provider_name}</span><span className="font-black text-emerald-600">Rs. {Number(releaseModal.provider_payout).toLocaleString()}</span></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => setReleaseModal(null)} disabled={!!releasingId} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl text-xs font-extrabold">Cancel</button>
+              <button type="button" onClick={handleReleaseEscrow} disabled={!!releasingId} className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white py-3 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-1.5">
+                {releasingId ? <><Loader className="w-4 h-4 animate-spin" /> Releasing…</> : 'Confirm Release'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Confirmation Modal (Replaces browser alert/confirm popup) */}
       {confirmModal && (

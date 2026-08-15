@@ -634,7 +634,7 @@ export default function LiveTracking() {
                     to={`/customer/invoice/${booking.id}`}
                     className="w-full flex items-center justify-center gap-2 bg-[#60bb46] hover:bg-[#52a83b] text-white px-6 py-3.5 rounded-full font-bold shadow-sm transition-colors text-sm"
                   >
-                    <DollarSign className="w-4 h-4" /> Pay Invoice (eSewa)
+                    <DollarSign className="w-4 h-4" /> Pay Gharelu Sewa
                   </Link>
                 ) : (
                   <button

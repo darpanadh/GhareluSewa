@@ -76,7 +76,7 @@ export default function PaymentSuccess() {
 
         <h1 className="text-3xl font-bold text-gray-800 font-serif mb-2">Payment Successful! 🎉</h1>
         <p className="text-gray-500 mb-8">
-          Thank you for using Gharelu Sewa. Your payment has been confirmed.
+          Thank you for paying Gharelu Sewa. Your payment is held securely in escrow until the provider payout is released.
         </p>
 
         {/* Payment Summary */}
@@ -99,7 +99,7 @@ export default function PaymentSuccess() {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Provider Payout</span>
-            <span className="font-bold text-green-600">Rs. {paymentInfo?.providerPayout}</span>
+            <span className="font-bold text-orange-500">Rs. {paymentInfo?.providerPayout} (pending release)</span>
           </div>
         </div>
 

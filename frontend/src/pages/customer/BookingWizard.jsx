@@ -424,8 +424,8 @@ export default function BookingWizard() {
                     </div>
                   </div>
 
-                  <div className="bg-[#10b981]/10 border border-[#10b981]/20 p-4 rounded-xl text-xs text-[#0e9568] font-semibold text-center">
-                    💵 Pay via cash or Fonepay to the provider directly after service completion.
+                  <div className="bg-[#07535f]/5 border border-[#07535f]/15 p-4 rounded-xl text-xs text-[#07535f] font-semibold text-center leading-relaxed">
+                    🔒 Pay Gharelu Sewa directly after service completion — eSewa, bank transfer, or cash deposit. Funds are held securely until the job is confirmed.
                   </div>
                 </div>
               )}
