@@ -204,7 +204,7 @@ export default function BookingDetails() {
               )}
               {booking.status === 'completed' && (
                 <Link to={`/customer/invoice/${booking.id}`} className="bg-[#60bb46] hover:bg-[#52a83b] text-white px-5 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm flex items-center gap-1.5">
-                  💳 Pay Invoice (eSewa)
+                  💳 Pay Gharelu Sewa
                 </Link>
               )}
             </div>

@@ -5,6 +5,8 @@ import {
   verifyPayment,
   getPaymentByBooking,
   getAllPayments,
+  submitManualPayment,
+  releaseEscrow,
 } from '../controllers/paymentController.js';
 
 const router = express.Router();
@@ -17,6 +19,12 @@ router.get('/verify', verifyAuth, verifyPayment);
 
 // Get payment status for a booking
 router.get('/booking/:bookingId', verifyAuth, getPaymentByBooking);
+
+// Submit a manual payment (bank transfer / cash deposit)
+router.post('/manual/:bookingId', verifyAuth, submitManualPayment);
+
+// Admin: release escrow (payout) to provider
+router.post('/release/:paymentId', verifyAuth, authorize(['admin']), releaseEscrow);
 
 // Admin: get all payments
 router.get('/all', verifyAuth, authorize(['admin']), getAllPayments);

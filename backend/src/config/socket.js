@@ -99,6 +99,18 @@ export const initializeSocket = (httpServer) => {
       });
     });
 
+    // ── Provider real-time location update ────────────────────────────────
+    // data = { bookingId, lat, lng, distance?, timeRemaining? }
+    socket.on('provider_location_update', (data) => {
+      if (!data.bookingId || data.lat === undefined || data.lng === undefined) return;
+      io.to(`booking_${data.bookingId}`).emit('location_update', {
+        lat:           data.lat,
+        lng:           data.lng,
+        distance:      data.distance,
+        timeRemaining: data.timeRemaining,
+      });
+    });
+
     // ── Provider availability toggled ──────────────────────────────────────
     socket.on('availability_changed', (data) => {
       // data = { providerId, isAvailable }

@@ -119,12 +119,15 @@ export const adminAPI = {
   updatePayoutStatus: (id, status) => api.patch(`/admin/payouts/${id}/status`, { status }),
 };
 
-// Payment endpoints (eSewa)
+// Payment endpoints (eSewa + Platform Direct)
 export const paymentAPI = {
-  initiatePayment: (bookingId) => api.post(`/payments/initiate/${bookingId}`),
-  verifyPayment: (params) => api.get('/payments/verify', { params }),
-  getPaymentByBooking: (bookingId) => api.get(`/payments/booking/${bookingId}`),
-  getAllPayments: (params) => api.get('/payments/all', { params }),
+  initiatePayment:    (bookingId)       => api.post(`/payments/initiate/${bookingId}`),
+  verifyPayment:      (params)          => api.get('/payments/verify', { params }),
+  getPaymentByBooking:(bookingId)       => api.get(`/payments/booking/${bookingId}`),
+  getAllPayments:      (params)          => api.get('/payments/all', { params }),
+  submitManualPayment:(bookingId, data) => api.post(`/payments/manual/${bookingId}`, data),
+  releaseEscrow:      (paymentId)       => api.post(`/payments/release/${paymentId}`),
 };
+
 
 export default api;
