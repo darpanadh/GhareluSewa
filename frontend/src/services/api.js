@@ -47,6 +47,7 @@ export const userAPI = {
   getProviders: (params) => api.get('/users/providers', { params }),
   getProviderById: (userId) => api.get(`/users/providers/${userId}`),
   searchUsers: (params) => api.get('/users/search', { params }),
+  getPublicStats: () => api.get('/users/public-stats'),
 };
 
 // Category endpoints

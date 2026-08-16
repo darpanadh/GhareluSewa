@@ -174,8 +174,22 @@ export const searchUsers = async (req, res) => {
 
     const result = await query(sql, params);
     res.json(result.rows);
+// Get public platform stats for homepage
+export const getPublicStats = async (req, res) => {
+  try {
+    const stats = await query(`
+      SELECT 
+        (SELECT COUNT(*)::int FROM users WHERE role = 'customer') as total_customers,
+        (SELECT COUNT(*)::int FROM users WHERE role = 'provider' AND is_verified = TRUE) as total_providers,
+        (SELECT COALESCE(ROUND(AVG(rating_avg)::numeric, 1), 5.0)::float FROM provider_profiles WHERE rating_avg > 0) as avg_rating,
+        (SELECT COUNT(*)::int FROM bookings WHERE status = 'completed') as completed_bookings,
+        (SELECT COUNT(*)::int FROM service_categories) as total_categories
+    `);
+
+    res.json(stats.rows[0]);
   } catch (error) {
-    console.error('Search users error:', error);
-    res.status(500).json({ error: 'Failed to search users' });
+    console.error('Get public stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch public stats' });
   }
 };
+

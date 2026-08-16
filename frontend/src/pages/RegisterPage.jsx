@@ -369,9 +369,7 @@ export default function RegisterPage() {
         
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-gradient-to-br from-[#07535f] to-[#0a7587] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg text-white font-extrabold text-2xl">
-            GS
-          </div>
+          <img src="/gharelu_sewa_logo.png" alt="Gharelu Sewa Logo" className="h-14 w-auto object-contain mx-auto mb-3" />
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {formData.role === 'provider' ? 'Become a Verified Professional Tasker' : 'Join Gharelu Sewa'}
           </h1>

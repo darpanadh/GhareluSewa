@@ -197,9 +197,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50/80 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border border-slate-200/80 rounded-3xl p-6 sm:p-8">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#07535f] to-[#0a7587] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md text-white font-extrabold text-xl">
-            GS
-          </div>
+          <img src="/gharelu_sewa_logo.png" alt="Gharelu Sewa Logo" className="h-14 w-auto object-contain mx-auto mb-3" />
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Welcome Back</h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-1">Sign in to your Gharelu Sewa account</p>
         </div>

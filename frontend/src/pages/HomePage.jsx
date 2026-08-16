@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { userAPI, categoryAPI } from '../services/api';
 import CityWardSelector from '../components/CityWardSelector';
 import { Search, MapPin, Star, ShieldCheck, Clock, Users, ArrowRight } from 'lucide-react';
 
@@ -18,15 +19,39 @@ export default function HomePage() {
 
   const [ward, setWard] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState({
+    total_customers: 0,
+    total_providers: 0,
+    avg_rating: 5.0,
+    completed_bookings: 0
+  });
+  const [categories, setCategories] = useState([
+    { id: 1, name: 'Plumbing', icon: '🔧', provider_count: 0 },
+    { id: 2, name: 'Electrical', icon: '⚡', provider_count: 0 },
+    { id: 3, name: 'Cleaning', icon: '🧹', provider_count: 0 },
+    { id: 4, name: 'AC Service', icon: '❄️', provider_count: 0 }
+  ]);
+
+  useEffect(() => {
+    // Fetch live statistics from database
+    userAPI.getPublicStats()
+      .then(res => {
+        if (res.data) setStats(res.data);
+      })
+      .catch(err => console.error("Failed to load platform stats:", err));
+
+    // Fetch live categories from database
+    categoryAPI.getAllCategories()
+      .then(res => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setCategories(res.data);
+        }
+      })
+      .catch(err => console.error("Failed to load categories:", err));
+  }, []);
 
   const popularTags = ['Pipe Leak', 'Rewiring', 'Deep Clean', 'AC Service'];
 
-  const categories = [
-    { id: 1, name: 'Plumbing', icon: '🔧', count: '15+ Providers' },
-    { id: 2, name: 'Electrical', icon: '⚡', count: '20+ Providers' },
-    { id: 3, name: 'Cleaning', icon: '🧹', count: '10+ Providers' },
-    { id: 4, name: 'AC Service', icon: '❄️', count: '8+ Providers' }
-  ];
 
   const testimonials = [
     {
@@ -70,7 +95,10 @@ export default function HomePage() {
           {/* Trust Badge */}
           <div className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-medium tracking-wide mb-6 border border-white/10">
             <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse"></span>
-            Trusted by 12,000+ Nepalese Homes
+            {stats.total_customers > 0 
+              ? `Trusted by ${stats.total_customers.toLocaleString()} Nepalese Homes`
+              : `Verified Local Service Platform`
+            }
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight font-serif mb-6 leading-tight">
@@ -143,15 +171,21 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">12,000+</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">
+                {stats.total_customers.toLocaleString()}
+              </p>
               <p className="text-xs sm:text-sm text-gray-500 font-semibold mt-1">Happy Customers</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">850+</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">
+                {stats.total_providers.toLocaleString()}
+              </p>
               <p className="text-xs sm:text-sm text-gray-500 font-semibold mt-1">Verified Providers</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">4.8★</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">
+                {parseFloat(stats.avg_rating || 5.0).toFixed(1)}★
+              </p>
               <p className="text-xs sm:text-sm text-gray-500 font-semibold mt-1">Average Rating</p>
             </div>
             <div>
@@ -167,7 +201,12 @@ export default function HomePage() {
         <div className="flex justify-between items-end mb-10">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 font-serif">What do you need today?</h2>
-            <p className="text-sm text-gray-500 mt-1">Choose from 20+ home service categories</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {categories.length > 0 
+                ? `Choose from ${categories.length} home service categories`
+                : `Choose from our home service categories`
+              }
+            </p>
           </div>
           <Link to="/customer/browse" className="text-xs font-bold text-[#07535f] hover:underline flex items-center gap-0.5">
             View All <ArrowRight className="w-3.5 h-3.5" />
@@ -175,15 +214,20 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {categories.map(cat => (
+          {categories.slice(0, 8).map(cat => (
             <Link
               key={cat.id}
               to={`/book?category=${encodeURIComponent(cat.name)}`}
               className="border border-gray-100 hover:border-transparent hover:shadow-lg p-6 rounded-2xl transition-all text-center flex flex-col items-center hover:-translate-y-1 group bg-white"
             >
-              <span className="text-4xl group-hover:scale-110 transition-transform mb-3 block">{cat.icon}</span>
+              <span className="text-4xl group-hover:scale-110 transition-transform mb-3 block">{cat.icon || '🔧'}</span>
               <h3 className="font-bold text-gray-800 text-sm sm:text-base">{cat.name}</h3>
-              <p className="text-xs text-gray-400 mt-1">{cat.count}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {cat.provider_count !== undefined 
+                  ? `${cat.provider_count} Provider${cat.provider_count !== 1 ? 's' : ''}`
+                  : 'Available'
+                }
+              </p>
             </Link>
           ))}
         </div>
@@ -363,7 +407,7 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-serif font-bold mb-4">Are you a skilled professional?</h2>
           <p className="text-gray-100/90 text-sm sm:text-base max-w-xl mx-auto mb-8">
-            Join our network of 850+ verified providers. Set your own rates, manage your schedule, grow your income.
+            Join our network of verified providers{stats.total_providers > 0 ? ` (${stats.total_providers} verified)` : ''}. Set your own rates, manage your schedule, grow your income.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
@@ -386,10 +430,7 @@ export default function HomePage() {
       <footer className="bg-[#031d22] text-gray-400 py-12 px-4 sm:px-6 lg:px-8 border-t border-white/5">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#10b981] flex items-center justify-center text-white font-extrabold font-serif">
-              G
-            </div>
-            <span className="font-bold text-white tracking-tight">GhareluSewa</span>
+            <img src="/gharelu_sewa_logo.png" alt="Gharelu Sewa" className="h-9 w-auto object-contain bg-white/95 p-1.5 rounded-xl shadow-xs" />
           </div>
           <p className="text-xs text-gray-500 text-center">
             &copy; 2026 Gharelu Sewa. Empowering Homes & Livelihoods in Nepal.
