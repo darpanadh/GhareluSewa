@@ -8,7 +8,7 @@ import { Search, MapPin, Star, ShieldCheck, Clock, Users, ArrowRight } from 'luc
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     if (isAuthenticated && user?.role) {
       if (user.role === 'admin') navigate('/admin', { replace: true });
@@ -91,11 +91,11 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#053c45] via-[#07535f] to-[#10b981] text-white py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          
+
           {/* Trust Badge */}
           <div className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-medium tracking-wide mb-6 border border-white/10">
             <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse"></span>
-            {stats.total_customers > 0 
+            {stats.total_customers > 0
               ? `Trusted by ${stats.total_customers.toLocaleString()} Nepalese Homes`
               : `Verified Local Service Platform`
             }
@@ -106,13 +106,13 @@ export default function HomePage() {
             <span className="text-[#10b981]">Near You</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-gray-100/90 max-w-xl mx-auto mb-10">
-            Book verified plumbers, electricians, cleaners & more. Live tracking, upfront pricing, zero surprises.
+          <p className="text-base sm:text-lg text-gray-100/90 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+            Connect with trusted local professionals for reliable home services, clear pricing, and hassle-free booking.
           </p>
 
           {/* Search Bar Container */}
           <form onSubmit={handleSearchSubmit} className="bg-white p-2 rounded-2xl shadow-xl max-w-3xl mx-auto flex flex-col md:flex-row gap-2">
-            
+
             {/* City & Ward Cascaded Selector */}
             <div className="flex-1 min-w-[280px]">
               <CityWardSelector
@@ -202,7 +202,7 @@ export default function HomePage() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800 font-serif">What do you need today?</h2>
             <p className="text-sm text-gray-500 mt-1">
-              {categories.length > 0 
+              {categories.length > 0
                 ? `Choose from ${categories.length} home service categories`
                 : `Choose from our home service categories`
               }
@@ -223,7 +223,7 @@ export default function HomePage() {
               <span className="text-4xl group-hover:scale-110 transition-transform mb-3 block">{cat.icon || '🔧'}</span>
               <h3 className="font-bold text-gray-800 text-sm sm:text-base">{cat.name}</h3>
               <p className="text-xs text-gray-400 mt-1">
-                {cat.provider_count !== undefined 
+                {cat.provider_count !== undefined
                   ? `${cat.provider_count} Provider${cat.provider_count !== 1 ? 's' : ''}`
                   : 'Available'
                 }
@@ -240,7 +240,7 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-gray-800 font-serif mb-3">Why Choose Gharelu Sewa?</h2>
             <p className="text-sm text-gray-500 max-w-2xl mx-auto">Built for reliability, speed, and trust in every neighborhood.</p>
           </div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Feature 1 — Emergency Booking */}
             <Link
@@ -261,7 +261,7 @@ export default function HomePage() {
                 🚨 Tap to request now →
               </span>
             </Link>
-            
+
             {/* Feature 2 — Offline Mode */}
             <div className="bg-blue-50 border-2 border-blue-100 p-6 rounded-2xl hover:shadow-lg hover:border-blue-300 transition-all group">
               <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">

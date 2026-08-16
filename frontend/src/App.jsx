@@ -147,12 +147,6 @@ function App() {
           <main className="flex-grow">
             <AppRoutes />
           </main>
-          <footer className="bg-gray-900 text-gray-300 py-8 mt-16">
-            <div className="max-w-7xl mx-auto px-4 text-center">
-              <p>&copy; 2026 Gharelu Sewa. All rights reserved.</p>
-              <p className="text-sm text-gray-500 mt-2">Connecting you with trusted local service providers</p>
-            </div>
-          </footer>
         </div>
       </AuthProvider>
     </Router>
