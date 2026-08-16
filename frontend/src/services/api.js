@@ -37,7 +37,6 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   reverifyKYC: (data) => api.post('/auth/reverify-kyc', data),
-  googleLogin: (data) => api.post('/auth/google', data),
   getCurrentUser: () => api.get('/auth/me'),
 };
 

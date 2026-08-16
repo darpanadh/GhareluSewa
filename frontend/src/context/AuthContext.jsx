@@ -93,27 +93,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const googleLogin = useCallback(async (googleData) => {
-    try {
-      setError(null);
-      const response = await authAPI.googleLogin(googleData);
-      const { user: userData, token: newToken } = response.data;
-
-      setToken(newToken);
-      setUser(userData);
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('userId', userData.id);
-      initializeSocket(newToken);
-
-      return { success: true, user: userData };
-    } catch (err) {
-      const errorMessage = err.response?.data?.error || 'Google login failed';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    }
-  }, []);
-
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
@@ -135,7 +114,6 @@ export const AuthProvider = ({ children }) => {
     error,
     register,
     login,
-    googleLogin,
     logout,
     updateUser,
     refreshUser,

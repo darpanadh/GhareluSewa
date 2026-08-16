@@ -174,6 +174,12 @@ export const searchUsers = async (req, res) => {
 
     const result = await query(sql, params);
     res.json(result.rows);
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+};
+
 // Get public platform stats for homepage
 export const getPublicStats = async (req, res) => {
   try {
