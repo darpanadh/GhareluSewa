@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
+import { supabase } from '../config/supabaseClient';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Card from '../components/Card';
@@ -27,6 +28,59 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectPath = new URLSearchParams(location.search).get('redirect') || '/';
+
+  // Handle Google OAuth Redirect Callback
+  useEffect(() => {
+    const handleGoogleCallback = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { email, user_metadata, id } = session.user;
+          setLoading(true);
+          const result = await googleLogin({
+            email,
+            name: user_metadata?.full_name || user_metadata?.name || email.split('@')[0],
+            avatar_url: user_metadata?.avatar_url || user_metadata?.picture,
+            google_id: id,
+            role: 'customer',
+          });
+          // Sign out from Supabase client session so local auth manages JWT
+          await supabase.auth.signOut();
+          if (result.success) {
+            navigate(result.user?.role === 'provider' ? '/provider' : '/customer');
+          } else {
+            setError(result.error);
+          }
+        }
+      } catch (err) {
+        console.error('Google callback error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handleGoogleCallback();
+  }, [googleLogin, navigate]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setError('');
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/login`,
+        },
+      });
+      if (error) {
+        setError(error.message);
+      }
+    } catch (err) {
+      setError('Failed to initiate Google Sign-In');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Live Field Validations
   const validateEmail = (val) => {
@@ -277,27 +331,7 @@ export default function LoginPage() {
 
           <button
             type="button"
-            onClick={async () => {
-              try {
-                setLoading(true);
-                const googleSimData = {
-                  email: 'demo.google@gmail.com',
-                  name: 'Ram Shrestha',
-                  avatar_url: 'https://lh3.googleusercontent.com/a/default-user',
-                  role: 'customer',
-                };
-                const result = await googleLogin(googleSimData);
-                if (result.success) {
-                  navigate(result.user?.role === 'provider' ? '/provider' : '/customer');
-                } else {
-                  setError(result.error);
-                }
-              } catch (err) {
-                setError('Google sign-in failed');
-              } finally {
-                setLoading(false);
-              }
-            }}
+            onClick={handleGoogleSignIn}
             className="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-2xl shadow-xs transition-all cursor-pointer text-xs"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
