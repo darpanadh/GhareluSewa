@@ -27,8 +27,10 @@ export default function AdminDashboard() {
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
 
-  // Selected Provider Modal for detailed KYC inspection
+  // Selected Provider Modal for detailed KYC inspection / profile view
   const [selectedProviderModal, setSelectedProviderModal] = useState(null);
+  const [selectedCustomerModal, setSelectedCustomerModal] = useState(null);
+  const [allProviders, setAllProviders] = useState([]);
 
   const fetchAdminChart = async (periodVal = adminChartPeriod) => {
     setAdminChartLoading(true);
@@ -52,11 +54,13 @@ export default function AdminDashboard() {
       adminAPI.getAllBookings({ limit: 15 }),
       adminAPI.getPendingProviders({ limit: 10 }),
       adminAPI.getAllUsers(),
-    ]).then(([sR, bR, pR, uR]) => {
+      adminAPI.getAllProviders(),
+    ]).then(([sR, bR, pR, uR, prR]) => {
       if (sR.status === 'fulfilled') setStats(sR.value.data || {});
       if (bR.status === 'fulfilled') { const d = bR.value.data; setRecentBookings(Array.isArray(d) ? d : []); }
       if (pR.status === 'fulfilled') { const d = pR.value.data; setPendingProviders(Array.isArray(d) ? d : []); }
       if (uR.status === 'fulfilled') { const d = uR.value.data; setAllUsers(Array.isArray(d) ? d : []); }
+      if (prR.status === 'fulfilled') { const d = prR.value.data; setAllProviders(Array.isArray(d) ? d : []); }
       setLoading(false);
     });
   };
@@ -73,8 +77,9 @@ export default function AdminDashboard() {
       await adminAPI.verifyProvider(id);
       setPendingProviders(prev => prev.filter(p => p.id !== id));
       setAllUsers(prev => prev.map(u => u.id === id ? { ...u, is_verified: true } : u));
+      setAllProviders(prev => prev.map(p => p.id === id ? { ...p, is_verified: true } : p));
       if (selectedProviderModal && selectedProviderModal.id === id) {
-        setSelectedProviderModal(null);
+        setSelectedProviderModal(prev => prev ? ({ ...prev, is_verified: true }) : null);
       }
       flash('success', `Verified KYC for ${name} successfully!`);
     } catch { flash('error', `Failed to verify ${name}.`); }
@@ -100,9 +105,19 @@ export default function AdminDashboard() {
         await adminAPI.activateUser(user.id);
       }
       setAllUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u));
+      setAllProviders(prev => prev.map(p => p.id === user.id ? { ...p, is_active: !p.is_active } : p));
       flash('success', `User "${user.name}" ${user.is_active ? 'deactivated' : 'activated'} successfully.`);
     } catch (err) {
       flash('error', `Failed to update user status.`);
+    }
+  };
+
+  const handleOpenProfile = (userItem) => {
+    if (userItem.role === 'provider' || userItem.citizenship_no || userItem.hourly_rate) {
+      const fullP = allProviders.find(p => p.id === userItem.id) || userItem;
+      setSelectedProviderModal(fullP);
+    } else {
+      setSelectedCustomerModal(userItem);
     }
   };
 
@@ -453,7 +468,7 @@ export default function AdminDashboard() {
                   <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
                     <Shield className="w-4 h-4 text-[#07535f]" /> Service Professionals ({providersList.length})
                   </h2>
-                  <p className="text-xs text-gray-400">All registered service providers on Gharelu Sewa</p>
+                  <p className="text-xs text-gray-400">Click any provider name or Profile button to view full details</p>
                 </div>
                 <Link to="/admin/providers" className="text-xs font-bold text-[#07535f] hover:underline">
                   Full Provider Management Page →
@@ -479,12 +494,17 @@ export default function AdminDashboard() {
                       providersList.map(p => (
                         <tr key={p.id} className="hover:bg-gray-50/60 transition-colors">
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-[#07535f]/10 text-[#07535f] font-bold flex items-center justify-center">
+                            <div
+                              onClick={() => handleOpenProfile(p)}
+                              className="flex items-center gap-2.5 cursor-pointer group"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-[#07535f]/10 text-[#07535f] font-bold flex items-center justify-center group-hover:scale-105 transition-transform">
                                 {p.name?.charAt(0) || 'P'}
                               </div>
                               <div>
-                                <p className="font-bold text-gray-900">{p.name}</p>
+                                <p className="font-bold text-gray-900 group-hover:text-[#07535f] group-hover:underline flex items-center gap-1">
+                                  {p.name} <Eye className="w-3 h-3 text-[#07535f] opacity-60" />
+                                </p>
                                 <p className="text-[11px] text-gray-400">{p.email}</p>
                               </div>
                             </div>
@@ -504,14 +524,22 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => handleToggleUserActive(p)}
-                              className={`text-[11px] font-bold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
-                                p.is_active ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
-                              }`}
-                            >
-                              {p.is_active ? 'Deactivate' : 'Activate'}
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleOpenProfile(p)}
+                                className="text-[11px] font-bold px-3 py-1 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all flex items-center gap-1 cursor-pointer"
+                              >
+                                <Eye className="w-3 h-3 text-[#07535f]" /> Profile
+                              </button>
+                              <button
+                                onClick={() => handleToggleUserActive(p)}
+                                className={`text-[11px] font-bold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                                  p.is_active ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                                }`}
+                              >
+                                {p.is_active ? 'Deactivate' : 'Activate'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -531,7 +559,7 @@ export default function AdminDashboard() {
                 <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
                   <Users className="w-4 h-4 text-[#07535f]" /> All Platform Users ({allUsers.length})
                 </h3>
-                <p className="text-xs text-gray-400">View and search all registered customers and professionals</p>
+                <p className="text-xs text-gray-400">Click any user name or Profile button to inspect full account details</p>
               </div>
               <Link to="/admin/users" className="text-xs font-bold text-[#07535f] hover:underline">
                 Full User Management Page →
@@ -576,12 +604,17 @@ export default function AdminDashboard() {
                     filteredUsers.map(u => (
                       <tr key={u.id} className="hover:bg-gray-50/60 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#07535f]/10 text-[#07535f] font-bold flex items-center justify-center">
+                          <div
+                            onClick={() => handleOpenProfile(u)}
+                            className="flex items-center gap-2.5 cursor-pointer group"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-[#07535f]/10 text-[#07535f] font-bold flex items-center justify-center group-hover:scale-105 transition-transform">
                               {u.name?.charAt(0) || 'U'}
                             </div>
                             <div>
-                              <p className="font-bold text-gray-900">{u.name}</p>
+                              <p className="font-bold text-gray-900 group-hover:text-[#07535f] group-hover:underline flex items-center gap-1">
+                                {u.name} <Eye className="w-3 h-3 text-[#07535f] opacity-60" />
+                              </p>
                               <p className="text-[11px] text-gray-400">{u.email}</p>
                             </div>
                           </div>
@@ -600,14 +633,22 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleToggleUserActive(u)}
-                            className={`text-[11px] font-bold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
-                              u.is_active ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
-                            }`}
-                          >
-                            {u.is_active ? 'Deactivate' : 'Activate'}
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleOpenProfile(u)}
+                              className="text-[11px] font-bold px-3 py-1 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700 transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <Eye className="w-3 h-3 text-[#07535f]" /> Profile
+                            </button>
+                            <button
+                              onClick={() => handleToggleUserActive(u)}
+                              className={`text-[11px] font-bold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                                u.is_active ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {u.is_active ? 'Deactivate' : 'Activate'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -637,7 +678,7 @@ export default function AdminDashboard() {
 
       </div>
 
-      {/* ── DETAILED TASKER KYC INSPECTION MODAL ───────────────────────── */}
+      {/* ── DETAILED PROVIDER PROFILE & KYC INSPECTION MODAL ───────────────── */}
       {selectedProviderModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95 duration-150 border border-gray-100 max-h-[90vh] overflow-y-auto text-left">
@@ -656,15 +697,21 @@ export default function AdminDashboard() {
                 {selectedProviderModal.avatar_url ? (
                   <img src={selectedProviderModal.avatar_url} alt={selectedProviderModal.name} className="w-full h-full object-cover rounded-2xl" />
                 ) : (
-                  selectedProviderModal.name?.charAt(0) || 'T'
+                  selectedProviderModal.name?.charAt(0) || 'P'
                 )}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-xl font-extrabold text-gray-900">{selectedProviderModal.name}</h2>
-                  <span className="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">
-                    KYC Application Pending
-                  </span>
+                  {selectedProviderModal.is_verified ? (
+                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" /> Verified Tasker
+                    </span>
+                  ) : (
+                    <span className="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">
+                      KYC Pending
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">{selectedProviderModal.email} • ID: #{selectedProviderModal.id}</p>
               </div>
@@ -713,7 +760,7 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <span className="bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                    Document Submitted ✓
+                    {selectedProviderModal.is_verified ? 'Account Verified ✓' : 'Document Submitted ✓'}
                   </span>
                 </div>
 
@@ -731,8 +778,10 @@ export default function AdminDashboard() {
                     <span className="font-bold text-white">{selectedProviderModal.ward || 'Kathmandu'}</span>
                   </div>
                   <div>
-                    <span className="text-white/60 text-[10px] block">Application Status</span>
-                    <span className="font-bold text-amber-300">Pending Approval</span>
+                    <span className="text-white/60 text-[10px] block">Account Status</span>
+                    <span className={`font-bold ${selectedProviderModal.is_active ? 'text-emerald-300' : 'text-red-400'}`}>
+                      {selectedProviderModal.is_active ? 'Active Online' : 'Inactive / Deactivated'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -782,23 +831,116 @@ export default function AdminDashboard() {
                 onClick={() => setSelectedProviderModal(null)}
                 className="w-full sm:flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl text-xs font-extrabold transition-all cursor-pointer"
               >
-                Close Inspection
+                Close Profile
               </button>
+
+              {!selectedProviderModal.is_verified && (
+                <button
+                  type="button"
+                  onClick={() => handleApprove(selectedProviderModal.id, selectedProviderModal.name)}
+                  className="w-full sm:flex-1 bg-[#10b981] hover:bg-[#0ea572] text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle className="w-4 h-4" /> Approve & Verify Tasker
+                </button>
+              )}
 
               <button
                 type="button"
-                onClick={() => handleApprove(selectedProviderModal.id, selectedProviderModal.name)}
-                className="w-full sm:flex-1 bg-[#10b981] hover:bg-[#0ea572] text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => {
+                  handleToggleUserActive(selectedProviderModal);
+                  setSelectedProviderModal(prev => prev ? { ...prev, is_active: !prev.is_active } : null);
+                }}
+                className={`w-full sm:flex-1 text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer ${
+                  selectedProviderModal.is_active
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
               >
-                <CheckCircle className="w-4 h-4" /> Approve & Verify Tasker
+                {selectedProviderModal.is_active ? 'Deactivate Account' : 'Activate Account'}
               </button>
+            </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ── CUSTOMER PROFILE MODAL ─────────────────────────────────────── */}
+      {selectedCustomerModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 relative border border-gray-100 text-left animate-in fade-in zoom-in-95 duration-150">
+            
+            <button
+              onClick={() => setSelectedCustomerModal(null)}
+              className="absolute right-5 top-5 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-4 border-b border-gray-100 pb-4">
+              <div className="w-16 h-16 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-extrabold text-2xl flex-shrink-0">
+                {selectedCustomerModal.avatar_url ? (
+                  <img src={selectedCustomerModal.avatar_url} alt={selectedCustomerModal.name} className="w-full h-full object-cover rounded-2xl" />
+                ) : (
+                  selectedCustomerModal.name?.charAt(0) || 'C'
+                )}
+              </div>
+              <div>
+                <h2 className="text-xl font-extrabold text-gray-900">{selectedCustomerModal.name}</h2>
+                <span className="bg-purple-100 text-purple-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full mt-1 inline-block">
+                  Customer Account
+                </span>
+                <p className="text-xs text-gray-400 mt-1">ID: #{selectedCustomerModal.id}</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-2xl p-4 space-y-3 text-xs text-gray-700">
+              <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                <span className="text-gray-400 font-semibold">Email Address</span>
+                <span className="font-bold text-gray-900">{selectedCustomerModal.email}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                <span className="text-gray-400 font-semibold">Contact Phone</span>
+                <span className="font-bold text-gray-900">{selectedCustomerModal.phone || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                <span className="text-gray-400 font-semibold">Service Location / Ward</span>
+                <span className="font-bold text-gray-900">{selectedCustomerModal.ward || 'Kathmandu'}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-gray-200/60">
+                <span className="text-gray-400 font-semibold">Account Status</span>
+                <span className={`font-bold ${selectedCustomerModal.is_active ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {selectedCustomerModal.is_active ? 'Active ✓' : 'Inactive / Deactivated'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 font-semibold">Member Since</span>
+                <span className="font-bold text-gray-900">
+                  {selectedCustomerModal.created_at ? format(new Date(selectedCustomerModal.created_at), 'MMMM d, yyyy') : 'N/A'}
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex gap-3">
               <button
                 type="button"
-                onClick={() => handleReject(selectedProviderModal.id, selectedProviderModal.name)}
-                className="w-full sm:w-auto bg-white border border-red-200 hover:bg-red-50 text-red-600 px-5 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => setSelectedCustomerModal(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl text-xs font-extrabold transition-all cursor-pointer"
               >
-                <XCircle className="w-4 h-4" /> Reject
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleToggleUserActive(selectedCustomerModal);
+                  setSelectedCustomerModal(prev => prev ? { ...prev, is_active: !prev.is_active } : null);
+                }}
+                className={`flex-1 text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md cursor-pointer ${
+                  selectedCustomerModal.is_active
+                    ? 'bg-red-500 hover:bg-red-600'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {selectedCustomerModal.is_active ? 'Deactivate Account' : 'Activate Account'}
               </button>
             </div>
 
