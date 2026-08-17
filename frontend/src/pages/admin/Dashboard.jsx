@@ -470,7 +470,7 @@ export default function AdminDashboard() {
                           <td className="px-4 py-3 font-semibold text-gray-600">{b.service_category || 'Service'}</td>
                           <td className="px-4 py-3 text-gray-700 font-medium">{b.location || 'Kathmandu'}</td>
                           <td className="px-4 py-3">{getStatusBadge(b.status)}</td>
-                          <td className="px-4 py-3 font-bold text-gray-900">Rs. {b.total_price || b.hourly_rate || 800}</td>
+                          <td className="px-4 py-3 font-bold text-gray-900">Rs. {b.total_price || b.hourly_rate || 650}</td>
                           <td className="px-4 py-3 text-gray-400">
                             {b.booking_date ? format(new Date(b.booking_date), 'MMM d, yyyy') : 'N/A'}
                           </td>

@@ -18,7 +18,7 @@ export const initiatePayment = async (req, res) => {
 
     // Get booking details
     const bookingResult = await query(
-      `SELECT b.id, b.customer_id, b.provider_id, b.status, pp.hourly_rate
+      `SELECT b.id, b.customer_id, b.provider_id, b.status, b.total_price, pp.hourly_rate
        FROM bookings b
        LEFT JOIN provider_profiles pp ON b.provider_id = pp.user_id
        WHERE b.id = $1`,
@@ -50,8 +50,8 @@ export const initiatePayment = async (req, res) => {
       return res.status(409).json({ error: 'This booking has already been paid' });
     }
 
-    // Calculate amounts (using hourly_rate as the service cost; default 800 if not set)
-    const amount = parseFloat(booking.hourly_rate || 800);
+    // Calculate amounts (using total_price or hourly_rate as the service cost; default 650 if not set)
+    const amount = parseFloat(booking.total_price || booking.hourly_rate || 650);
     const commission = parseFloat((amount * COMMISSION_RATE).toFixed(2));
     const providerPayout = parseFloat((amount - commission).toFixed(2));
 
@@ -270,7 +270,7 @@ export const submitManualPayment = async (req, res) => {
 
     // Validate booking belongs to this customer
     const bookingResult = await query(
-      `SELECT b.id, b.customer_id, b.provider_id, b.status, pp.hourly_rate
+      `SELECT b.id, b.customer_id, b.provider_id, b.status, b.total_price, pp.hourly_rate
        FROM bookings b
        LEFT JOIN provider_profiles pp ON b.provider_id = pp.user_id
        WHERE b.id = $1`,
@@ -288,10 +288,11 @@ export const submitManualPayment = async (req, res) => {
     );
     if (existing.rows.length > 0) return res.status(409).json({ error: 'Booking already paid' });
 
-    const amount = parseFloat(booking.hourly_rate || 800);
+    const amount = parseFloat(booking.total_price || booking.hourly_rate || 650);
     const commission = parseFloat((amount * COMMISSION_RATE).toFixed(2));
     const providerPayout = parseFloat((amount - commission).toFixed(2));
     const oid = `GS-MANUAL-${bookingId}-${Date.now()}`;
+    const ref_id = manual_ref_id.trim();
 
     const result = await query(
       `INSERT INTO payments
@@ -299,20 +300,10 @@ export const submitManualPayment = async (req, res) => {
           esewa_oid, status, payment_method, manual_ref_id, paid_at, escrow_released)
        VALUES ($1,$2,$3,$4,$5,$6,$7,'completed',$8,$9,CURRENT_TIMESTAMP,FALSE)
        RETURNING *`,
-      [bookingId, booking.customer_id, booking.provider_id, amount, commission, providerPayout,
-       oid, payment_method, manual_ref_id.trim()]
+      [bookingId, booking.customer_id, booking.provider_id, amount, commission, providerPayout, oid, payment_method || 'manual_esewa', ref_id]
     );
-
-    const payment = result.rows[0];
 
     // Update booking status to completed
-    await query(
-      `UPDATE bookings SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-      [bookingId]
-    );
-
-    // Get names for notifications
-    const customerResult = await query('SELECT name FROM users WHERE id = $1', [booking.customer_id]);
     const providerResult = await query('SELECT name FROM users WHERE id = $1', [booking.provider_id]);
     const customerName = customerResult.rows[0]?.name || 'Customer';
     const providerName = providerResult.rows[0]?.name || 'Provider';

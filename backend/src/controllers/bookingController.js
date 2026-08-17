@@ -71,7 +71,7 @@ export const getUserBookings = async (req, res) => {
     const { status, limit = 20, offset = 0 } = req.query;
 
     let sql = `
-      SELECT b.id, b.customer_id, b.provider_id, b.status, b.booking_date, b.location, b.is_emergency,
+      SELECT b.id, b.customer_id, b.provider_id, b.status, b.booking_date, b.location, b.is_emergency, b.total_price,
              cu.name as customer_name, cu.phone as customer_phone, cu.avatar_url as customer_avatar,
              p.name as provider_name, p.phone as provider_phone, p.avatar_url as provider_avatar,
              sc.name as service_category, b.created_at, b.updated_at,
@@ -111,7 +111,7 @@ export const getBookingById = async (req, res) => {
     const { bookingId } = req.params;
 
     const result = await query(
-      `SELECT b.id, b.customer_id, b.provider_id, b.status, b.booking_date, b.location, b.description, b.is_emergency,
+      `SELECT b.id, b.customer_id, b.provider_id, b.status, b.booking_date, b.location, b.description, b.is_emergency, b.total_price,
               cu.name as customer_name, cu.phone as customer_phone, cu.avatar_url as customer_avatar, cu.ward as customer_ward,
               p.name as provider_name, p.phone as provider_phone, p.avatar_url as provider_avatar, p.ward as provider_ward,
               sc.name as service_category, pp.hourly_rate, b.created_at, b.updated_at

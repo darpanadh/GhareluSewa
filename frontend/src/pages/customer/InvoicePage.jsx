@@ -177,7 +177,7 @@ export default function InvoicePage() {
   };
 
   // ── Amounts ─────────────────────────────────────────────────────────────
-  const serviceAmount  = parseFloat(booking?.hourly_rate || 800);
+  const serviceAmount  = parseFloat(booking?.total_price || booking?.hourly_rate || 650);
   const commission     = parseFloat((serviceAmount * 0.10).toFixed(2));
   const providerPayout = parseFloat((serviceAmount - commission).toFixed(2));
 

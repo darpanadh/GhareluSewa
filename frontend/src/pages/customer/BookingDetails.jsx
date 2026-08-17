@@ -386,7 +386,7 @@ export default function BookingDetails() {
                         💵 Customer Paid Cash — Mark Payment Completed
                       </span>
                       <span className="text-xs bg-emerald-800/80 px-2.5 py-1 rounded-lg">
-                        Cut 10% Comm (Rs. {Math.round((booking.total_price || booking.hourly_rate || 800) * 0.1)})
+                        Cut 10% Comm (Rs. {Math.round((booking.total_price || booking.hourly_rate || 650) * 0.1)})
                       </span>
                     </button>
 
@@ -480,7 +480,7 @@ export default function BookingDetails() {
         onClose={() => setIsCashModalOpen(false)}
         onConfirm={handleRecordCashPayment}
         loading={cashLoading}
-        amount={`Rs. ${booking?.total_price || booking?.hourly_rate || 800}`}
+        amount={`Rs. ${booking?.total_price || booking?.hourly_rate || 650}`}
       />
 
       {/* Toast / Notification Banner */}
