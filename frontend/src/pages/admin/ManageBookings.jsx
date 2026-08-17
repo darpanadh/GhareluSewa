@@ -7,6 +7,7 @@ const STATUS_COLORS = {
   completed: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700',
   in_progress: 'bg-blue-100 text-blue-700',
+  awaiting_payment: 'bg-amber-100 text-amber-700',
   accepted: 'bg-sky-100 text-sky-700',
   cancelled: 'bg-red-100 text-red-700',
 };
@@ -99,6 +100,7 @@ export default function ManageBookings() {
             <option value="pending">Pending</option>
             <option value="accepted">Accepted</option>
             <option value="in_progress">In Progress</option>
+            <option value="awaiting_payment">Awaiting Payment</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
@@ -166,7 +168,7 @@ export default function ManageBookings() {
                     </td>
                     <td className="px-5 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-700'}`}>
-                        {b.status?.replace('_', ' ')}
+                        {b.status?.replaceAll('_', ' ')}
                       </span>
                     </td>
                   </tr>

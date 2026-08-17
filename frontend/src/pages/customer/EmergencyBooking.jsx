@@ -25,27 +25,38 @@ export default function EmergencyBooking() {
   const [step, setStep] = useState(1); // 1 = form, 2 = success
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [ward, setWard] = useState(user?.ward || '');
-  const [location, setLocation] = useState('');
+  const [tole, setTole] = useState('');
+  const [landmark, setLandmark] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState(user?.phone || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [bookingRef, setBookingRef] = useState(null);
 
+  const getFullAddress = () => {
+    const parts = [];
+    if (tole.trim()) parts.push(`Tole: ${tole.trim()}`);
+    if (landmark.trim()) parts.push(`Landmark: ${landmark.trim()}`);
+    if (ward) parts.push(ward);
+    return parts.join(', ') || ward || 'Not specified';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedCategory) return setError('Please select a service category');
-    if (!ward) return setError('Please select your ward/area');
-    if (!location.trim()) return setError('Please enter your address');
+    if (!ward) return setError('Please select your city and ward');
+    if (!tole.trim()) return setError('Please enter your Tole / Street name');
+    if (!landmark.trim()) return setError('Please enter a nearby landmark');
     setError('');
     setLoading(true);
     try {
+      const fullLocation = getFullAddress();
       let res;
       if (isAuthenticated) {
         res = await bookingAPI.createEmergencyBooking({
           category_id: selectedCategory,
           ward,
-          location,
+          location: fullLocation,
           description: description || 'Emergency service needed',
         });
         setBookingRef(res.data?.booking?.id || res.data?.id || 'EM-' + Date.now());
@@ -149,7 +160,7 @@ export default function EmergencyBooking() {
 
           {/* Step 2: Location */}
           <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="font-bold text-gray-900 mb-4">2. Where are you?</h2>
+            <h2 className="font-bold text-gray-900 mb-4">2. Where are you located?</h2>
             <div className="space-y-3">
               <CityWardSelector
                 value={ward}
@@ -158,12 +169,23 @@ export default function EmergencyBooking() {
                 layout="row"
               />
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Exact Address *</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Tole / Street Name *</label>
                 <input
                   type="text"
-                  value={location}
-                  onChange={e => setLocation(e.target.value)}
-                  placeholder="House no., street, landmark..."
+                  value={tole}
+                  onChange={e => setTole(e.target.value)}
+                  placeholder="e.g. Siddhartha Tole, Ganesh Marg..."
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">Nearby Landmark *</label>
+                <input
+                  type="text"
+                  value={landmark}
+                  onChange={e => setLandmark(e.target.value)}
+                  placeholder="e.g. Near Machhapuchhre Bank, Opposite City Hospital..."
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
                   required
                 />

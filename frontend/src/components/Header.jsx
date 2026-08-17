@@ -6,6 +6,7 @@ import { notificationAPI } from '../services/api';
 import { onNotification } from '../services/socket';
 import { ToastContainer } from './ToastContainer';
 import EditProfileModal from './EditProfileModal';
+import FloatingChat from './FloatingChat';
 
 export const Header = () => {
   const { user, logout, isAuthenticated, login } = useAuth();
@@ -52,6 +53,9 @@ export const Header = () => {
         setNotifications(prev => [{ ...data, id: Date.now(), created_at: new Date().toISOString() }, ...prev]);
         setUnreadCount(prev => prev + 1);
         toastRef.current?.addToast(data.message, data.type, data.bookingId);
+        if (data.type === 'new_message') {
+          window.dispatchEvent(new CustomEvent('new_chat_notification', { detail: data }));
+        }
       });
     }
   }, [isAuthenticated]);
@@ -98,12 +102,7 @@ export const Header = () => {
             {/* Left Area: Logo & All Services */}
             <div className="flex items-center gap-10">
               <Link to={isAuthenticated ? (user?.role === 'admin' ? '/admin' : user?.role === 'provider' ? '/provider' : '/customer') : '/'} className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#07535f] flex items-center justify-center text-white shadow-xs">
-                  <Wrench className="w-5 h-5 stroke-[2.5]" />
-                </div>
-                <span className="font-extrabold text-2xl tracking-tight text-[#07535f]">
-                  Gharelu<span className="text-[#07535f]">Sewa</span>
-                </span>
+                <img src="/gharelu_sewa_logo.png" alt="Gharelu Sewa Logo" className="h-10 w-auto object-contain" />
               </Link>
 
               {/* All Services Dropdown - Only shown for guest / unauthenticated homepage */}
@@ -537,6 +536,7 @@ export const Header = () => {
       </header>
       <EditProfileModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} />
       <ToastContainer ref={toastRef} />
+      <FloatingChat />
     </>
   );
 };

@@ -156,7 +156,7 @@ export const getCurrentUser = async (req, res) => {
   try {
     const result = await query(
       `SELECT u.id, u.name, u.email, u.phone, u.role, u.ward, u.avatar_url, u.bio, u.is_verified,
-              pp.hourly_rate, pp.rating_avg, pp.availability
+              pp.hourly_rate, pp.rating_avg, pp.total_reviews, pp.availability
        FROM users u
        LEFT JOIN provider_profiles pp ON u.id = pp.user_id
        WHERE u.id = $1`,
@@ -250,71 +250,3 @@ export const reverifyKYC = async (req, res) => {
   }
 };
 
-// Sign in / Sign up with Google
-export const googleAuth = async (req, res) => {
-  try {
-    const { email, name, avatar_url, role = 'customer', google_id } = req.body;
-
-    if (!email || !name) {
-      return res.status(400).json({ error: 'Google account details missing' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    // Check if user exists
-    let userResult = await query(
-      'SELECT id, name, email, role, is_verified, is_active, avatar_url FROM users WHERE LOWER(email) = LOWER($1)',
-      [cleanEmail]
-    );
-
-    let user;
-
-    if (userResult.rows.length === 0) {
-      // Create new Google user
-      const dummyPassword = await hashPassword(`google_${Date.now()}_${Math.random()}`);
-      const insertResult = await query(
-        `INSERT INTO users (name, email, password_hash, role, avatar_url, is_verified, is_active)
-         VALUES ($1, $2, $3, $4, $5, TRUE, TRUE)
-         RETURNING id, name, email, role, is_verified, avatar_url`,
-        [name, cleanEmail, dummyPassword, role, avatar_url || null]
-      );
-      user = insertResult.rows[0];
-
-      // If registered as provider, create basic provider profile
-      if (role === 'provider') {
-        await query(
-          `INSERT INTO provider_profiles (user_id, category_id, hourly_rate, availability)
-           VALUES ($1, 1, 500, true)`,
-          [user.id]
-        );
-      }
-    } else {
-      user = userResult.rows[0];
-      if (!user.is_active) {
-        return res.status(403).json({ error: 'Account is deactivated. Please contact support.' });
-      }
-      // Update avatar if provided
-      if (avatar_url && !user.avatar_url) {
-        await query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatar_url, user.id]);
-        user.avatar_url = avatar_url;
-      }
-    }
-
-    const token = generateToken(user.id, user.role);
-
-    res.json({
-      message: 'Google login successful',
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatar_url: user.avatar_url,
-      },
-    });
-  } catch (error) {
-    console.error('Google auth error:', error);
-    res.status(500).json({ error: 'Failed to process Google sign-in' });
-  }
-};

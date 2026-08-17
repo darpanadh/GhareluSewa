@@ -1,13 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { userAPI, categoryAPI } from '../services/api';
 import CityWardSelector from '../components/CityWardSelector';
-import { Search, MapPin, Star, ShieldCheck, Clock, Users, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Star, ShieldCheck, Clock, Users, ArrowRight, Wrench, Zap, Home, Wind, Sparkles, Snowflake, Paintbrush, Hammer } from 'lucide-react';
+
+const renderCategoryIcon = (iconStr, catName) => {
+  const iconLower = (iconStr || '').toLowerCase();
+  const nameLower = (catName || '').toLowerCase();
+
+  // If icon is an emoji, render text emoji
+  if (iconStr && /[\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}]/u.test(iconStr)) {
+    return <span className="text-3xl">{iconStr}</span>;
+  }
+
+  if (iconLower === 'wrench' || nameLower.includes('plumb')) {
+    return <Wrench className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'zap' || nameLower.includes('electr')) {
+    return <Zap className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'home' || nameLower.includes('clean')) {
+    return <Home className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'wind' || nameLower.includes('ac') || nameLower.includes('air')) {
+    return <Wind className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'sparkles' || nameLower.includes('sparkl')) {
+    return <Sparkles className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'snowflake' || nameLower.includes('cool')) {
+    return <Snowflake className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'paintbrush' || nameLower.includes('paint')) {
+    return <Paintbrush className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'hammer' || nameLower.includes('carpent')) {
+    return <Hammer className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+
+  return <Wrench className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+};
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     if (isAuthenticated && user?.role) {
       if (user.role === 'admin') navigate('/admin', { replace: true });
@@ -18,15 +56,39 @@ export default function HomePage() {
 
   const [ward, setWard] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState({
+    total_customers: 0,
+    total_providers: 0,
+    avg_rating: 5.0,
+    completed_bookings: 0
+  });
+  const [categories, setCategories] = useState([
+    { id: 1, name: 'Plumbing', icon: '🔧', provider_count: 0 },
+    { id: 2, name: 'Electrical', icon: '⚡', provider_count: 0 },
+    { id: 3, name: 'Cleaning', icon: '🧹', provider_count: 0 },
+    { id: 4, name: 'AC Service', icon: '❄️', provider_count: 0 }
+  ]);
+
+  useEffect(() => {
+    // Fetch live statistics from database
+    userAPI.getPublicStats()
+      .then(res => {
+        if (res.data) setStats(res.data);
+      })
+      .catch(err => console.error("Failed to load platform stats:", err));
+
+    // Fetch live categories from database
+    categoryAPI.getAllCategories()
+      .then(res => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setCategories(res.data);
+        }
+      })
+      .catch(err => console.error("Failed to load categories:", err));
+  }, []);
 
   const popularTags = ['Pipe Leak', 'Rewiring', 'Deep Clean', 'AC Service'];
 
-  const categories = [
-    { id: 1, name: 'Plumbing', icon: '🔧', count: '15+ Providers' },
-    { id: 2, name: 'Electrical', icon: '⚡', count: '20+ Providers' },
-    { id: 3, name: 'Cleaning', icon: '🧹', count: '10+ Providers' },
-    { id: 4, name: 'AC Service', icon: '❄️', count: '8+ Providers' }
-  ];
 
   const testimonials = [
     {
@@ -66,11 +128,14 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#053c45] via-[#07535f] to-[#10b981] text-white py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          
+
           {/* Trust Badge */}
           <div className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-medium tracking-wide mb-6 border border-white/10">
             <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse"></span>
-            Trusted by 12,000+ Nepalese Homes
+            {stats.total_customers > 0
+              ? `Trusted by ${stats.total_customers.toLocaleString()} Nepalese Homes`
+              : `Verified Local Service Platform`
+            }
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight font-serif mb-6 leading-tight">
@@ -78,13 +143,13 @@ export default function HomePage() {
             <span className="text-[#10b981]">Near You</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-gray-100/90 max-w-xl mx-auto mb-10">
-            Book verified plumbers, electricians, cleaners & more. Live tracking, upfront pricing, zero surprises.
+          <p className="text-base sm:text-lg text-gray-100/90 max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
+            Connect with trusted local professionals for reliable home services, clear pricing, and hassle-free booking.
           </p>
 
           {/* Search Bar Container */}
           <form onSubmit={handleSearchSubmit} className="bg-white p-2 rounded-2xl shadow-xl max-w-3xl mx-auto flex flex-col md:flex-row gap-2">
-            
+
             {/* City & Ward Cascaded Selector */}
             <div className="flex-1 min-w-[280px]">
               <CityWardSelector
@@ -143,15 +208,21 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">12,000+</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">
+                {stats.total_customers.toLocaleString()}
+              </p>
               <p className="text-xs sm:text-sm text-gray-500 font-semibold mt-1">Happy Customers</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">850+</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">
+                {stats.total_providers.toLocaleString()}
+              </p>
               <p className="text-xs sm:text-sm text-gray-500 font-semibold mt-1">Verified Providers</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">4.8★</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#07535f]">
+                {parseFloat(stats.avg_rating || 5.0).toFixed(1)}★
+              </p>
               <p className="text-xs sm:text-sm text-gray-500 font-semibold mt-1">Average Rating</p>
             </div>
             <div>
@@ -167,7 +238,12 @@ export default function HomePage() {
         <div className="flex justify-between items-end mb-10">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 font-serif">What do you need today?</h2>
-            <p className="text-sm text-gray-500 mt-1">Choose from 20+ home service categories</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {categories.length > 0
+                ? `Choose from ${categories.length} home service categories`
+                : `Choose from our home service categories`
+              }
+            </p>
           </div>
           <Link to="/customer/browse" className="text-xs font-bold text-[#07535f] hover:underline flex items-center gap-0.5">
             View All <ArrowRight className="w-3.5 h-3.5" />
@@ -175,15 +251,22 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {categories.map(cat => (
+          {categories.slice(0, 8).map(cat => (
             <Link
               key={cat.id}
               to={`/book?category=${encodeURIComponent(cat.name)}`}
               className="border border-gray-100 hover:border-transparent hover:shadow-lg p-6 rounded-2xl transition-all text-center flex flex-col items-center hover:-translate-y-1 group bg-white"
             >
-              <span className="text-4xl group-hover:scale-110 transition-transform mb-3 block">{cat.icon}</span>
+              <div className="w-14 h-14 rounded-2xl bg-teal-50/80 group-hover:bg-[#07535f] flex items-center justify-center mb-3.5 transition-all shadow-2xs group-hover:scale-110 group-hover:shadow-md">
+                {renderCategoryIcon(cat.icon, cat.name)}
+              </div>
               <h3 className="font-bold text-gray-800 text-sm sm:text-base">{cat.name}</h3>
-              <p className="text-xs text-gray-400 mt-1">{cat.count}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {cat.provider_count !== undefined
+                  ? `${cat.provider_count} Provider${cat.provider_count !== 1 ? 's' : ''}`
+                  : 'Available'
+                }
+              </p>
             </Link>
           ))}
         </div>
@@ -196,7 +279,7 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-gray-800 font-serif mb-3">Why Choose Gharelu Sewa?</h2>
             <p className="text-sm text-gray-500 max-w-2xl mx-auto">Built for reliability, speed, and trust in every neighborhood.</p>
           </div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Feature 1 — Emergency Booking */}
             <Link
@@ -217,7 +300,7 @@ export default function HomePage() {
                 🚨 Tap to request now →
               </span>
             </Link>
-            
+
             {/* Feature 2 — Offline Mode */}
             <div className="bg-blue-50 border-2 border-blue-100 p-6 rounded-2xl hover:shadow-lg hover:border-blue-300 transition-all group">
               <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -363,7 +446,7 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-serif font-bold mb-4">Are you a skilled professional?</h2>
           <p className="text-gray-100/90 text-sm sm:text-base max-w-xl mx-auto mb-8">
-            Join our network of 850+ verified providers. Set your own rates, manage your schedule, grow your income.
+            Join our network of verified providers{stats.total_providers > 0 ? ` (${stats.total_providers} verified)` : ''}. Set your own rates, manage your schedule, grow your income.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
@@ -386,10 +469,7 @@ export default function HomePage() {
       <footer className="bg-[#031d22] text-gray-400 py-12 px-4 sm:px-6 lg:px-8 border-t border-white/5">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#10b981] flex items-center justify-center text-white font-extrabold font-serif">
-              G
-            </div>
-            <span className="font-bold text-white tracking-tight">GhareluSewa</span>
+            <img src="/gharelu_sewa_logo.png" alt="Gharelu Sewa" className="h-9 w-auto object-contain bg-white/95 p-1.5 rounded-xl shadow-xs" />
           </div>
           <p className="text-xs text-gray-500 text-center">
             &copy; 2026 Gharelu Sewa. Empowering Homes & Livelihoods in Nepal.

@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Leaflet z-index fixes ─────────────────────────────────────────────────
+   The map container itself sits at z-0 via inline style on the wrapper div.
+   We override leaflet's internal pane z-indices to keep them all below the
+   sticky header (z-40) and modals (z-50), while preserving their stacking
+   order relative to each other. */
+.leaflet-pane            { z-index: 1 !important; }
+.leaflet-tile-pane       { z-index: 2 !important; }
+.leaflet-overlay-pane    { z-index: 3 !important; }
+.leaflet-shadow-pane     { z-index: 4 !important; }
+.leaflet-marker-pane     { z-index: 5 !important; }
+.leaflet-tooltip-pane    { z-index: 6 !important; }
+.leaflet-popup-pane      { z-index: 7 !important; }
+.leaflet-control         { z-index: 8 !important; }
+
+
 /* Custom utilities */
 @layer components {
   .btn-primary {

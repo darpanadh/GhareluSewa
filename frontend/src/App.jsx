@@ -38,20 +38,29 @@ import Reports from './pages/admin/Reports';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#07535f]"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return children;
 };
 
 import AdminLayout from './components/AdminLayout';
+import FloatingChat from './components/FloatingChat';
 
 const AppRoutes = () => {
   const { isAuthenticated, user } = useAuth();
@@ -142,17 +151,12 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 flex flex-col relative">
           <Header />
           <main className="flex-grow">
             <AppRoutes />
           </main>
-          <footer className="bg-gray-900 text-gray-300 py-8 mt-16">
-            <div className="max-w-7xl mx-auto px-4 text-center">
-              <p>&copy; 2026 Gharelu Sewa. All rights reserved.</p>
-              <p className="text-sm text-gray-500 mt-2">Connecting you with trusted local service providers</p>
-            </div>
-          </footer>
+          <FloatingChat />
         </div>
       </AuthProvider>
     </Router>

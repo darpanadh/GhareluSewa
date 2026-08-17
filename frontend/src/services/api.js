@@ -37,7 +37,6 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   reverifyKYC: (data) => api.post('/auth/reverify-kyc', data),
-  googleLogin: (data) => api.post('/auth/google', data),
   getCurrentUser: () => api.get('/auth/me'),
 };
 
@@ -47,12 +46,16 @@ export const userAPI = {
   getProviders: (params) => api.get('/users/providers', { params }),
   getProviderById: (userId) => api.get(`/users/providers/${userId}`),
   searchUsers: (params) => api.get('/users/search', { params }),
+  getPublicStats: () => api.get('/users/public-stats'),
 };
 
 // Category endpoints
 export const categoryAPI = {
   getAllCategories: () => api.get('/categories'),
   getProvidersByCategory: (categoryId) => api.get(`/categories/${categoryId}/providers`),
+  createCategory: (data) => api.post('/categories', data),
+  updateCategory: (id, data) => api.patch(`/categories/${id}`, data),
+  deleteCategory: (id) => api.delete(`/categories/${id}`),
 };
 
 // Booking endpoints
@@ -119,12 +122,16 @@ export const adminAPI = {
   updatePayoutStatus: (id, status) => api.patch(`/admin/payouts/${id}/status`, { status }),
 };
 
-// Payment endpoints (eSewa)
+// Payment endpoints (eSewa + Platform Direct)
 export const paymentAPI = {
-  initiatePayment: (bookingId) => api.post(`/payments/initiate/${bookingId}`),
-  verifyPayment: (params) => api.get('/payments/verify', { params }),
-  getPaymentByBooking: (bookingId) => api.get(`/payments/booking/${bookingId}`),
-  getAllPayments: (params) => api.get('/payments/all', { params }),
+  initiatePayment:    (bookingId)       => api.post(`/payments/initiate/${bookingId}`),
+  verifyPayment:      (params)          => api.get('/payments/verify', { params }),
+  getPaymentByBooking:(bookingId)       => api.get(`/payments/booking/${bookingId}`),
+  getAllPayments:      (params)          => api.get('/payments/all', { params }),
+  submitManualPayment:(bookingId, data) => api.post(`/payments/manual/${bookingId}`, data),
+  recordCashPayment:  (bookingId)       => api.post(`/payments/cash/${bookingId}`),
+  releaseEscrow:      (paymentId)       => api.post(`/payments/release/${paymentId}`),
 };
+
 
 export default api;

@@ -76,8 +76,9 @@ export const ToastContainer = forwardRef((props, ref) => {
   const handleToastClick = (toast) => {
     removeToast(toast.id);
     if (toast.bookingId) {
-      // Determine where to navigate based on type/role
-      if (toast.type.startsWith('admin_')) {
+      if (toast.type === 'new_message') {
+        window.dispatchEvent(new CustomEvent('open_global_chat', { detail: { bookingId: toast.bookingId } }));
+      } else if (toast.type.startsWith('admin_')) {
         navigate(`/admin/bookings`);
       } else {
         navigate(`/customer/bookings/${toast.bookingId}`);

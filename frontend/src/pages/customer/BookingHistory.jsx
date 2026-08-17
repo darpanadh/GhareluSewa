@@ -10,14 +10,15 @@ import {
 import { format } from 'date-fns';
 
 const STATUS_CONFIG = {
-  pending:    { label: 'Pending',    color: 'bg-yellow-100 text-yellow-700',  icon: Clock,        dot: 'bg-yellow-400' },
-  confirmed:  { label: 'Confirmed',  color: 'bg-blue-100 text-blue-700',      icon: CheckCircle,  dot: 'bg-blue-400' },
-  in_progress:{ label: 'In Progress',color: 'bg-purple-100 text-purple-700',  icon: Loader,       dot: 'bg-purple-400' },
-  completed:  { label: 'Completed',  color: 'bg-green-100 text-green-700',    icon: CheckCircle,  dot: 'bg-green-400' },
-  cancelled:  { label: 'Cancelled',  color: 'bg-red-100 text-red-700',        icon: XCircle,      dot: 'bg-red-400' },
+  pending:          { label: 'Pending',          color: 'bg-yellow-100 text-yellow-700',  icon: Clock,        dot: 'bg-yellow-400' },
+  confirmed:        { label: 'Confirmed',        color: 'bg-blue-100 text-blue-700',      icon: CheckCircle,  dot: 'bg-blue-400' },
+  in_progress:      { label: 'In Progress',      color: 'bg-purple-100 text-purple-700',  icon: Loader,       dot: 'bg-purple-400' },
+  awaiting_payment: { label: 'Awaiting Payment', color: 'bg-amber-100 text-amber-700',    icon: Clock,        dot: 'bg-amber-400' },
+  completed:        { label: 'Completed',        color: 'bg-green-100 text-green-700',    icon: CheckCircle,  dot: 'bg-green-400' },
+  cancelled:        { label: 'Cancelled',        color: 'bg-red-100 text-red-700',        icon: XCircle,      dot: 'bg-red-400' },
 };
 
-const FILTERS = ['All', 'Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
+const FILTERS = ['All', 'Pending', 'Confirmed', 'In Progress', 'Awaiting Payment', 'Completed', 'Cancelled'];
 
 export default function BookingHistory() {
   const [bookings, setBookings] = useState([]);
@@ -45,7 +46,7 @@ export default function BookingHistory() {
   };
 
   const filtered = bookings.filter(b => {
-    const matchFilter = filter === 'All' || b.status.replace('_', ' ').toLowerCase() === filter.toLowerCase();
+    const matchFilter = filter === 'All' || b.status.replaceAll('_', ' ').toLowerCase() === filter.toLowerCase();
     const matchSearch = !search ||
       (b.provider_name || '').toLowerCase().includes(search.toLowerCase()) ||
       (b.service_type || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -226,7 +227,7 @@ export default function BookingHistory() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap' }}>
-                  {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                  {booking.status !== 'completed' && booking.status !== 'cancelled' && booking.status !== 'awaiting_payment' && (
                     <Link
                       to="/track"
                       state={{ booking }}
@@ -235,14 +236,31 @@ export default function BookingHistory() {
                       <Navigation style={{ width: 14, height: 14 }} /> Track Job
                     </Link>
                   )}
+                  {booking.status === 'awaiting_payment' && (
+                    <Link
+                      to={`/customer/invoice/${booking.id}`}
+                      style={{ padding: '0.375rem 0.75rem', background: '#60bb46', color: '#ffffff', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      💳 Pay Now
+                    </Link>
+                  )}
                   {booking.status === 'completed' && (
                     <>
-                      <Link
-                        to={`/customer/invoice/${booking.id}`}
-                        style={{ padding: '0.375rem 0.75rem', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none' }}
-                      >
-                        Pay / Invoice
-                      </Link>
+                      {booking.is_paid ? (
+                        <Link
+                          to={`/customer/invoice/${booking.id}`}
+                          style={{ padding: '0.375rem 0.75rem', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          📄 Invoice
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`/customer/invoice/${booking.id}`}
+                          style={{ padding: '0.375rem 0.75rem', background: '#60bb46', color: '#ffffff', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          💳 Pay
+                        </Link>
+                      )}
                       <Link
                         to={`/customer/bookings/${booking.id}`}
                         style={{ padding: '0.375rem 0.75rem', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -253,6 +271,9 @@ export default function BookingHistory() {
                   )}
                   <Link
                     to={`/customer/bookings/${booking.id}`}
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open_global_chat', { detail: { bookingId: booking.id } }));
+                    }}
                     style={{ padding: '0.375rem 0.75rem', background: '#07535f', color: '#ffffff', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
                   >
                     <MessageSquare style={{ width: 14, height: 14 }} /> Chat
@@ -273,6 +294,7 @@ function parseStyle(colorStr) {
     'bg-yellow-100 text-yellow-700': { background: '#fef9c3', color: '#a16207' },
     'bg-blue-100 text-blue-700':     { background: '#dbeafe', color: '#1d4ed8' },
     'bg-purple-100 text-purple-700': { background: '#f3e8ff', color: '#7e22ce' },
+    'bg-amber-100 text-amber-700':   { background: '#fef3c7', color: '#b45309' },
     'bg-green-100 text-green-700':   { background: '#dcfce7', color: '#15803d' },
     'bg-red-100 text-red-700':       { background: '#fee2e2', color: '#b91c1c' },
   };

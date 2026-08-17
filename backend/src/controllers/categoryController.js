@@ -3,7 +3,15 @@ import { query } from '../config/database.js';
 // Get all service categories
 export const getAllCategories = async (req, res) => {
   try {
-    const result = await query('SELECT id, name, icon, description FROM service_categories ORDER BY name');
+    const result = await query(`
+      SELECT sc.id, sc.name, sc.icon, sc.description,
+             COUNT(DISTINCT pp.user_id)::int as provider_count
+      FROM service_categories sc
+      LEFT JOIN provider_profiles pp ON sc.id = pp.category_id
+      LEFT JOIN users u ON pp.user_id = u.id AND u.is_active = TRUE AND u.is_verified = TRUE
+      GROUP BY sc.id, sc.name, sc.icon, sc.description
+      ORDER BY sc.id ASC
+    `);
     res.json(result.rows);
   } catch (error) {
     console.error('Get categories error:', error);

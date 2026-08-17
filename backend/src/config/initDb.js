@@ -62,6 +62,16 @@ export const initializeDatabase = async () => {
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS completion_status VARCHAR(100) DEFAULT 'completed_on_time'`);
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_repeated_customer BOOLEAN DEFAULT FALSE`);
       await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_price DECIMAL(10, 2) DEFAULT 650`);
+      await query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`);
+      await query(`ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'accepted', 'in_progress', 'awaiting_payment', 'completed', 'cancelled'))`);
+
+      // Sync background_check_status for existing verified providers
+      await query(`
+        UPDATE provider_profiles
+        SET background_check_status = 'approved'
+        WHERE user_id IN (SELECT id FROM users WHERE is_verified = TRUE AND role = 'provider')
+          AND (background_check_status IS NULL OR background_check_status = 'pending')
+      `);
     } catch (e) {
       console.log('Columns already exist or error adding them:', e.message);
     }
@@ -73,7 +83,7 @@ export const initializeDatabase = async () => {
         customer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         provider_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         category_id INTEGER NOT NULL REFERENCES service_categories(id),
-        status VARCHAR(50) CHECK (status IN ('pending', 'accepted', 'in_progress', 'completed', 'cancelled')) DEFAULT 'pending',
+        status VARCHAR(50) CHECK (status IN ('pending', 'accepted', 'in_progress', 'awaiting_payment', 'completed', 'cancelled')) DEFAULT 'pending',
         booking_date TIMESTAMP NOT NULL,
         location VARCHAR(255) NOT NULL,
         description TEXT,
@@ -159,7 +169,13 @@ export const initializeDatabase = async () => {
     try {
       await query(`CREATE INDEX IF NOT EXISTS idx_payments_booking_id ON payments(booking_id)`);
       await query(`CREATE INDEX IF NOT EXISTS idx_payments_customer_id ON payments(customer_id)`);
-    } catch(e) { /* indexes may already exist */ }
+      // Platform payment model — new columns
+      await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'esewa'`);
+      await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS manual_ref_id VARCHAR(255)`);
+      await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS escrow_released BOOLEAN DEFAULT FALSE`);
+      await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS escrow_released_at TIMESTAMP`);
+    } catch(e) { /* indexes/columns may already exist */ }
+
 
 
     // Create indexes for better performance
@@ -182,29 +198,94 @@ export const initializeDatabase = async () => {
       (1, 'Plumbing', 'Wrench', 'Leaking pipes, tap repair, installations'),
       (2, 'Electrical', 'Zap', 'Wiring, switches, lights, appliances'),
       (3, 'Cleaning', 'Home', 'Deep clean, kitchen clean, disinfection'),
-      (4, 'AC Service', 'Wind', 'AC repair, servicing, installation')
-      ON CONFLICT (id) DO NOTHING
+      (4, 'AC Service', 'Wind', 'AC repair, servicing, installation'),
+      (5, 'Carpentry', 'Hammer', 'Furniture repair, door fitting, woodwork'),
+      (6, 'Painting', 'Paintbrush', 'Wall painting, interior & exterior finish')
+      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon, description = EXCLUDED.description
     `);
 
     // Seed Users (Password is 'password')
     const defaultPasswordHash = '$2a$10$teqRfVbninW74qnlE1t70uPijlHZXOuMIApnoCyJTdruqfqLTbuv2'; // bcrypt hash for 'password'
-    await query(`
-      INSERT INTO users (name, email, phone, password_hash, role, ward, avatar_url, bio, is_verified) VALUES
-      ('Admin User', 'admin@gharelusewa.com', '9801234567', '${defaultPasswordHash}', 'admin', 'Kathmandu Ward No. 10', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', 'Platform Administrator', true),
-      ('Rajesh Shrestha', 'rajesh@gmail.com', '9841123456', '${defaultPasswordHash}', 'provider', 'Pokhara Ward No. 12', 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150', 'Professional plumber with over 10 years of experience in leak repairs.', true),
-      ('Priya M.', 'priya@gmail.com', '9813987654', '${defaultPasswordHash}', 'customer', 'Pokhara Ward No. 12', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Homeowner looking for reliable services', true),
-      ('Admin Demo', 'admin@test.com', '9800000001', '${defaultPasswordHash}', 'admin', 'Kathmandu Ward No. 1', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin2', 'Platform Administrator', true),
-      ('Provider Demo', 'provider@test.com', '9800000002', '${defaultPasswordHash}', 'provider', 'Pokhara Ward No. 1', 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150', 'Professional Plumber', true),
-      ('Customer Demo', 'customer@test.com', '9800000003', '${defaultPasswordHash}', 'customer', 'Kathmandu Ward No. 5', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 'Customer Account', true)
-      ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, is_active = true, ward = EXCLUDED.ward
-    `);
     
-    // Seed Provider Profile
-    await query(`
-      INSERT INTO provider_profiles (id, user_id, category_id, hourly_rate, availability, rating_avg, total_reviews) VALUES
-      (1, 2, 1, 600, true, 4.9, 142)
-      ON CONFLICT (id) DO NOTHING
-    `);
+    const seedUsers = [
+      { name: 'Admin User', email: 'admin@gharelusewa.com', phone: '9801234567', role: 'admin', ward: 'Kathmandu Ward No. 10', bio: 'Platform Administrator', is_verified: true },
+      { name: 'Rajesh Shrestha', email: 'rajesh@gmail.com', phone: '9841123456', role: 'provider', ward: 'Pokhara Ward No. 6', bio: 'Professional plumber in Pokhara with over 10 years of experience in leak repairs.', is_verified: true },
+      { name: 'Priya M.', email: 'priya@gmail.com', phone: '9813987654', role: 'customer', ward: 'Pokhara Ward No. 12', bio: 'Homeowner looking for reliable services', is_verified: true },
+      { name: 'Admin Demo', email: 'admin@test.com', phone: '9800000001', role: 'admin', ward: 'Kathmandu Ward No. 1', bio: 'Platform Administrator', is_verified: true },
+      { name: 'Provider Demo', email: 'provider@test.com', phone: '9800000002', role: 'provider', ward: 'Pokhara Ward No. 1', bio: 'Professional Plumber in Pokhara', is_verified: true },
+      { name: 'Customer Demo', email: 'customer@test.com', phone: '9800000003', role: 'customer', ward: 'Kathmandu Ward No. 5', bio: 'Customer Account', is_verified: true },
+
+      // Bharatpur Providers
+      { name: 'Bikram Thapa', email: 'bikram.plumber@gharelusewa.com', phone: '9845011111', role: 'provider', ward: 'Bharatpur Ward No. 1', bio: 'Licensed master plumber in Bharatpur offering leak repair, tap fitting, and sanitation services.', is_verified: true, category_id: 1, rate: 650, rating: 4.9, reviews: 35, badges: 'Plumbing,Pipe Repair,Tap Installation,Drain Cleaning', service_wards: 'Bharatpur (Whole City)' },
+      { name: 'Sujan Gurung', email: 'sujan.electric@gharelusewa.com', phone: '9845022222', role: 'provider', ward: 'Bharatpur Ward No. 5', bio: 'Certified electrical technician offering wiring, MCB setup, and switchboard repair across Bharatpur.', is_verified: true, category_id: 2, rate: 700, rating: 4.8, reviews: 28, badges: 'Wiring,Switch Installation,Circuit Repair,Lighting', service_wards: 'Bharatpur (Whole City)' },
+      { name: 'Sunita Chaudhary', email: 'sunita.clean@gharelusewa.com', phone: '9845033333', role: 'provider', ward: 'Bharatpur Ward No. 2', bio: 'Professional deep cleaning specialist in Bharatpur. Sofa, carpet, and full kitchen sanitization.', is_verified: true, category_id: 3, rate: 500, rating: 4.7, reviews: 45, badges: 'Deep Clean,Kitchen Sanitization,Carpet Wash', service_wards: 'Bharatpur (Whole City)' },
+      { name: 'Ramesh Adhikari', email: 'ramesh.ac@gharelusewa.com', phone: '9845044444', role: 'provider', ward: 'Bharatpur Ward No. 10', bio: 'HVAC technician specialized in AC servicing, gas refilling, and refrigerator repair.', is_verified: true, category_id: 4, rate: 800, rating: 5.0, reviews: 52, badges: 'AC Servicing,Gas Refill,Fridge Repair,Geyser Servicing', service_wards: 'Bharatpur (Whole City)' },
+      { name: 'Kiran Shrestha', email: 'kiran.carpenter@gharelusewa.com', phone: '9845055555', role: 'provider', ward: 'Bharatpur Ward No. 4', bio: 'Experienced woodworker in Bharatpur for custom furniture repair, door fitting, and cabinet making.', is_verified: true, category_id: 5, rate: 600, rating: 4.6, reviews: 22, badges: 'Furniture Repair,Door Lock Fitting,Custom Cabinetry', service_wards: 'Bharatpur (Whole City)' },
+      { name: 'Deepak Mahato', email: 'deepak.painter@gharelusewa.com', phone: '9845066666', role: 'provider', ward: 'Bharatpur Ward No. 7', bio: 'Interior and exterior wall painting expert in Bharatpur. Waterproofing and texture painting.', is_verified: true, category_id: 6, rate: 550, rating: 4.8, reviews: 31, badges: 'Wall Painting,Waterproofing,Texture Paint', service_wards: 'Bharatpur (Whole City)' },
+
+      // Kathmandu Providers
+      { name: 'Ram Kumar Rai', email: 'ram.plumber@gharelusewa.com', phone: '9841011111', role: 'provider', ward: 'Kathmandu Ward No. 10', bio: 'Top-rated plumber in Kathmandu Valley. Specialized in high-pressure pipe leaks and sanitary fittings.', is_verified: true, category_id: 1, rate: 750, rating: 4.9, reviews: 88, badges: 'Plumbing,Pipe Leakage,Sanitary Fitting,Overhead Tank Repair', service_wards: 'Kathmandu (Whole City)' },
+      { name: 'Hari Bahadur', email: 'hari.electric@gharelusewa.com', phone: '9841022222', role: 'provider', ward: 'Kathmandu Ward No. 3', bio: 'Certified electrician with 12+ years experience across Kathmandu. Home wiring and inverter setup.', is_verified: true, category_id: 2, rate: 750, rating: 5.0, reviews: 120, badges: 'Wiring,Inverter Repair,Short Circuit Fix,Appliance Servicing', service_wards: 'Kathmandu (Whole City)' },
+      { name: 'Anita Shrestha', email: 'anita.clean@gharelusewa.com', phone: '9841033333', role: 'provider', ward: 'Kathmandu Ward No. 1', bio: 'Deep home cleaning and sofa/mattress shampooing expert in Kathmandu.', is_verified: true, category_id: 3, rate: 550, rating: 4.9, reviews: 64, badges: 'House Cleaning,Sofa Washing,Deep Sanitization', service_wards: 'Kathmandu (Whole City)' },
+      { name: 'Prakash Lama', email: 'prakash.ac@gharelusewa.com', phone: '9841044444', role: 'provider', ward: 'Kathmandu Ward No. 15', bio: 'Expert AC installation, duct cleaning, and inverter AC repairs in Kathmandu.', is_verified: true, category_id: 4, rate: 850, rating: 4.8, reviews: 49, badges: 'AC Servicing,Gas Filling,Duct Cleaning', service_wards: 'Kathmandu (Whole City)' },
+
+      // Pokhara Providers
+      { name: 'Bikash Rai', email: 'bikash.pokhara@gharelusewa.com', phone: '9846011111', role: 'provider', ward: 'Pokhara Ward No. 1', bio: 'Residential electrician in Pokhara. Specialist in LED lighting and panel boards.', is_verified: true, category_id: 2, rate: 650, rating: 4.7, reviews: 39, badges: 'Wiring,Lighting,Panel Fix', service_wards: 'Pokhara (Whole City)' },
+      { name: 'Mira Thapa', email: 'mira.clean@gharelusewa.com', phone: '9846022222', role: 'provider', ward: 'Pokhara Ward No. 8', bio: 'Thorough deep cleaning, sanitizing, and room disinfection across Pokhara.', is_verified: true, category_id: 3, rate: 500, rating: 4.8, reviews: 67, badges: 'House Cleaning,Deep Clean,Bathroom Sanitization', service_wards: 'Pokhara (Whole City)' },
+      { name: 'Suresh Magar', email: 'suresh.carpenter@gharelusewa.com', phone: '9846033333', role: 'provider', ward: 'Pokhara Ward No. 9', bio: 'Skilled carpenter for furniture, doors, and custom woodwork in Pokhara.', is_verified: true, category_id: 5, rate: 550, rating: 4.7, reviews: 29, badges: 'Carpentry,General Handyman,Door Repair', service_wards: 'Pokhara (Whole City)' }
+    ];
+
+    for (const u of seedUsers) {
+      const userRes = await query(`
+        INSERT INTO users (name, email, phone, password_hash, role, ward, avatar_url, bio, is_verified)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (email) DO UPDATE SET 
+          name = EXCLUDED.name,
+          phone = EXCLUDED.phone,
+          role = EXCLUDED.role,
+          ward = EXCLUDED.ward,
+          bio = EXCLUDED.bio,
+          is_verified = EXCLUDED.is_verified,
+          is_active = true
+        RETURNING id
+      `, [
+        u.name,
+        u.email,
+        u.phone,
+        defaultPasswordHash,
+        u.role,
+        u.ward,
+        `https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150`,
+        u.bio,
+        u.is_verified
+      ]);
+
+      const userId = userRes.rows[0]?.id;
+
+      if (u.role === 'provider' && u.category_id && userId) {
+        await query(`
+          INSERT INTO provider_profiles (user_id, category_id, hourly_rate, availability, rating_avg, total_reviews, background_check_status, skill_badges, service_wards)
+          VALUES ($1, $2, $3, true, $4, $5, 'approved', $6, $7)
+          ON CONFLICT (user_id) DO UPDATE SET
+            category_id = EXCLUDED.category_id,
+            hourly_rate = EXCLUDED.hourly_rate,
+            availability = true,
+            rating_avg = EXCLUDED.rating_avg,
+            total_reviews = EXCLUDED.total_reviews,
+            background_check_status = 'approved',
+            skill_badges = EXCLUDED.skill_badges,
+            service_wards = EXCLUDED.service_wards
+        `, [
+          userId,
+          u.category_id,
+          u.rate || 650,
+          u.rating || 4.8,
+          u.reviews || 20,
+          u.badges || 'Professional',
+          u.service_wards || u.ward
+        ]);
+      }
+    }
 
     // Reset sequence values
     await query(`SELECT setval(pg_get_serial_sequence('service_categories', 'id'), COALESCE(max(id), 1)) FROM service_categories`);

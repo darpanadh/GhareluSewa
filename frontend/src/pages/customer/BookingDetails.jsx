@@ -2,17 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Card from '../../components/Card';
 import Chat from '../../components/Chat';
-import { bookingAPI, reviewAPI } from '../../services/api';
+import { bookingAPI, reviewAPI, paymentAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { MapPin, Calendar, Wrench, CheckCircle, XCircle, PlayCircle, AlertCircle, Star, Navigation } from 'lucide-react';
+import { MapPin, Calendar, Wrench, CheckCircle, XCircle, PlayCircle, AlertCircle, Star, Navigation, DollarSign, CreditCard, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_COLORS = {
-  pending:     { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: <AlertCircle className="w-4 h-4" /> },
-  accepted:    { bg: 'bg-blue-100',   text: 'text-blue-800',   icon: <CheckCircle className="w-4 h-4" /> },
-  in_progress: { bg: 'bg-[#07535f]/10', text: 'text-[#07535f]', icon: <PlayCircle className="w-4 h-4" /> },
-  completed:   { bg: 'bg-green-100', text: 'text-green-800',  icon: <CheckCircle className="w-4 h-4" /> },
-  cancelled:   { bg: 'bg-red-100',   text: 'text-red-800',   icon: <XCircle className="w-4 h-4" /> },
+  pending:          { bg: 'bg-yellow-100',   text: 'text-yellow-800', icon: <AlertCircle className="w-4 h-4" /> },
+  accepted:         { bg: 'bg-blue-100',     text: 'text-blue-800',   icon: <CheckCircle className="w-4 h-4" /> },
+  in_progress:      { bg: 'bg-[#07535f]/10', text: 'text-[#07535f]', icon: <PlayCircle className="w-4 h-4" /> },
+  awaiting_payment: { bg: 'bg-amber-100',    text: 'text-amber-800',  icon: <AlertCircle className="w-4 h-4" /> },
+  completed:        { bg: 'bg-green-100',    text: 'text-green-800',  icon: <CheckCircle className="w-4 h-4" /> },
+  cancelled:        { bg: 'bg-red-100',      text: 'text-red-800',    icon: <XCircle className="w-4 h-4" /> },
 };
 
 function StarRating({ rating, setRating }) {
@@ -46,6 +47,8 @@ export default function BookingDetails() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [booking, setBooking] = useState(null);
+  const [paymentRecord, setPaymentRecord] = useState(null);
+  const [cashLoading, setCashLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
@@ -69,6 +72,17 @@ export default function BookingDetails() {
       const b = list.find(item => item.id === parseInt(bookingId));
       if (b) {
         setBooking(b);
+        
+        // Fetch payment info if available
+        try {
+          const payRes = await paymentAPI.getPaymentByBooking(b.id);
+          if (payRes.data && payRes.data.id) {
+            setPaymentRecord(payRes.data);
+          }
+        } catch (payErr) {
+          // No payment record yet
+        }
+
         // Check for existing review if completed
         if (b.status === 'completed') {
           try {
@@ -90,6 +104,25 @@ export default function BookingDetails() {
       setError('Failed to fetch booking');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRecordCashPayment = async () => {
+    if (!window.confirm('Confirm that customer has paid full cash? 10% platform commission will be deducted for Gharelu Sewa.')) {
+      return;
+    }
+    setCashLoading(true);
+    try {
+      const res = await paymentAPI.recordCashPayment(bookingId);
+      setBooking(prev => ({ ...prev, status: 'completed' }));
+      if (res.data?.payment) {
+        setPaymentRecord(res.data.payment);
+      }
+      alert('💵 Cash payment recorded successfully! 10% Gharelu Sewa commission deducted.');
+    } catch (err) {
+      alert(err?.response?.data?.error || 'Failed to record cash payment');
+    } finally {
+      setCashLoading(false);
     }
   };
 
@@ -148,7 +181,7 @@ export default function BookingDetails() {
             <h1 className="text-3xl font-bold text-gray-800 font-serif">Booking #{booking.id}</h1>
             <div className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${statusStyle.bg} ${statusStyle.text}`}>
               {statusStyle.icon}
-              <span className="uppercase tracking-wide">{booking.status.replace('_', ' ')}</span>
+              <span className="uppercase tracking-wide">{booking.status.replaceAll('_', ' ')}</span>
             </div>
           </div>
 
@@ -183,12 +216,30 @@ export default function BookingDetails() {
                 </button>
               )}
               {booking.status === 'in_progress' && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateStatus('awaiting_payment')}
+                    disabled={actionLoading}
+                    className="flex items-center gap-2 bg-[#07535f] hover:bg-[#06424b] text-white px-5 py-2.5 rounded-full font-bold text-sm shadow transition-all disabled:opacity-60"
+                  >
+                    <CheckCircle className="w-4 h-4" /> Mark Task Completed
+                  </button>
+                  <button
+                    onClick={handleRecordCashPayment}
+                    disabled={cashLoading || actionLoading}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow transition-all disabled:opacity-60"
+                  >
+                    <DollarSign className="w-4 h-4" /> Payment by Cash
+                  </button>
+                </div>
+              )}
+              {booking.status === 'awaiting_payment' && (
                 <button
-                  onClick={() => updateStatus('completed')}
-                  disabled={actionLoading}
-                  className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow transition-all disabled:opacity-60"
+                  onClick={handleRecordCashPayment}
+                  disabled={cashLoading || actionLoading}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow transition-all disabled:opacity-60"
                 >
-                  <CheckCircle className="w-4 h-4" /> Mark as Complete
+                  <DollarSign className="w-4 h-4" /> Payment by Cash
                 </button>
               )}
             </div>
@@ -202,9 +253,14 @@ export default function BookingDetails() {
                   <Navigation className="w-4 h-4" /> Track Job
                 </Link>
               )}
-              {booking.status === 'completed' && (
-                <Link to={`/customer/invoice/${booking.id}`} className="bg-[#60bb46] hover:bg-[#52a83b] text-white px-5 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm flex items-center gap-1.5">
-                  💳 Pay Invoice (eSewa)
+              {(booking.status === 'awaiting_payment' || (booking.status === 'completed' && !booking.is_paid && paymentRecord?.status !== 'completed')) && (
+                <Link to={`/customer/invoice/${booking.id}`} className="bg-[#60bb46] hover:bg-[#52a83b] text-white px-5 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm flex items-center gap-1.5 animate-pulse">
+                  💳 Pay Online (eSewa)
+                </Link>
+              )}
+              {booking.status === 'completed' && (paymentRecord?.status === 'completed' || booking.is_paid) && (
+                <Link to={`/customer/invoice/${booking.id}`} className="bg-[#f0fdf4] hover:bg-[#e2fbe8] text-[#16a34a] border border-[#bbf7d0] px-5 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm flex items-center gap-1.5">
+                  📄 View Invoice
                 </Link>
               )}
             </div>
@@ -267,8 +323,75 @@ export default function BookingDetails() {
             </Card>
           </div>
 
-          {/* Right: Chat + Review */}
+            {/* Right: Chat + Review + Payment Section */}
           <div className="lg:col-span-2 space-y-6">
+            
+            {/* ─── Provider Payment & Cash Collection Section ─── */}
+            {isProvider && (
+              <Card className="p-6">
+                <h3 className="font-extrabold text-gray-800 text-lg mb-1 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-[#07535f]" />
+                  Payment Status & Cash Collection
+                </h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Final Step: Track payment or record cash collected from customer.
+                </p>
+
+                {paymentRecord && paymentRecord.status === 'completed' ? (
+                  paymentRecord.payment_method === 'cash' || paymentRecord.payment_method === 'cash_deposit' ? (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+                      <div className="flex items-center gap-2 text-emerald-800 font-bold mb-1 text-sm">
+                        <CheckCircle className="w-5 h-5 text-emerald-600" />
+                        Payment Status: Completed (Cash Received)
+                      </div>
+                      <p className="text-xs text-emerald-700 leading-relaxed mt-1">
+                        Customer paid <strong>Rs. {paymentRecord.amount}</strong> directly in cash.
+                        <br />
+                        <strong>Rs. {paymentRecord.commission}</strong> (10% Gharelu Sewa commission) was deducted and updated in admin platform revenue.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+                      <div className="flex items-center gap-2 text-blue-800 font-bold mb-1 text-sm">
+                        <ShieldCheck className="w-5 h-5 text-blue-600" />
+                        Payment Status: Completed (Online eSewa)
+                      </div>
+                      <p className="text-xs text-blue-700 leading-relaxed mt-1">
+                        Customer paid <strong>Rs. {paymentRecord.amount}</strong> online via eSewa.
+                        <br />
+                        {paymentRecord.escrow_released ? `✅ Payout of Rs. ${paymentRecord.provider_payout} released to your balance.` : '⏳ Payout held in Gharelu Sewa Escrow awaiting admin release.'}
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                      <p className="text-xs text-amber-800 font-semibold leading-relaxed">
+                        💰 Customer can pay online via eSewa OR pay cash directly to you. If customer paid in cash, click below to confirm.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleRecordCashPayment}
+                      disabled={cashLoading}
+                      className="w-full flex items-center justify-between bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold px-5 py-3.5 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        💵 Customer Paid Cash — Mark Payment Completed
+                      </span>
+                      <span className="text-xs bg-emerald-800/80 px-2.5 py-1 rounded-lg">
+                        Cut 10% Comm (Rs. {Math.round((booking.total_price || booking.hourly_rate || 800) * 0.1)})
+                      </span>
+                    </button>
+
+                    <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs text-gray-500">
+                      ℹ️ If customer pays online via eSewa, payment will automatically update here as <strong>Paid Online</strong>.
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )}
+
             <Chat bookingId={booking.id} />
 
             {/* ─── Review & Rating Section ─── */}

@@ -46,6 +46,18 @@ export default function RegisterPage() {
     citizenshipNo: '',
   });
 
+  const [touched, setTouched] = useState({
+    name: false,
+    email: false,
+    phone: false,
+    password: false,
+    confirmPassword: false,
+    experience: false,
+    hourlyRate: false,
+    bio: false,
+    citizenshipNo: false,
+  });
+
   const [step, setStep] = useState(1);
   const [skillBadges, setSkillBadges] = useState([]);
   const [bgCheckConsent, setBgCheckConsent] = useState(false);
@@ -63,9 +75,110 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  // Field Validation Helpers
+  const validateName = (val) => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return '';
+
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    if (words.length < 2 || words.some((w) => w.length < 2) || trimmed.length > 70) {
+      return 'Please enter a valid name';
+    }
+
+    return '';
+  };
+
+  const validateEmail = (val) => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return '';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) return 'Please enter a valid email address';
+    return '';
+  };
+
+  const validatePhone = (val) => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return '';
+    if (!/^\d{10}$/.test(trimmed)) {
+      return 'Please enter a valid 10-digit phone number';
+    }
+    return '';
+  };
+
+  const validatePassword = (val) => {
+    if (!val) return '';
+    if (val.length < 6) return 'Password must be at least 6 characters long';
+    return '';
+  };
+
+  const validateConfirmPassword = (val, pwd) => {
+    if (!val) return '';
+    if (val !== pwd) return 'Passwords do not match';
+    return '';
+  };
+
+  const validateExperience = (val) => {
+    if (val === '' || val === undefined || val === null) return '';
+    if (Number(val) < 0) return 'Experience cannot be negative';
+    return '';
+  };
+
+  const validateHourlyRate = (val) => {
+    if (!val) return '';
+    if (Number(val) < 100) return 'Hourly rate must be at least Rs. 100';
+    return '';
+  };
+
+  const validateBio = (val) => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return '';
+    if (trimmed.length < 10) return 'Bio must be at least 10 characters long';
+    return '';
+  };
+
+  const validateCitizenshipNo = (val) => {
+    const trimmed = (val || '').trim();
+    if (!trimmed) return '';
+    if (trimmed.length < 4) return 'Please enter a valid Citizenship or License Number';
+    return '';
+  };
+
+  // Field error & success computations
+  const nameError = touched.name ? validateName(formData.name) : '';
+  const nameSuccess = touched.name && formData.name.trim().length > 0 && !validateName(formData.name);
+
+  const emailError = touched.email ? validateEmail(formData.email) : '';
+  const emailSuccess = touched.email && formData.email.trim().length > 0 && !validateEmail(formData.email);
+
+  const phoneError = touched.phone ? validatePhone(formData.phone) : '';
+  const phoneSuccess = touched.phone && formData.phone.trim().length > 0 && !validatePhone(formData.phone);
+
+  const passwordError = touched.password ? validatePassword(formData.password) : '';
+  const passwordSuccess = touched.password && formData.password.length > 0 && !validatePassword(formData.password);
+
+  const confirmPasswordError = touched.confirmPassword ? validateConfirmPassword(formData.confirmPassword, formData.password) : '';
+  const confirmPasswordSuccess = touched.confirmPassword && formData.confirmPassword.length > 0 && !validateConfirmPassword(formData.confirmPassword, formData.password);
+
+  const experienceError = touched.experience ? validateExperience(formData.experience) : '';
+  const experienceSuccess = touched.experience && formData.experience !== '' && !validateExperience(formData.experience);
+
+  const hourlyRateError = touched.hourlyRate ? validateHourlyRate(formData.hourlyRate) : '';
+  const hourlyRateSuccess = touched.hourlyRate && formData.hourlyRate !== '' && !validateHourlyRate(formData.hourlyRate);
+
+  const bioError = touched.bio ? validateBio(formData.bio) : '';
+  const bioSuccess = touched.bio && formData.bio.trim().length > 0 && !validateBio(formData.bio);
+
+  const citizenshipNoError = touched.citizenshipNo ? validateCitizenshipNo(formData.citizenshipNo) : '';
+  const citizenshipNoSuccess = touched.citizenshipNo && formData.citizenshipNo.trim().length > 0 && !validateCitizenshipNo(formData.citizenshipNo);
+
+  const handleBlur = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) setError('');
   };
 
   const handleRoleChange = (selectedRole) => {
@@ -120,53 +233,38 @@ export default function RegisterPage() {
 
   const handleNextStep = () => {
     setError('');
+    setTouched((prev) => ({
+      ...prev,
+      name: true,
+      email: true,
+      phone: true,
+      password: true,
+      confirmPassword: true,
+    }));
 
-    // Full Name
-    const trimmedName = formData.name.trim();
-    if (!trimmedName) {
-      return setError('Please enter your full name');
-    }
-    if (trimmedName.length < 2 || trimmedName.length > 70) {
-      return setError('Full name must be between 2 and 70 characters');
-    }
+    if (!formData.name.trim()) return setError('Please enter your full name');
+    const nErr = validateName(formData.name);
+    if (nErr) return setError(nErr);
 
-    // Email Address
-    const trimmedEmail = formData.email.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!trimmedEmail) {
-      return setError('Please enter your email address');
-    }
-    if (!emailRegex.test(trimmedEmail)) {
-      return setError('Please enter a valid email address');
-    }
+    if (!formData.email.trim()) return setError('Please enter your email address');
+    const eErr = validateEmail(formData.email);
+    if (eErr) return setError(eErr);
 
-    // Phone Number
-    const phoneClean = formData.phone.trim();
-    if (!phoneClean) {
-      return setError('Please enter your 10-digit phone number');
-    }
-    if (!/^\d{10}$/.test(phoneClean)) {
-      return setError('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)');
-    }
+    if (!formData.phone.trim()) return setError('Please enter your 10-digit phone number');
+    const pErr = validatePhone(formData.phone);
+    if (pErr) return setError(pErr);
 
-    // Residence Location
     if (formData.role === 'provider' && (!formData.ward || !formData.ward.includes(','))) {
       return setError('Please select both your Residence Province and District');
     }
 
-    // Password
-    if (!formData.password) {
-      return setError('Please enter a password');
-    }
-    if (formData.password.length < 6) {
-      return setError('Password must be at least 6 characters long');
-    }
-    if (!formData.confirmPassword) {
-      return setError('Please confirm your password');
-    }
-    if (formData.password !== formData.confirmPassword) {
-      return setError('Passwords do not match. Please re-enter your password');
-    }
+    if (!formData.password) return setError('Please enter a password');
+    const passErr = validatePassword(formData.password);
+    if (passErr) return setError(passErr);
+
+    if (!formData.confirmPassword) return setError('Please confirm your password');
+    const cPassErr = validateConfirmPassword(formData.confirmPassword, formData.password);
+    if (cPassErr) return setError(cPassErr);
 
     // All clear -> Step 2
     setStep(2);
@@ -178,46 +276,65 @@ export default function RegisterPage() {
     setError('');
 
     if (formData.role === 'customer') {
-      const trimmedName = formData.name.trim();
-      if (!trimmedName) return setError('Please enter your full name');
-      if (trimmedName.length < 2 || trimmedName.length > 70) {
-        return setError('Full name must be between 2 and 70 characters');
-      }
+      setTouched((prev) => ({
+        ...prev,
+        name: true,
+        email: true,
+        phone: true,
+        password: true,
+        confirmPassword: true,
+      }));
 
-      const trimmedEmail = formData.email.trim();
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!trimmedEmail) return setError('Please enter your email address');
-      if (!emailRegex.test(trimmedEmail)) {
-        return setError('Please enter a valid email address');
-      }
+      if (!formData.name.trim()) return setError('Please enter your full name');
+      const nErr = validateName(formData.name);
+      if (nErr) return setError(nErr);
 
-      const phoneClean = formData.phone.trim();
-      if (!phoneClean) return setError('Please enter your 10-digit phone number');
-      if (!/^\d{10}$/.test(phoneClean)) {
-        return setError('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)');
-      }
+      if (!formData.email.trim()) return setError('Please enter your email address');
+      const eErr = validateEmail(formData.email);
+      if (eErr) return setError(eErr);
+
+      if (!formData.phone.trim()) return setError('Please enter your 10-digit phone number');
+      const pErr = validatePhone(formData.phone);
+      if (pErr) return setError(pErr);
 
       if (!formData.password) return setError('Please enter a password');
-      if (formData.password.length < 6) return setError('Password must be at least 6 characters');
-      if (formData.password !== formData.confirmPassword) return setError('Passwords do not match');
+      const passErr = validatePassword(formData.password);
+      if (passErr) return setError(passErr);
+
+      if (!formData.confirmPassword) return setError('Please confirm your password');
+      const cPassErr = validateConfirmPassword(formData.confirmPassword, formData.password);
+      if (cPassErr) return setError(cPassErr);
     }
 
     if (formData.role === 'provider') {
+      setTouched((prev) => ({
+        ...prev,
+        experience: true,
+        hourlyRate: true,
+        bio: true,
+        citizenshipNo: true,
+      }));
+
       if (!formData.categoryId) {
         return setError('Please select your primary service category');
       }
-      if (!formData.experience || Number(formData.experience) < 0) {
-        return setError('Please enter your years of experience');
-      }
-      if (!formData.hourlyRate || Number(formData.hourlyRate) <= 0) {
-        return setError('Please enter your expected hourly rate in Rs.');
-      }
-      if (!formData.bio.trim()) {
-        return setError('Please provide a short description of your qualifications / bio');
-      }
-      if (!formData.citizenshipNo.trim()) {
-        return setError('Please enter your Citizenship or License Number for KYC verification');
-      }
+
+      if (formData.experience === '') return setError('Please enter your years of experience');
+      const expErr = validateExperience(formData.experience);
+      if (expErr) return setError(expErr);
+
+      if (!formData.hourlyRate) return setError('Please enter your expected hourly rate in Rs.');
+      const hrErr = validateHourlyRate(formData.hourlyRate);
+      if (hrErr) return setError(hrErr);
+
+      if (!formData.bio.trim()) return setError('Please describe your qualifications / bio');
+      const bioErr = validateBio(formData.bio);
+      if (bioErr) return setError(bioErr);
+
+      if (!formData.citizenshipNo.trim()) return setError('Please enter your Citizenship or License Number');
+      const citErr = validateCitizenshipNo(formData.citizenshipNo);
+      if (citErr) return setError(citErr);
+
       if (!idImageBase64) {
         return setError('Please upload a clear photo of your ID document (Citizenship / License)');
       }
@@ -252,9 +369,7 @@ export default function RegisterPage() {
         
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-gradient-to-br from-[#07535f] to-[#0a7587] rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg text-white font-extrabold text-2xl">
-            GS
-          </div>
+          <img src="/gharelu_sewa_logo.png" alt="Gharelu Sewa Logo" className="h-14 w-auto object-contain mx-auto mb-3" />
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {formData.role === 'provider' ? 'Become a Verified Professional Tasker' : 'Join Gharelu Sewa'}
           </h1>
@@ -355,6 +470,9 @@ export default function RegisterPage() {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
+                  onBlur={() => handleBlur('name')}
+                  error={nameError}
+                  success={nameSuccess}
                   placeholder="First and Last Name (e.g. Ram Sharma)"
                   required
                 />
@@ -364,6 +482,9 @@ export default function RegisterPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  onBlur={() => handleBlur('email')}
+                  error={emailError}
+                  success={emailSuccess}
                   placeholder="yourname@example.com"
                   required
                 />
@@ -373,6 +494,9 @@ export default function RegisterPage() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
+                  onBlur={() => handleBlur('phone')}
+                  error={phoneError}
+                  success={phoneSuccess}
                   placeholder="98XXXXXXXX"
                   required
                 />
@@ -401,6 +525,9 @@ export default function RegisterPage() {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
+                    onBlur={() => handleBlur('password')}
+                    error={passwordError}
+                    success={passwordSuccess}
                     placeholder="At least 6 characters"
                     required
                   />
@@ -410,6 +537,9 @@ export default function RegisterPage() {
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
+                    onBlur={() => handleBlur('confirmPassword')}
+                    error={confirmPasswordError}
+                    success={confirmPasswordSuccess}
                     placeholder="Re-enter password"
                     required
                   />
@@ -422,7 +552,7 @@ export default function RegisterPage() {
                     onClick={handleNextStep}
                     className="w-full mt-3 py-3.5 bg-[#07535f] hover:bg-[#06424b] text-white rounded-2xl text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
                   >
-                    Next: Professional Profile & KYC Details <ArrowRight className="w-4 h-4" />
+                    Continue <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
                   <Button
@@ -483,6 +613,9 @@ export default function RegisterPage() {
                     name="experience"
                     value={formData.experience}
                     onChange={handleChange}
+                    onBlur={() => handleBlur('experience')}
+                    error={experienceError}
+                    success={experienceSuccess}
                     placeholder="e.g. 5"
                     min="0"
                     required
@@ -493,6 +626,9 @@ export default function RegisterPage() {
                     name="hourlyRate"
                     value={formData.hourlyRate}
                     onChange={handleChange}
+                    onBlur={() => handleBlur('hourlyRate')}
+                    error={hourlyRateError}
+                    success={hourlyRateSuccess}
                     placeholder="e.g. 600"
                     min="100"
                     required
@@ -501,18 +637,34 @@ export default function RegisterPage() {
 
                 {/* Bio / Qualifications */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Professional Bio & Qualifications *
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <span>Professional Bio & Qualifications *</span>
+                    {bioSuccess && (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    )}
                   </label>
                   <textarea
                     name="bio"
                     value={formData.bio}
                     onChange={handleChange}
+                    onBlur={() => handleBlur('bio')}
                     placeholder="Describe your qualifications, certifications, tools, and background experience..."
                     rows={3}
-                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-[#07535f] resize-none"
+                    className={`w-full p-3.5 rounded-2xl text-xs font-medium outline-none transition-all resize-none border-2 ${
+                      bioError
+                        ? 'border-red-400 bg-red-50/20 text-slate-800'
+                        : bioSuccess
+                        ? 'border-emerald-500 bg-emerald-50/20 text-slate-800'
+                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-[#07535f] focus:ring-2 focus:ring-[#07535f]/20'
+                    }`}
                     required
                   />
+                  {bioError && (
+                    <p className="mt-1.5 text-xs text-red-500 font-semibold flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                      {bioError}
+                    </p>
+                  )}
                 </div>
 
                 {/* Identity Document Verification */}
@@ -528,6 +680,9 @@ export default function RegisterPage() {
                     name="citizenshipNo"
                     value={formData.citizenshipNo}
                     onChange={handleChange}
+                    onBlur={() => handleBlur('citizenshipNo')}
+                    error={citizenshipNoError}
+                    success={citizenshipNoSuccess}
                     placeholder="e.g. 27-01-79-12345"
                     required
                   />
@@ -573,38 +728,6 @@ export default function RegisterPage() {
                       className="hidden"
                       onChange={handleIdImageChange}
                     />
-                  </div>
-                </div>
-
-                {/* Skill Badges Cloud */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-bold text-slate-700">Select Specific Skill Badges</label>
-                    {skillBadges.length > 0 && (
-                      <span className="text-xs font-semibold text-[#07535f] bg-[#07535f]/10 px-2 py-0.5 rounded-full">
-                        {skillBadges.length} selected
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-2xl border border-slate-200">
-                    {SKILL_OPTIONS.map((skill) => {
-                      const isChecked = skillBadges.includes(skill);
-                      return (
-                        <button
-                          key={skill}
-                          type="button"
-                          onClick={() => toggleSkill(skill)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                            isChecked
-                              ? 'bg-[#07535f] text-white border-[#07535f] shadow-xs'
-                              : 'bg-white text-slate-600 border-slate-200 hover:border-[#07535f]/40'
-                          }`}
-                        >
-                          {isChecked ? <CheckSquare className="w-3.5 h-3.5 text-white" /> : <Square className="w-3.5 h-3.5 text-slate-400" />}
-                          {skill}
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
 

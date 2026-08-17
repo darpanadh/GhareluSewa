@@ -104,6 +104,22 @@ export default function EditProfileModal({ isOpen, onClose, onSaveSuccess }) {
     setError('');
     setSuccess('');
 
+    // Full Name Validation: Must contain at least 2 words (first & last name), each at least 2 characters long
+    const nameParts = name.trim().split(/\s+/);
+    if (nameParts.length < 2 || nameParts.some(part => part.length < 2)) {
+      setLoading(false);
+      setError('Please enter your full name (both first and last name, each at least 2 characters long)');
+      return;
+    }
+
+    // Phone Number Validation: Must be a valid 10-digit phone number
+    const phoneClean = phone.trim();
+    if (phoneClean && !/^\d{10}$/.test(phoneClean)) {
+      setLoading(false);
+      setError('Phone number must be exactly 10 digits (e.g. 98XXXXXXXX)');
+      return;
+    }
+
     try {
       const payload = {
         name,

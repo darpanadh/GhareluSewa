@@ -45,6 +45,15 @@ export default function ProviderProfile() {
         const res = await providerAPI.getProfile(user.id);
         const data = res.data || {};
         setProfile(data);
+
+        // Sync verification status to context user if available
+        if (updateUser && data.is_verified !== undefined && data.is_verified !== user?.is_verified) {
+          updateUser({
+            ...user,
+            is_verified: data.is_verified,
+          });
+        }
+
         setForm({
           full_name: data.full_name || user.full_name || user.name || '',
           phone: data.phone || user.phone || '',
@@ -147,7 +156,17 @@ export default function ProviderProfile() {
     );
   }
 
-  const verificationStatus = profile?.is_verified ? 'verified' : (profile?.verification_status || 'pending');
+  const isVerified = Boolean(
+    profile?.is_verified === true ||
+    user?.is_verified === true ||
+    profile?.is_verified === 1 ||
+    user?.is_verified === 1 ||
+    profile?.background_check_status === 'approved' ||
+    profile?.background_check_status === 'verified' ||
+    profile?.verification_status === 'approved' ||
+    profile?.verification_status === 'verified'
+  );
+  const verificationStatus = isVerified ? 'verified' : (profile?.verification_status || profile?.background_check_status || 'pending');
   const skillsList = form.skills ? form.skills.split(',').map(s => s.trim()).filter(Boolean) : [];
   const serviceWardsList = (form.service_wards || form.service_area || user?.ward || '')
     .split(',')
