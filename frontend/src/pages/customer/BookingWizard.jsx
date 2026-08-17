@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wrench, Calendar, MapPin, CreditCard, ChevronRight, X, Zap, Wind, Sparkles, ArrowLeft, Building2 } from 'lucide-react';
+import { 
+  Wrench, Calendar, MapPin, CreditCard, ChevronRight, X, Zap, 
+  Wind, Sparkles, ArrowLeft, Building2, Clock, Sun, SunMedium, Moon, Check 
+} from 'lucide-react';
 import { bookingAPI } from '../../services/api';
 import CityWardSelector from '../../components/CityWardSelector';
 import { useAuth } from '../../context/AuthContext';
@@ -73,19 +76,27 @@ export default function BookingWizard() {
     }
   };
 
+  const MORNING_SLOTS = ['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM'];
+  const AFTERNOON_SLOTS = ['12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
+  const EVENING_SLOTS = ['05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM'];
+
   // State
   const [selectedCategory, setSelectedCategory] = useState(() => {
     return servicesByCategory[categoryParam] ? categoryParam : null;
   });
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedService, setSelectedService] = useState('');
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState(null);
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(10, 0, 0, 0);
-  const [date, setDate] = useState(tomorrow.toISOString().slice(0, 16));
+
+  const [selectedDate, setSelectedDate] = useState(() => tomorrow.toISOString().split('T')[0]);
+  
+  // Exact Time Selector State
+  const [hour, setHour] = useState('10');
+  const [minute, setMinute] = useState('00');
+  const [period, setPeriod] = useState('AM');
   
   // Location States (City/Ward, Tole, Landmark)
   const [selectedWard, setSelectedWard] = useState(user?.ward || 'Pokhara Ward No. 6');
@@ -93,6 +104,36 @@ export default function BookingWizard() {
   const [landmark, setLandmark] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const getQuickDates = () => {
+    const dates = [];
+    const today = new Date();
+    for (let i = 0; i < 4; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const isoDate = d.toISOString().split('T')[0];
+      const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayNum = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      dates.push({ isoDate, label, dayNum });
+    }
+    return dates;
+  };
+
+  const getFormattedTimeStr = () => {
+    return `${hour}:${minute} ${period}`;
+  };
+
+  const getSelectedDateTimeISO = () => {
+    if (!selectedDate) return new Date().toISOString();
+    let hours = parseInt(hour, 10);
+    if (period === 'PM' && hours < 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+
+    const formattedHours = String(hours).padStart(2, '0');
+    const formattedMinutes = String(minute).padStart(2, '0');
+
+    return `${selectedDate}T${formattedHours}:${formattedMinutes}:00.000Z`;
+  };
 
   // Assemble full address string
   const getFullAddress = () => {
@@ -116,6 +157,13 @@ export default function BookingWizard() {
 
   const handleContinue = async () => {
     setErrorMsg('');
+
+    if (currentStep === 2) {
+      if (!selectedDate || !hour || !minute || !period) {
+        setErrorMsg('Please select a valid date and exact arrival time.');
+        return;
+      }
+    }
 
     // Step 3 Validation: Require Ward, Tole, and Landmark
     if (currentStep === 3) {
@@ -143,7 +191,7 @@ export default function BookingWizard() {
         const res = await bookingAPI.createBooking({
           provider_id: 2,
           category_id: categoryData.categoryId,
-          booking_date: date ? new Date(date).toISOString() : new Date().toISOString(),
+          booking_date: getSelectedDateTimeISO(),
           location: fullAddress,
           description: `${selectedCategory} - ${serviceObj?.name || selectedService}: ${notes || 'No notes'}`,
           is_emergency: false
@@ -160,7 +208,7 @@ export default function BookingWizard() {
 
   const activeStepClass = "w-10 h-10 rounded-full bg-[#07535f] text-white flex items-center justify-center font-bold shadow-md ring-4 ring-[#07535f]/15 transition-all";
   const inactiveStepClass = "w-10 h-10 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-bold border border-gray-200 transition-all";
-  const lineClass = "flex-1 h-0.5 bg-gray-200 mx-2";
+  const lineClass = "flex-1 h-0.5 bg-[#07535f] mx-2";
   const activeLineClass = "flex-1 h-0.5 bg-[#07535f] mx-2";
 
   return (
@@ -348,7 +396,7 @@ export default function BookingWizard() {
               )}
 
               {currentStep === 2 && (
-                <div>
+                <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-1">
                     <button 
                       onClick={() => setCurrentStep(1)}
@@ -358,22 +406,209 @@ export default function BookingWizard() {
                     </button>
                     <h2 className="text-lg font-bold text-gray-800">Schedule Appointment</h2>
                   </div>
-                  <p className="text-xs text-gray-400 mb-6">Specify when you want the service professional to arrive</p>
+                  <p className="text-xs text-gray-400 mb-2">Select the date and specify the exact time for your appointment</p>
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-700 block mb-2">Select Date &amp; Time</label>
+                  {/* 1. Date Selector (Quick Date Pills + Custom Date Input) */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-[#07535f]" />
+                      Select Service Date
+                    </label>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {getQuickDates().map((d) => {
+                        const isSelected = selectedDate === d.isoDate;
+                        return (
+                          <button
+                            key={d.isoDate}
+                            type="button"
+                            onClick={() => setSelectedDate(d.isoDate)}
+                            className={`p-3 rounded-2xl border-2 text-center transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border-[#07535f] bg-[#07535f]/5 text-[#07535f] font-extrabold shadow-xs ring-1 ring-[#07535f]/20'
+                                : 'border-gray-200 bg-white text-gray-700 font-semibold hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <span className="block text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">{d.label}</span>
+                            <span className="text-xs font-black">{d.dayNum}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-xs font-medium text-gray-400">Or choose custom date:</span>
                       <input
-                        type="datetime-local"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        min={new Date().toISOString().slice(0, 16)}
-                        className="w-full border border-gray-200 rounded-xl p-3.5 text-sm font-semibold focus:outline-none focus:border-[#07535f] focus:ring-1 focus:ring-[#07535f] text-gray-800"
+                        type="date"
+                        value={selectedDate}
+                        min={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#07535f] cursor-pointer bg-white"
                       />
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-xl text-xs text-gray-500">
-                      ⚡ Gharelu Sewa providers usually respond to booking requests within 15 minutes.
+                  </div>
+
+                  {/* 2. Exact Time Selector */}
+                  <div className="space-y-4 pt-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-[#07535f]" />
+                        Select Exact Service Time
+                      </span>
+                      <span className="text-[11px] text-[#07535f] font-bold bg-[#07535f]/10 px-2.5 py-0.5 rounded-full">
+                        Exact Time Chooser
+                      </span>
+                    </label>
+
+                    {/* Exact Time Picker Controls */}
+                    <div className="bg-gray-50/70 border-2 border-[#07535f]/20 rounded-2xl p-5 shadow-xs space-y-4">
+                      <p className="text-xs text-gray-500 font-medium">Select your exact preferred arrival hour, minute, and AM/PM:</p>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200">
+                        {/* Hour Dropdown */}
+                        <div className="flex flex-col items-start">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Hour</span>
+                          <select
+                            value={hour}
+                            onChange={(e) => setHour(e.target.value)}
+                            className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm font-extrabold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#07535f] cursor-pointer"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => {
+                              const h = String(i + 1).padStart(2, '0');
+                              return <option key={h} value={h}>{h}</option>;
+                            })}
+                          </select>
+                        </div>
+
+                        <span className="text-xl font-black text-gray-400 self-center">:</span>
+
+                        {/* Minute Dropdown */}
+                        <div className="flex flex-col items-start">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Minute</span>
+                          <select
+                            value={minute}
+                            onChange={(e) => setMinute(e.target.value)}
+                            className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm font-extrabold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#07535f] cursor-pointer"
+                          >
+                            {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map((m) => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* AM/PM Switch */}
+                        <div className="flex flex-col items-start">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Period</span>
+                          <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+                            <button
+                              type="button"
+                              onClick={() => setPeriod('AM')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                                period === 'AM'
+                                  ? 'bg-[#07535f] text-white shadow-xs'
+                                  : 'text-gray-600 hover:text-gray-900'
+                              }`}
+                            >
+                              AM
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPeriod('PM')}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                                period === 'PM'
+                                  ? 'bg-[#07535f] text-white shadow-xs'
+                                  : 'text-gray-600 hover:text-gray-900'
+                              }`}
+                            >
+                              PM
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Direct Time Input Option */}
+                        <div className="flex flex-col items-start sm:border-l sm:border-gray-150 sm:pl-4">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Or Pick Custom Time</span>
+                          <input
+                            type="time"
+                            onChange={(e) => {
+                              if (!e.target.value) return;
+                              const [h24, m] = e.target.value.split(':');
+                              let hNum = parseInt(h24, 10);
+                              const p = hNum >= 12 ? 'PM' : 'AM';
+                              if (hNum > 12) hNum -= 12;
+                              if (hNum === 0) hNum = 12;
+                              setHour(String(hNum).padStart(2, '0'));
+                              setMinute(m);
+                              setPeriod(p);
+                            }}
+                            className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#07535f] cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Quick Popular Times */}
+                      <div className="pt-1">
+                        <span className="text-[11px] font-bold text-gray-500 block mb-2">⚡ Quick Popular Times:</span>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { h: '08', m: '00', p: 'AM' },
+                            { h: '09', m: '30', p: 'AM' },
+                            { h: '10', m: '00', p: 'AM' },
+                            { h: '11', m: '30', p: 'AM' },
+                            { h: '01', m: '00', p: 'PM' },
+                            { h: '02', m: '30', p: 'PM' },
+                            { h: '04', m: '00', p: 'PM' },
+                            { h: '05', m: '30', p: 'PM' },
+                            { h: '07', m: '00', p: 'PM' },
+                          ].map((t) => {
+                            const formattedStr = `${t.h}:${t.m} ${t.p}`;
+                            const isSelected = hour === t.h && minute === t.m && period === t.p;
+                            return (
+                              <button
+                                key={formattedStr}
+                                type="button"
+                                onClick={() => {
+                                  setHour(t.h);
+                                  setMinute(t.m);
+                                  setPeriod(t.p);
+                                }}
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[#07535f] text-white border-[#07535f] shadow-xs'
+                                    : 'bg-white text-gray-700 border-gray-200 hover:border-[#07535f]/50 hover:bg-[#07535f]/5'
+                                }`}
+                              >
+                                {formattedStr}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
+                  </div>
+
+                  {errorMsg && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-xl">
+                      ⚠️ {errorMsg}
+                    </div>
+                  )}
+
+                  {/* Selected Schedule Summary Banner */}
+                  <div className="bg-[#07535f]/10 border border-[#07535f]/20 rounded-2xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-[#07535f] text-white flex items-center justify-center font-bold">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Selected Appointment Time</span>
+                        <p className="text-xs font-extrabold text-gray-900">
+                          {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {getFormattedTimeStr()}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold text-[#07535f] bg-white px-3 py-1 rounded-xl border border-[#07535f]/20 shadow-2xs">
+                      Confirmed Exact Time
+                    </span>
                   </div>
                 </div>
               )}
@@ -475,7 +710,9 @@ export default function BookingWizard() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Scheduled:</span>
-                      <span className="font-bold text-gray-800">{date ? new Date(date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'TBD'}</span>
+                      <span className="font-bold text-gray-800">
+                        {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {selectedTimeSlot}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Address:</span>
@@ -501,7 +738,7 @@ export default function BookingWizard() {
               <button
                 onClick={handleContinue}
                 disabled={isLoading}
-                className="w-full bg-[#07535f] text-white hover:bg-[#06424b] py-4 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm"
+                className="w-full bg-[#07535f] text-white hover:bg-[#06424b] py-4 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all text-sm shadow-sm cursor-pointer"
               >
                 {isLoading ? (
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
