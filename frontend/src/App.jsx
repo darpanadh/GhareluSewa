@@ -52,6 +52,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 };
 
 import AdminLayout from './components/AdminLayout';
+import FloatingChat from './components/FloatingChat';
 
 const AppRoutes = () => {
   const { isAuthenticated, user } = useAuth();
@@ -142,11 +143,12 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 flex flex-col relative">
           <Header />
           <main className="flex-grow">
             <AppRoutes />
           </main>
+          <FloatingChat />
         </div>
       </AuthProvider>
     </Router>

@@ -98,8 +98,8 @@ export default function ManagePayments() {
   };
 
   // Financial overview calculations
-  const totalVolume = (stats?.totalRequested || 0) + 29500; // include historical
-  const platformRevenue = Math.round(totalVolume * 0.10);
+  const totalVolume = customerPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const platformRevenue = customerPayments.reduce((sum, p) => sum + (Number(p.commission) || 0), 0);
 
   const filteredRequests = payoutRequests.filter(p => filter === 'all' || p.status === filter);
   const pendingRequests = payoutRequests.filter(p => p.status === 'pending');

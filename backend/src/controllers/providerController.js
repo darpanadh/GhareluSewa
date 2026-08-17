@@ -148,36 +148,67 @@ export const getProviderEarnings = async (req, res) => {
     else if (period === 'year') intervalClause = "INTERVAL '365 days'";
     else if (period === 'all') intervalClause = "INTERVAL '50 years'";
 
-    // Summary stats
-    const statsResult = await query(
+    // 1. Released Payments summary (ONLY payments where escrow_released = TRUE)
+    const releasedPaymentsRes = await query(
+      `SELECT 
+        COUNT(DISTINCT p.booking_id)::int as released_jobs,
+        COALESCE(SUM(p.amount), 0)::numeric as gross_released_amount,
+        COALESCE(SUM(p.commission), 0)::numeric as total_commission_cut,
+        COALESCE(SUM(p.provider_payout), 0)::numeric as net_released_payout
+       FROM payments p
+       WHERE p.provider_id = $1 
+         AND p.status = 'completed'
+         AND p.escrow_released = TRUE
+         AND p.created_at >= CURRENT_DATE - ${intervalClause}`,
+      [req.userId]
+    );
+
+    // 2. Pending Escrow Payments (customer paid, but admin has not released escrow yet)
+    const pendingEscrowRes = await query(
+      `SELECT 
+        COUNT(DISTINCT p.booking_id)::int as pending_jobs,
+        COALESCE(SUM(p.provider_payout), 0)::numeric as pending_payout_amount
+       FROM payments p
+       WHERE p.provider_id = $1 
+         AND p.status IN ('completed', 'pending')
+         AND (p.escrow_released = FALSE OR p.escrow_released IS NULL)`,
+      [req.userId]
+    );
+
+    // 3. Completed Bookings count
+    const bookingsStatsRes = await query(
       `SELECT 
         COUNT(*)::int as total_bookings,
         COALESCE(SUM(CASE WHEN b.status = 'completed' THEN 1 ELSE 0 END), 0)::int as completed_bookings,
         COALESCE(SUM(CASE WHEN b.status = 'in_progress' THEN 1 ELSE 0 END), 0)::int as active_bookings,
-        COALESCE(SUM(CASE WHEN b.status = 'cancelled' THEN 1 ELSE 0 END), 0)::int as cancelled_bookings,
-        COALESCE(SUM(CASE WHEN b.status = 'completed' THEN COALESCE(NULLIF(b.total_price, 0), NULLIF(pp.hourly_rate, 0), 650) ELSE 0 END), 0)::int as estimated_earnings
+        COALESCE(SUM(CASE WHEN b.status = 'cancelled' THEN 1 ELSE 0 END), 0)::int as cancelled_bookings
        FROM bookings b
-       LEFT JOIN provider_profiles pp ON b.provider_id = pp.user_id
        WHERE b.provider_id = $1 AND b.created_at >= CURRENT_DATE - ${intervalClause}`,
       [req.userId]
     );
 
-    const row = statsResult.rows[0] || {};
-    const totalEarnings = Number(row.estimated_earnings || 0);
-    const completedJobs = Number(row.completed_bookings || 0);
+    const releasedRow = releasedPaymentsRes.rows[0] || {};
+    const pendingEscrowRow = pendingEscrowRes.rows[0] || {};
+    const bookingRow = bookingsStatsRes.rows[0] || {};
 
-    // Dynamic Chart Data Generation based on Period
+    const grossIncome = Number(releasedRow.gross_released_amount || 0);
+    const commissionCut = Number(releasedRow.total_commission_cut || 0);
+    const netReleasedEarnings = Number(releasedRow.net_released_payout || 0);
+    const pendingEscrowAmount = Number(pendingEscrowRow.pending_payout_amount || 0);
+    const completedJobs = Number(releasedRow.released_jobs || bookingRow.completed_bookings || 0);
+
+    // Dynamic Chart Data Generation based on RELEASED payments
     let chartData = [];
     if (period === 'week') {
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const dailyResult = await query(
         `SELECT 
-          TO_CHAR(b.booking_date, 'Dy') as day_label,
-          EXTRACT(ISODOW FROM b.booking_date)::int as day_num,
-          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_amount,
+          TO_CHAR(p.created_at, 'Dy') as day_label,
+          EXTRACT(ISODOW FROM p.created_at)::int as day_num,
+          COALESCE(SUM(p.provider_payout), 0)::int as total_amount,
           COUNT(*)::int as job_count
-         FROM bookings b
-         WHERE b.provider_id = $1 AND b.status = 'completed' AND b.booking_date >= CURRENT_DATE - INTERVAL '7 days'
+         FROM payments p
+         WHERE p.provider_id = $1 AND p.status = 'completed' AND p.escrow_released = TRUE AND p.created_at >= CURRENT_DATE - INTERVAL '7 days'
          GROUP BY day_label, day_num
          ORDER BY day_num ASC`,
         [req.userId]
@@ -196,11 +227,11 @@ export const getProviderEarnings = async (req, res) => {
       const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
       const weeklyResult = await query(
         `SELECT 
-          'Week ' || CEIL(EXTRACT(DAY FROM b.booking_date) / 7.0)::int as week_label,
-          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_amount,
+          'Week ' || CEIL(EXTRACT(DAY FROM p.created_at) / 7.0)::int as week_label,
+          COALESCE(SUM(p.provider_payout), 0)::int as total_amount,
           COUNT(*)::int as job_count
-         FROM bookings b
-         WHERE b.provider_id = $1 AND b.status = 'completed' AND b.booking_date >= CURRENT_DATE - INTERVAL '30 days'
+         FROM payments p
+         WHERE p.provider_id = $1 AND p.status = 'completed' AND p.escrow_released = TRUE AND p.created_at >= CURRENT_DATE - INTERVAL '30 days'
          GROUP BY week_label
          ORDER BY week_label ASC`,
         [req.userId]
@@ -219,12 +250,12 @@ export const getProviderEarnings = async (req, res) => {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthlyResult = await query(
         `SELECT 
-          TO_CHAR(b.booking_date, 'Mon') as month_label,
-          EXTRACT(MONTH FROM b.booking_date)::int as month_num,
-          COALESCE(SUM(COALESCE(NULLIF(b.total_price, 0), 650)), 0)::int as total_amount,
+          TO_CHAR(p.created_at, 'Mon') as month_label,
+          EXTRACT(MONTH FROM p.created_at)::int as month_num,
+          COALESCE(SUM(p.provider_payout), 0)::int as total_amount,
           COUNT(*)::int as job_count
-         FROM bookings b
-         WHERE b.provider_id = $1 AND b.status = 'completed'
+         FROM payments p
+         WHERE p.provider_id = $1 AND p.status = 'completed' AND p.escrow_released = TRUE
          GROUP BY month_label, month_num
          ORDER BY month_num ASC`,
         [req.userId]
@@ -261,11 +292,8 @@ export const getProviderEarnings = async (req, res) => {
       .filter(r => r.status === 'completed')
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-    const commissionFee = Math.round(totalEarnings * 0.10);
-    const netEarnings = totalEarnings - commissionFee;
-
-    // Available balance (can be negative if 10% commission on cash exceeds online earnings)
-    const availableBalance = netEarnings - pendingPayouts - completedPayouts;
+    // Available balance = Net Released Earnings - (Pending Payouts + Completed Payouts)
+    const availableBalance = netReleasedEarnings - pendingPayouts - completedPayouts;
 
     let isFrozen = profData.is_frozen || false;
     let negativeSince = profData.negative_since || null;
@@ -274,7 +302,6 @@ export const getProviderEarnings = async (req, res) => {
     // Evaluate negative balance & 3-day trial/freeze timer
     if (availableBalance < 0) {
       if (!negativeSince) {
-        // Set negative_since timestamp to NOW
         negativeSince = new Date();
         await query(
           `UPDATE provider_profiles SET negative_since = CURRENT_TIMESTAMP WHERE user_id = $1`,
@@ -286,7 +313,6 @@ export const getProviderEarnings = async (req, res) => {
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
       daysRemaining = Math.max(0, Math.ceil(3 - diffDays));
 
-      // If negative > 3 days, auto-freeze account & set availability offline
       if (diffDays >= 3 && !isFrozen) {
         isFrozen = true;
         await query(
@@ -295,7 +321,6 @@ export const getProviderEarnings = async (req, res) => {
         );
       }
     } else if (availableBalance >= 0 && (negativeSince || isFrozen)) {
-      // Balance cleared! Reset negative_since & unfreeze
       isFrozen = false;
       negativeSince = null;
       await query(
@@ -304,24 +329,34 @@ export const getProviderEarnings = async (req, res) => {
       );
     }
 
+    // Fetch payments list for transaction history
+    const paymentListRes = await query(
+      `SELECT p.id, p.booking_id, p.amount, p.commission, p.provider_payout, p.status, p.escrow_released, p.payment_method, p.created_at
+       FROM payments p
+       WHERE p.provider_id = $1
+       ORDER BY p.created_at DESC`,
+      [req.userId]
+    );
+
     res.json({
-      total_bookings: Number(row.total_bookings || 0),
+      total_bookings: Number(bookingRow.total_bookings || 0),
       completed_bookings: completedJobs,
-      active_bookings: Number(row.active_bookings || 0),
-      cancelled_bookings: Number(row.cancelled_bookings || 0),
-      estimated_earnings: totalEarnings,
-      total: totalEarnings,
-      net_earnings: netEarnings,
-      commission: commissionFee,
+      active_bookings: Number(bookingRow.active_bookings || 0),
+      cancelled_bookings: Number(bookingRow.cancelled_bookings || 0),
+      estimated_earnings: grossIncome,
+      total: grossIncome,
+      net_earnings: netReleasedEarnings,
+      commission: commissionCut,
+      pending_escrow: pendingEscrowAmount,
       available_balance: availableBalance,
       is_negative: availableBalance < 0,
       is_frozen: isFrozen,
       negative_since: negativeSince,
       days_remaining: daysRemaining,
       jobs: completedJobs,
-      avg: completedJobs > 0 ? Math.round(totalEarnings / completedJobs) : 0,
+      avg: completedJobs > 0 ? Math.round(netReleasedEarnings / completedJobs) : 0,
       chartData,
-      payments: []
+      payments: paymentListRes.rows
     });
   } catch (error) {
     console.error('Get provider earnings error:', error);

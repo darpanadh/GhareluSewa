@@ -253,8 +253,7 @@ export default function BookingHistory() {
                   )}
                   <Link
                     to={`/customer/bookings/${booking.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
+                    onClick={() => {
                       window.dispatchEvent(new CustomEvent('open_global_chat', { detail: { bookingId: booking.id } }));
                     }}
                     style={{ padding: '0.375rem 0.75rem', background: '#07535f', color: '#ffffff', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}

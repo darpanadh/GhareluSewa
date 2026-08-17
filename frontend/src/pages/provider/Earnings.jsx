@@ -11,10 +11,10 @@ import {
 import { format } from 'date-fns';
 
 const PERIOD_OPTIONS = [
-  { label: 'This Week',  value: 'week' },
+  { label: 'This Week', value: 'week' },
   { label: 'This Month', value: 'month' },
-  { label: 'This Year',  value: 'year' },
-  { label: 'All Time',   value: 'all' },
+  { label: 'This Year', value: 'year' },
+  { label: 'All Time', value: 'all' },
 ];
 
 export default function MyEarnings() {
@@ -77,18 +77,22 @@ export default function MyEarnings() {
       const res = await providerAPI.getEarnings({ period });
       const data = res.data || {};
       setServerEarnings(data);
-      const totalAmt = Number(data.estimated_earnings ?? data.total ?? 0);
+      const totalAmt = Number(data.total ?? data.estimated_earnings ?? 0);
+      const netAmt = Number(data.net_earnings ?? 0);
       const jobsCnt = Number(data.completed_bookings ?? data.total_bookings ?? data.jobs ?? 0);
       setEarnings({
         total: totalAmt,
+        net: netAmt,
+        commission: Number(data.commission ?? 0),
+        pendingEscrow: Number(data.pending_escrow ?? 0),
         jobs: jobsCnt,
-        avg: jobsCnt > 0 ? Math.round(totalAmt / jobsCnt) : 0,
+        avg: jobsCnt > 0 ? Math.round(netAmt / jobsCnt) : 0,
       });
       setChartData(Array.isArray(data.chartData) ? data.chartData : []);
       setPayments(Array.isArray(data.payments) ? data.payments : []);
     } catch (err) {
       console.warn('Could not load server earnings', err);
-      setEarnings({ total: 0, jobs: 0, avg: 0 });
+      setEarnings({ total: 0, net: 0, commission: 0, pendingEscrow: 0, jobs: 0, avg: 0 });
       setChartData([]);
       setPayments([]);
     } finally {
@@ -96,12 +100,13 @@ export default function MyEarnings() {
     }
   };
 
-  const total      = Number(earnings?.total ?? 0);
-  const jobsCount  = Number(earnings?.jobs ?? 0);
-  const avg        = jobsCount > 0 ? Math.round(total / jobsCount) : 0;
-  const commission = Math.round(total * 0.10);
-  const netTotal   = total - commission;
-  
+  const total = Number(earnings?.total ?? 0);
+  const netTotal = Number(earnings?.net ?? (total - Math.round(total * 0.10)));
+  const commission = Number(earnings?.commission ?? Math.round(total * 0.10));
+  const pendingEscrow = Number(earnings?.pendingEscrow ?? serverEarnings?.pending_escrow ?? 0);
+  const jobsCount = Number(earnings?.jobs ?? 0);
+  const avg = jobsCount > 0 ? Math.round(netTotal / jobsCount) : 0;
+
   // Calculate Pending and Completed Withdrawals for exact financial consistency
   const pendingPayouts = payoutRequests
     .filter(r => r.status === 'pending')
@@ -111,9 +116,10 @@ export default function MyEarnings() {
     .filter(r => r.status === 'completed')
     .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
-  // Available balance = Net Earnings - (Pending + Completed Withdrawals)
-  // Rejections are excluded, so rejected amounts automatically return to Available Balance!
-  const availableBalance = Math.max(0, netTotal - pendingPayouts - completedPayouts);
+  // Available balance = Net Released Earnings - (Pending + Completed Withdrawals)
+  const availableBalance = serverEarnings?.available_balance !== undefined
+    ? Math.max(0, Number(serverEarnings.available_balance) - pendingPayouts)
+    : Math.max(0, netTotal - pendingPayouts - completedPayouts);
 
   const handleOpenWithdraw = () => {
     setWithdrawAmount(availableBalance.toString());
@@ -124,7 +130,7 @@ export default function MyEarnings() {
   const handleWithdrawSubmit = async (e) => {
     e.preventDefault();
     const amountNum = parseFloat(withdrawAmount);
-    
+
     if (!amountNum || amountNum <= 0) {
       alert('Please enter a valid withdrawal amount.');
       return;
@@ -167,7 +173,7 @@ export default function MyEarnings() {
       refreshPayoutRequests();
 
       setWithdrawSuccess(`Payout request of Rs. ${amountNum.toLocaleString()} via ${newReq.method} submitted! Admin will process your payment within 24 hours.`);
-      
+
       setTimeout(() => {
         setShowWithdrawModal(false);
         setWithdrawSuccess('');
@@ -205,8 +211,8 @@ export default function MyEarnings() {
   const calcAvailableBalance = serverEarnings?.available_balance !== undefined
     ? serverEarnings.available_balance
     : netTotal - pendingPayouts - completedPayouts;
-  const isNegative    = calcAvailableBalance < 0;
-  const isFrozen      = serverEarnings?.is_frozen || false;
+  const isNegative = calcAvailableBalance < 0;
+  const isFrozen = serverEarnings?.is_frozen || false;
   const daysRemaining = serverEarnings?.days_remaining ?? 3;
 
   return (
@@ -226,11 +232,10 @@ export default function MyEarnings() {
               <button
                 key={opt.value}
                 onClick={() => setPeriod(opt.value)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  period === opt.value
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${period === opt.value
                     ? 'bg-[#07535f] text-white shadow-xs'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 {opt.label}
               </button>
@@ -239,13 +244,12 @@ export default function MyEarnings() {
         </div>
 
         {/* Withdrawal / Negative Balance Highlight Banner */}
-        <div className={`rounded-3xl p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden transition-all ${
-          isFrozen 
+        <div className={`rounded-3xl p-6 sm:p-8 text-white shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden transition-all ${isFrozen
             ? 'bg-gradient-to-r from-red-800 via-rose-900 to-red-950 border-2 border-red-500'
-            : isNegative 
-            ? 'bg-gradient-to-r from-amber-700 via-orange-800 to-rose-900 border-2 border-amber-400'
-            : 'bg-gradient-to-r from-[#07535f] via-[#06424b] to-[#0a6c7c]'
-        }`}>
+            : isNegative
+              ? 'bg-gradient-to-r from-amber-700 via-orange-800 to-rose-900 border-2 border-amber-400'
+              : 'bg-gradient-to-r from-[#07535f] via-[#06424b] to-[#0a6c7c]'
+          }`}>
           <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
             <Wallet className="w-64 h-64 text-white" />
           </div>
@@ -277,6 +281,11 @@ export default function MyEarnings() {
                   10% Commission on Cash Jobs Exceeds Wallet Balance
                 </span>
               )}
+              {pendingEscrow > 0 && (
+                <span className="bg-amber-400/20 border border-amber-300/40 text-amber-200 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                  🔒 Held in Admin Escrow: Rs. {pendingEscrow.toLocaleString()}
+                </span>
+              )}
               {pendingPayouts > 0 && !isNegative && (
                 <span className="bg-amber-400/20 border border-amber-300/40 text-amber-200 text-[11px] font-bold px-2.5 py-1 rounded-lg">
                   ⏳ Pending Hold: Rs. {pendingPayouts.toLocaleString()}
@@ -290,11 +299,11 @@ export default function MyEarnings() {
             </div>
 
             <p className="text-xs text-white/80 max-w-md pt-1 leading-relaxed">
-              {isFrozen 
+              {isFrozen
                 ? 'Your account has been frozen because negative 10% platform fee dues were not cleared within the 3-day trial period. Please contact Admin immediately to settle dues and reactivate your profile.'
-                : isNegative 
-                ? `10% platform fee for cash jobs is deducted from your balance. You have a ${daysRemaining}-day grace period to clear your negative dues with Admin before account auto-freezes.`
-                : 'Net earnings after 10% platform fee minus pending/processed withdrawals. If admin rejects a request, funds automatically return here.'
+                : isNegative
+                  ? `10% platform fee for cash jobs is deducted from your balance. You have a ${daysRemaining}-day grace period to clear your negative dues with Admin before account auto-freezes.`
+                  : 'Net earnings after 10% platform fee minus pending/processed withdrawals. If admin rejects a request, funds automatically return here.'
               }
             </p>
           </div>
@@ -424,9 +433,8 @@ export default function MyEarnings() {
                     return (
                       <div key={p.id || i} className="p-5 flex items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">
                         <div className="flex items-center gap-3.5">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${
-                            isWithdrawal ? 'bg-amber-50 text-amber-600' : 'bg-[#07535f]/10 text-[#07535f]'
-                          }`}>
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs ${isWithdrawal ? 'bg-amber-50 text-amber-600' : 'bg-[#07535f]/10 text-[#07535f]'
+                            }`}>
                             {isWithdrawal ? <Wallet className="w-5 h-5" /> : <DollarSign className="w-5 h-5" />}
                           </div>
                           <div>
@@ -449,14 +457,13 @@ export default function MyEarnings() {
                               }
                             </p>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${
-                            p.status === 'completed' 
-                              ? 'bg-emerald-100 text-emerald-800' 
-                              : p.status === 'rejected'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {p.status === 'completed' ? 'Paid' : p.status === 'rejected' ? 'Rejected' : 'Pending'}
+                          <span className={`px-3 py-1 rounded-full text-[11px] font-extrabold ${isWithdrawal
+                              ? (p.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : p.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800')
+                              : (p.escrow_released ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')
+                            }`}>
+                            {isWithdrawal
+                              ? (p.status === 'completed' ? 'Disbursed' : p.status === 'rejected' ? 'Rejected' : 'Pending Payout')
+                              : (p.escrow_released ? 'Released to Balance ✓' : 'In Escrow (Awaiting Release)')}
                           </span>
                         </div>
                       </div>
@@ -480,7 +487,7 @@ export default function MyEarnings() {
         {showWithdrawModal && (
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95 duration-150">
-              
+
               {/* Close Button */}
               <button
                 onClick={() => setShowWithdrawModal(false)}
@@ -547,11 +554,10 @@ export default function MyEarnings() {
                       <button
                         type="button"
                         onClick={() => setWithdrawMethod('esewa')}
-                        className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
-                          withdrawMethod === 'esewa'
+                        className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${withdrawMethod === 'esewa'
                             ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 font-bold ring-2 ring-emerald-500/20'
                             : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                        }`}
+                          }`}
                       >
                         <Smartphone className="w-4 h-4 text-emerald-600" />
                         <span className="text-xs">eSewa</span>
@@ -560,11 +566,10 @@ export default function MyEarnings() {
                       <button
                         type="button"
                         onClick={() => setWithdrawMethod('khalti')}
-                        className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
-                          withdrawMethod === 'khalti'
+                        className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${withdrawMethod === 'khalti'
                             ? 'border-purple-500 bg-purple-50/50 text-purple-900 font-bold ring-2 ring-purple-500/20'
                             : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                        }`}
+                          }`}
                       >
                         <Smartphone className="w-4 h-4 text-purple-600" />
                         <span className="text-xs">Khalti</span>
@@ -573,11 +578,10 @@ export default function MyEarnings() {
                       <button
                         type="button"
                         onClick={() => setWithdrawMethod('bank')}
-                        className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${
-                          withdrawMethod === 'bank'
+                        className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-1 ${withdrawMethod === 'bank'
                             ? 'border-blue-500 bg-blue-50/50 text-blue-900 font-bold ring-2 ring-blue-500/20'
                             : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                        }`}
+                          }`}
                       >
                         <Building className="w-4 h-4 text-blue-600" />
                         <span className="text-xs font-semibold">Bank</span>

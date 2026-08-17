@@ -3,6 +3,7 @@ import { MessageSquare, Send, X, Minimize2, Maximize2, Loader2, AlertCircle } fr
 import { useAuth } from '../context/AuthContext';
 import { getSocket } from '../services/socket';
 import { messageAPI, bookingAPI } from '../services/api';
+import clsx from 'clsx';
 import { format } from 'date-fns';
 
 export default function FloatingChat() {

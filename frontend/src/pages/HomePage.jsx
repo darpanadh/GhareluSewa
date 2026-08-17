@@ -3,7 +3,44 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, categoryAPI } from '../services/api';
 import CityWardSelector from '../components/CityWardSelector';
-import { Search, MapPin, Star, ShieldCheck, Clock, Users, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Star, ShieldCheck, Clock, Users, ArrowRight, Wrench, Zap, Home, Wind, Sparkles, Snowflake, Paintbrush, Hammer } from 'lucide-react';
+
+const renderCategoryIcon = (iconStr, catName) => {
+  const iconLower = (iconStr || '').toLowerCase();
+  const nameLower = (catName || '').toLowerCase();
+
+  // If icon is an emoji, render text emoji
+  if (iconStr && /[\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}]/u.test(iconStr)) {
+    return <span className="text-3xl">{iconStr}</span>;
+  }
+
+  if (iconLower === 'wrench' || nameLower.includes('plumb')) {
+    return <Wrench className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'zap' || nameLower.includes('electr')) {
+    return <Zap className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'home' || nameLower.includes('clean')) {
+    return <Home className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'wind' || nameLower.includes('ac') || nameLower.includes('air')) {
+    return <Wind className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'sparkles' || nameLower.includes('sparkl')) {
+    return <Sparkles className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'snowflake' || nameLower.includes('cool')) {
+    return <Snowflake className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'paintbrush' || nameLower.includes('paint')) {
+    return <Paintbrush className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+  if (iconLower === 'hammer' || nameLower.includes('carpent')) {
+    return <Hammer className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+  }
+
+  return <Wrench className="w-7 h-7 text-[#07535f] group-hover:text-white transition-colors" />;
+};
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
@@ -220,7 +257,9 @@ export default function HomePage() {
               to={`/book?category=${encodeURIComponent(cat.name)}`}
               className="border border-gray-100 hover:border-transparent hover:shadow-lg p-6 rounded-2xl transition-all text-center flex flex-col items-center hover:-translate-y-1 group bg-white"
             >
-              <span className="text-4xl group-hover:scale-110 transition-transform mb-3 block">{cat.icon || '🔧'}</span>
+              <div className="w-14 h-14 rounded-2xl bg-teal-50/80 group-hover:bg-[#07535f] flex items-center justify-center mb-3.5 transition-all shadow-2xs group-hover:scale-110 group-hover:shadow-md">
+                {renderCategoryIcon(cat.icon, cat.name)}
+              </div>
               <h3 className="font-bold text-gray-800 text-sm sm:text-base">{cat.name}</h3>
               <p className="text-xs text-gray-400 mt-1">
                 {cat.provider_count !== undefined
