@@ -169,6 +169,32 @@ export default function BrowseServices() {
 
     // Pokhara Providers
     {
+      id: 'p-pkr-5',
+      name: 'Subash Sharma',
+      hourlyRate: 620,
+      rating: 4.9,
+      reviewsCount: 54,
+      category: 'Plumbing',
+      ward: 'Pokhara Ward No. 16',
+      service_wards: 'Pokhara Ward No. 16',
+      description: 'Hyper-local plumber dedicated exclusively to Pokhara Ward 16 residents.',
+      tags: ['Plumbing', 'Emergency Leak Fix', 'Tap Fitting'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
+      id: 'p-pkr-6',
+      name: 'Anil KC',
+      hourlyRate: 640,
+      rating: 4.8,
+      reviewsCount: 42,
+      category: 'Plumbing',
+      ward: 'Pokhara Ward No. 16',
+      service_wards: 'Pokhara Ward No. 16, Pokhara Ward No. 17, Pokhara Ward No. 18',
+      description: 'Plumbing technician serving Pokhara Wards 16, 17, and 18.',
+      tags: ['Plumbing', 'Bathroom Pipework', 'Drain Cleaning'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
       id: 'p-pkr-1',
       name: 'Rajesh Shrestha',
       hourlyRate: 600,
@@ -267,6 +293,60 @@ export default function BrowseServices() {
     'Painting'
   ];
 
+  // Helper to score provider proximity for "Nearest / Specific Ward First" sorting
+  const getNearestSortScore = (p, targetWardStr) => {
+    const targetLower = (targetWardStr || '').toLowerCase().trim();
+    const providerWard = (p.ward || '').toLowerCase().trim();
+    const providerServiceWards = (p.service_wards || '').toLowerCase().trim();
+    const combined = `${providerWard} ${providerServiceWards}`;
+
+    // Extract specific ward number e.g. "16" from "ward no. 16" or "ward 16"
+    const wardNumMatch = targetLower.match(/ward\s+(?:no\.\s*)?(\d+)/i) || targetLower.match(/\b(\d+)\b/);
+    const targetWardNum = wardNumMatch ? wardNumMatch[1] : null;
+
+    // Count how many specific wards this provider covers
+    let totalWardsCount = 1;
+    if (providerServiceWards.includes('whole city') || providerServiceWards.includes('all wards')) {
+      totalWardsCount = 999; // Whole city generic coverage gets lower priority (high ward count)
+    } else if (p.service_wards) {
+      const splitWards = p.service_wards.split(',').map(s => s.trim()).filter(Boolean);
+      totalWardsCount = splitWards.length > 0 ? splitWards.length : 1;
+    }
+
+    // Determine Match Tier:
+    // Tier 1: Exact specific ward match (explicitly mentions specific ward and not just whole city)
+    // Tier 2: Whole city coverage for target city
+    // Tier 3: Other
+    let matchTier = 3;
+    const isWholeCity = combined.includes('whole city') || combined.includes('all wards');
+
+    if (targetWardNum) {
+      const specificWardRegex = new RegExp(`ward(?:\\s+no\\.)?\\s*0*${targetWardNum}(?:\\b|[^0-9])`, 'i');
+      const hasSpecificWard = specificWardRegex.test(combined);
+
+      if (hasSpecificWard && !isWholeCity) {
+        matchTier = 1; // Dedicated specific ward selection (Top Priority)
+      } else if (hasSpecificWard) {
+        matchTier = 1.5; // Specific ward mention + whole city
+      } else if (isWholeCity) {
+        matchTier = 2; // Generic whole city
+      }
+    } else if (targetLower) {
+      if (!isWholeCity && combined.includes(targetLower)) {
+        matchTier = 1;
+      } else if (isWholeCity) {
+        matchTier = 2;
+      }
+    }
+
+    return {
+      matchTier,
+      totalWardsCount,
+      rating: p.rating || 0,
+      reviewsCount: p.reviewsCount || 0
+    };
+  };
+
   // Filtering Logic
   const filtered = allProviders.filter(p => {
     // Search query
@@ -337,7 +417,29 @@ export default function BrowseServices() {
 
     return true;
   }).sort((a, b) => {
-    if (sortBy === 'highest_rated') {
+    if (sortBy === 'nearest') {
+      const target = (selectedWard && selectedWard !== 'All wards') ? selectedWard : '';
+      const scoreA = getNearestSortScore(a, target);
+      const scoreB = getNearestSortScore(b, target);
+
+      // 1. Lower matchTier first (1 = Exact Ward, 2 = Whole City)
+      if (scoreA.matchTier !== scoreB.matchTier) {
+        return scoreA.matchTier - scoreB.matchTier;
+      }
+
+      // 2. Least number of selected wards first (e.g. 1 ward < 3 wards)
+      if (scoreA.totalWardsCount !== scoreB.totalWardsCount) {
+        return scoreA.totalWardsCount - scoreB.totalWardsCount;
+      }
+
+      // 3. Highest rating first
+      if (b.rating !== a.rating) {
+        return b.rating - a.rating;
+      }
+
+      // 4. Most reviewed first
+      return b.reviewsCount - a.reviewsCount;
+    } else if (sortBy === 'highest_rated') {
       if (b.rating !== a.rating) return b.rating - a.rating;
       return b.reviewsCount - a.reviewsCount;
     } else if (sortBy === 'most_reviewed') {
@@ -495,6 +597,7 @@ export default function BrowseServices() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="w-full bg-gray-50/70 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#07535f] cursor-pointer"
               >
+                <option value="nearest">📍 Nearest / Specific Ward First</option>
                 <option value="highest_rated">⭐ Highest Rating First</option>
                 <option value="most_reviewed">🔥 Most Reviewed First</option>
                 <option value="price_low">💰 Price: Low to High</option>
@@ -547,7 +650,9 @@ export default function BrowseServices() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {filtered.map(provider => (
+                {filtered.map(provider => {
+                  const score = getNearestSortScore(provider, selectedWard);
+                  return (
                   <div
                     key={provider.id}
                     className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition-all group"
@@ -563,6 +668,12 @@ export default function BrowseServices() {
                             <span className="inline-flex items-center gap-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
                               <ShieldCheck className="w-3 h-3 text-emerald-600 fill-emerald-600" />
                               <span>Verified Pro</span>
+                            </span>
+                          )}
+                          {selectedWard && selectedWard !== 'All wards' && score.matchTier === 1 && (
+                            <span className="inline-flex items-center gap-0.5 bg-sky-100 text-sky-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-sky-200">
+                              <MapPin className="w-3 h-3 text-sky-600" />
+                              <span>Exact Ward Match ({score.totalWardsCount} {score.totalWardsCount === 1 ? 'Ward' : 'Wards'})</span>
                             </span>
                           )}
                         </div>
@@ -626,7 +737,8 @@ export default function BrowseServices() {
                     </button>
 
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
