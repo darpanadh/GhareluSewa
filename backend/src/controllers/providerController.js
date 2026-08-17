@@ -407,3 +407,44 @@ export const getMyPayouts = async (req, res) => {
   }
 };
 
+// Settle negative balance dues online (unfreezes provider account)
+export const settleDues = async (req, res) => {
+  try {
+    const { amount, payment_method, transaction_ref } = req.body;
+
+    const duesAmount = Math.abs(parseFloat(amount || 0));
+    if (!duesAmount || duesAmount <= 0) {
+      return res.status(400).json({ error: 'Invalid settlement amount' });
+    }
+
+    const oid = `GS-DUES-${req.userId}-${Date.now()}`;
+
+    // Record dues settlement payment entry (provider_payout = +duesAmount)
+    const insertRes = await query(
+      `INSERT INTO payments
+         (booking_id, customer_id, provider_id, amount, commission, provider_payout,
+          esewa_oid, status, payment_method, escrow_released, escrow_released_at, paid_at)
+       VALUES (NULL, $1, $1, $2, 0, $2, $3, 'completed', $4, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       RETURNING *`,
+      [req.userId, duesAmount, oid, payment_method || 'esewa']
+    );
+
+    // Unfreeze provider account and clear negative timer
+    await query(
+      `UPDATE provider_profiles 
+       SET is_frozen = FALSE, availability = TRUE, negative_since = NULL 
+       WHERE user_id = $1`,
+      [req.userId]
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully paid Rs. ${duesAmount} platform dues. Your account is now unfrozen and active!`,
+      payment: insertRes.rows[0],
+    });
+  } catch (error) {
+    console.error('Settle dues error:', error);
+    res.status(500).json({ error: 'Failed to process dues settlement payment' });
+  }
+};
+

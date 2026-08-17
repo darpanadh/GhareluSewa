@@ -12,5 +12,6 @@ router.patch('/availability', verifyAuth, authorize(['provider']), providerContr
 router.get('/earnings', verifyAuth, authorize(['provider']), providerController.getProviderEarnings);
 router.post('/payouts', verifyAuth, authorize(['provider']), providerController.requestPayout);
 router.get('/payouts', verifyAuth, authorize(['provider']), providerController.getMyPayouts);
+router.post('/settle-dues', verifyAuth, authorize(['provider']), providerController.settleDues);
 
 export default router;

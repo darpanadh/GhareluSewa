@@ -102,6 +102,7 @@ export const providerAPI = {
   getEarnings: (params) => api.get('/providers/earnings', { params }),
   requestPayout: (data) => api.post('/providers/payouts', data),
   getPayouts: () => api.get('/providers/payouts'),
+  settleDues: (data) => api.post('/providers/settle-dues', data),
 };
 
 // Admin endpoints

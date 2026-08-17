@@ -30,6 +30,12 @@ export default function MyEarnings() {
   const [serverEarnings, setServerEarnings] = useState(null);
   const [showContactAdminModal, setShowContactAdminModal] = useState(false);
 
+  // Settle Dues State
+  const [selectedDuesMethod, setSelectedDuesMethod] = useState('esewa');
+  const [settlingDues, setSettlingDues] = useState(false);
+  const [settleSuccess, setSettleSuccess] = useState('');
+  const [settleError, setSettleError] = useState('');
+
   // Withdraw Modal State
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawMethod, setWithdrawMethod] = useState('esewa'); // 'esewa' | 'khalti' | 'bank'
@@ -222,6 +228,35 @@ export default function MyEarnings() {
   const isNegative = calcAvailableBalance < 0;
   const isFrozen = serverEarnings?.is_frozen || false;
   const daysRemaining = serverEarnings?.days_remaining ?? 3;
+
+  const handleSettleDuesSubmit = async (e) => {
+    if (e) e.preventDefault();
+    const amountToSettle = Math.abs(calcAvailableBalance);
+    if (!amountToSettle || amountToSettle <= 0) return;
+
+    setSettlingDues(true);
+    setSettleError('');
+    setSettleSuccess('');
+
+    try {
+      const res = await providerAPI.settleDues({
+        amount: amountToSettle,
+        payment_method: selectedDuesMethod,
+      });
+
+      setSettleSuccess(res.data?.message || `Successfully paid Rs. ${amountToSettle} dues! Account unfrozen.`);
+      await fetchEarnings();
+
+      setTimeout(() => {
+        setShowContactAdminModal(false);
+        setSettleSuccess('');
+      }, 2200);
+    } catch (err) {
+      setSettleError(err?.response?.data?.error || 'Failed to process dues payment. Please try again.');
+    } finally {
+      setSettlingDues(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 lg:p-8">
@@ -685,10 +720,10 @@ export default function MyEarnings() {
           </div>
         )}
 
-        {/* CONTACT ADMIN TO CLEAR DUES MODAL */}
+        {/* CLEAR NEGATIVE DUES & UNFREEZE ACCOUNT MODAL */}
         {showContactAdminModal && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 relative animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 relative animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setShowContactAdminModal(false)}
                 className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 cursor-pointer"
@@ -697,56 +732,137 @@ export default function MyEarnings() {
               </button>
 
               <div className="space-y-1">
-                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-2 font-bold">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-1 font-bold">
                   <Smartphone className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-extrabold text-gray-900">Clear Negative Dues with Admin</h3>
-                <p className="text-xs text-gray-500">Contact Gharelu Sewa Admin to settle 10% cash commission platform dues.</p>
+                <h3 className="text-xl font-extrabold text-gray-900">Clear Negative Dues & Unfreeze Account</h3>
+                <p className="text-xs text-gray-500">Pay 10% platform cash commission dues to restore your profile to active status.</p>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-amber-800 font-medium">Overdue Platform Dues:</span>
-                  <span className="text-lg font-black text-rose-700">Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</span>
+              {settleSuccess ? (
+                <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2.5 my-4">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+                  <p className="text-sm font-bold text-emerald-900 leading-snug">{settleSuccess}</p>
                 </div>
-                <div className="flex justify-between items-center text-xs border-t border-amber-200/60 pt-2">
-                  <span className="text-amber-800 font-medium">Status / Grace Period:</span>
-                  <span className="font-extrabold text-amber-900">
-                    {isFrozen ? '🛑 Account Frozen' : `⏳ ${daysRemaining} Days Trial Remaining`}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <p className="font-bold text-gray-800">Admin Payment Methods for Dues Settlement:</p>
-
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-emerald-900 text-xs">eSewa / Khalti Direct</p>
-                    <p className="text-[11px] text-emerald-700 font-mono">9841000000 (Gharelu Sewa Admin)</p>
+              ) : (
+                <form onSubmit={handleSettleDuesSubmit} className="space-y-4">
+                  <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-amber-800 font-semibold">Overdue Platform Dues:</span>
+                      <span className="text-xl font-black text-rose-700">Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs border-t border-amber-200/60 pt-2">
+                      <span className="text-amber-800 font-medium">Status / Grace Period:</span>
+                      <span className="font-extrabold text-amber-900 flex items-center gap-1">
+                        {isFrozen ? '🛑 Account Frozen' : `⏳ ${daysRemaining} Days Trial Remaining`}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">Primary</span>
-                </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-blue-900 text-xs">Direct Bank Transfer</p>
-                    <p className="text-[11px] text-blue-700">NIC Asia Bank - A/C 012345678910</p>
+                  <div className="space-y-2 text-xs">
+                    <label className="block font-bold text-gray-800">
+                      Select Payment Method to Settle Dues:
+                    </label>
+
+                    {/* eSewa / Khalti Selector Card */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDuesMethod('esewa')}
+                      className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                        selectedDuesMethod === 'esewa'
+                          ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20 shadow-xs'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                          eS
+                        </div>
+                        <div>
+                          <p className="font-bold text-emerald-950 text-xs">eSewa / Khalti Direct</p>
+                          <p className="text-[11px] text-emerald-700 font-mono">9841000000 (Gharelu Sewa Admin)</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        selectedDuesMethod === 'esewa' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {selectedDuesMethod === 'esewa' ? 'Selected ✓' : 'Primary'}
+                      </span>
+                    </button>
+
+                    {/* Direct Bank Transfer Selector Card */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDuesMethod('bank')}
+                      className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
+                        selectedDuesMethod === 'bank'
+                          ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-500/20 shadow-xs'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                          <Building className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-blue-950 text-xs">Direct Bank Transfer</p>
+                          <p className="text-[11px] text-blue-700">NIC Asia Bank - A/C 012345678910</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                        selectedDuesMethod === 'bank' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {selectedDuesMethod === 'bank' ? 'Selected ✓' : 'Bank'}
+                      </span>
+                    </button>
                   </div>
-                </div>
-              </div>
 
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-[11px] text-gray-600 leading-relaxed">
-                ℹ️ Once you transfer the dues of <strong>Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</strong>, contact Admin support or show receipt screenshot. Admin will instantly click <strong>Clear Dues</strong> in Admin Panel to restore your account to active online status.
-              </div>
+                  {settleError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-semibold">
+                      {settleError}
+                    </div>
+                  )}
 
-              <a
-                href="tel:9841000000"
-                className="w-full bg-[#07535f] hover:bg-[#06424b] text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-2 block text-center"
-              >
-                <Smartphone className="w-4 h-4" /> Call Admin Support Now (9841000000)
-              </a>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-[11px] text-gray-600 leading-relaxed flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[#07535f] shrink-0 mt-0.5" />
+                    <span>
+                      Clicking <strong>Pay & Settle Dues Now</strong> will process your settlement of <strong>Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</strong> via {selectedDuesMethod === 'esewa' ? 'eSewa / Khalti' : 'Bank Transfer'} and automatically unfreeze your provider profile immediately.
+                    </span>
+                  </div>
 
+                  {/* Primary Pay & Settle Dues Button */}
+                  <button
+                    type="submit"
+                    disabled={settlingDues || Math.abs(calcAvailableBalance) <= 0}
+                    className="w-full bg-[#10b981] hover:bg-[#0ea572] active:scale-98 text-white py-3.5 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                  >
+                    {settlingDues ? (
+                      <>
+                        <Loader className="w-4 h-4 animate-spin" /> Processing Payment...
+                      </>
+                    ) : (
+                      <>
+                        <DollarSign className="w-4 h-4" />
+                        Pay & Settle Rs. {Math.abs(calcAvailableBalance).toLocaleString()} Dues Now
+                      </>
+                    )}
+                  </button>
+
+                  <div className="relative flex py-1 items-center">
+                    <div className="flex-grow border-t border-gray-200"></div>
+                    <span className="flex-shrink mx-3 text-[10px] text-gray-400 font-bold uppercase tracking-wider">or contact admin</span>
+                    <div className="flex-grow border-t border-gray-200"></div>
+                  </div>
+
+                  {/* Call Admin Support Now Option */}
+                  <a
+                    href="tel:9841000000"
+                    className="w-full bg-[#07535f] hover:bg-[#06424b] text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-2 text-center cursor-pointer block"
+                  >
+                    <Smartphone className="w-4 h-4" /> Call Admin Support Now (9841000000)
+                  </a>
+                </form>
+              )}
             </div>
           </div>
         )}
