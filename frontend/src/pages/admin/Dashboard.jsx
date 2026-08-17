@@ -15,12 +15,17 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
   const [pendingProviders, setPendingProviders] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [actionMessage, setActionMessage] = useState(null);
   const [adminChartPeriod, setAdminChartPeriod] = useState('7days');
   const [adminChartData, setAdminChartData] = useState([]);
   const [adminChartLoading, setAdminChartLoading] = useState(false);
+
+  // Filters for embedded tables
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('');
 
   // Selected Provider Modal for detailed KYC inspection
   const [selectedProviderModal, setSelectedProviderModal] = useState(null);
@@ -44,12 +49,14 @@ export default function AdminDashboard() {
     fetchAdminChart();
     Promise.allSettled([
       adminAPI.getPlatformStats(),
-      adminAPI.getAllBookings({ limit: 8 }),
+      adminAPI.getAllBookings({ limit: 15 }),
       adminAPI.getPendingProviders({ limit: 10 }),
-    ]).then(([sR, bR, pR]) => {
+      adminAPI.getAllUsers(),
+    ]).then(([sR, bR, pR, uR]) => {
       if (sR.status === 'fulfilled') setStats(sR.value.data || {});
       if (bR.status === 'fulfilled') { const d = bR.value.data; setRecentBookings(Array.isArray(d) ? d : []); }
       if (pR.status === 'fulfilled') { const d = pR.value.data; setPendingProviders(Array.isArray(d) ? d : []); }
+      if (uR.status === 'fulfilled') { const d = uR.value.data; setAllUsers(Array.isArray(d) ? d : []); }
       setLoading(false);
     });
   };
@@ -65,6 +72,7 @@ export default function AdminDashboard() {
     try {
       await adminAPI.verifyProvider(id);
       setPendingProviders(prev => prev.filter(p => p.id !== id));
+      setAllUsers(prev => prev.map(u => u.id === id ? { ...u, is_verified: true } : u));
       if (selectedProviderModal && selectedProviderModal.id === id) {
         setSelectedProviderModal(null);
       }
@@ -84,19 +92,19 @@ export default function AdminDashboard() {
     } catch { flash('error', `Failed to reject ${name}.`); }
   };
 
-  const revenueData = [
-    { day: 'Mon', value: 3800 }, { day: 'Tue', value: 3100 },
-    { day: 'Wed', value: 5000 }, { day: 'Thu', value: 2700 },
-    { day: 'Fri', value: 6500 }, { day: 'Sat', value: 7800 },
-    { day: 'Sun', value: 5500 },
-  ];
-
-  const serviceData = [
-    { name: 'Cleaning',   value: 35, color: '#07535f' },
-    { name: 'Plumbing',   value: 25, color: '#f59e0b' },
-    { name: 'Electrical', value: 22, color: '#10b981' },
-    { name: 'Carpentry',  value: 18, color: '#ef4444' },
-  ];
+  const handleToggleUserActive = async (user) => {
+    try {
+      if (user.is_active) {
+        await adminAPI.deactivateUser(user.id, { reason: 'Admin action' });
+      } else {
+        await adminAPI.activateUser(user.id);
+      }
+      setAllUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u));
+      flash('success', `User "${user.name}" ${user.is_active ? 'deactivated' : 'activated'} successfully.`);
+    } catch (err) {
+      flash('error', `Failed to update user status.`);
+    }
+  };
 
   const tabs = ['overview', 'users', 'providers', 'services'];
 
@@ -120,7 +128,7 @@ export default function AdminDashboard() {
     {
       label: 'Active Users',
       value: `+${Number(stats?.total_users ?? stats?.total_customers ?? 0).toLocaleString()}`,
-      trend: '+180.1% from last month',
+      trend: 'Total Registered Accounts',
       up: true,
       icon: <Users className="w-5 h-5" />,
       iconBg: 'bg-purple-50 text-purple-600',
@@ -128,20 +136,40 @@ export default function AdminDashboard() {
     {
       label: 'Service Providers',
       value: Number(stats?.verified_providers ?? stats?.total_providers ?? 0).toLocaleString(),
-      trend: '-4% from last month',
-      up: false,
+      trend: 'Verified Professionals',
+      up: true,
       icon: <ShieldCheck className="w-5 h-5" />,
       iconBg: 'bg-amber-50 text-amber-600',
     },
     {
       label: 'Active Bookings',
       value: `+${Number(stats?.total_bookings ?? stats?.active_bookings ?? 0).toLocaleString()}`,
-      trend: '+201 since last hour',
+      trend: 'Total System Bookings',
       up: true,
       icon: <Calendar className="w-5 h-5" />,
       iconBg: 'bg-teal-50 text-teal-600',
     },
   ];
+
+  const filteredUsers = allUsers.filter(u => {
+    const matchRole = userRoleFilter === '' || u.role === userRoleFilter;
+    const matchSearch = userSearch === '' ||
+      `${u.name} ${u.email} ${u.ward || ''}`.toLowerCase().includes(userSearch.toLowerCase());
+    return matchRole && matchSearch;
+  });
+
+  const providersList = allUsers.filter(u => u.role === 'provider');
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'completed': return <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">Completed ✓</span>;
+      case 'awaiting_payment': return <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">Awaiting Payment ⏳</span>;
+      case 'in_progress': return <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">In Progress ⚡</span>;
+      case 'accepted': return <span className="bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">Accepted 👍</span>;
+      case 'cancelled': return <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">Cancelled ✕</span>;
+      default: return <span className="bg-gray-100 text-gray-700 border border-gray-200 text-[10px] font-extrabold px-2.5 py-1 rounded-full">{status?.replaceAll('_', ' ') || 'Pending'}</span>;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50/60">
@@ -278,6 +306,63 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* Current & Recent Bookings List */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#07535f]" /> Current & Recent Bookings
+                  </h3>
+                  <p className="text-xs text-gray-400">Latest service bookings across the platform</p>
+                </div>
+                <Link
+                  to="/admin/bookings"
+                  className="text-xs font-bold text-[#07535f] hover:underline flex items-center gap-1"
+                >
+                  Manage All Bookings →
+                </Link>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
+                      <th className="px-4 py-3 rounded-l-xl">ID</th>
+                      <th className="px-4 py-3">Customer</th>
+                      <th className="px-4 py-3">Professional</th>
+                      <th className="px-4 py-3">Service Category</th>
+                      <th className="px-4 py-3">Location / Ward</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Rate</th>
+                      <th className="px-4 py-3 rounded-r-xl">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-xs">
+                    {recentBookings.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="py-8 text-center text-gray-400">No bookings available.</td>
+                      </tr>
+                    ) : (
+                      recentBookings.map(b => (
+                        <tr key={b.id} className="hover:bg-gray-50/60 transition-colors">
+                          <td className="px-4 py-3 font-mono font-bold text-[#07535f]">#{b.id}</td>
+                          <td className="px-4 py-3 font-bold text-gray-900">{b.customer_name || 'Customer'}</td>
+                          <td className="px-4 py-3 text-gray-700 font-medium">{b.provider_name || 'Unassigned'}</td>
+                          <td className="px-4 py-3 font-semibold text-gray-600">{b.service_category || 'Service'}</td>
+                          <td className="px-4 py-3 text-gray-700 font-medium">{b.location || 'Kathmandu'}</td>
+                          <td className="px-4 py-3">{getStatusBadge(b.status)}</td>
+                          <td className="px-4 py-3 font-bold text-gray-900">Rs. {b.total_price || b.hourly_rate || 800}</td>
+                          <td className="px-4 py-3 text-gray-400">
+                            {b.booking_date ? format(new Date(b.booking_date), 'MMM d, yyyy') : 'N/A'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             {/* Pending KYC */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-5 pb-4 border-b border-gray-100">
@@ -361,74 +446,175 @@ export default function AdminDashboard() {
 
         {/* ── Providers Tab ─────────────────────────────────────────────── */}
         {activeTab === 'providers' && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
-              <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#07535f]" /> KYC Verification Queue
-              </h2>
-              <span className="text-xs font-bold bg-[#07535f]/10 text-[#07535f] px-3 py-1 rounded-full">
-                {pendingProviders.length} Pending
-              </span>
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-5 pb-4 border-b border-gray-100">
+                <div>
+                  <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-[#07535f]" /> Service Professionals ({providersList.length})
+                  </h2>
+                  <p className="text-xs text-gray-400">All registered service providers on Gharelu Sewa</p>
+                </div>
+                <Link to="/admin/providers" className="text-xs font-bold text-[#07535f] hover:underline">
+                  Full Provider Management Page →
+                </Link>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
+                      <th className="px-4 py-3 rounded-l-xl">Provider</th>
+                      <th className="px-4 py-3">Category</th>
+                      <th className="px-4 py-3">Location</th>
+                      <th className="px-4 py-3">KYC Status</th>
+                      <th className="px-4 py-3">Account</th>
+                      <th className="px-4 py-3 text-right rounded-r-xl">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-xs">
+                    {providersList.length === 0 ? (
+                      <tr><td colSpan="6" className="py-8 text-center text-gray-400">No providers found.</td></tr>
+                    ) : (
+                      providersList.map(p => (
+                        <tr key={p.id} className="hover:bg-gray-50/60 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-[#07535f]/10 text-[#07535f] font-bold flex items-center justify-center">
+                                {p.name?.charAt(0) || 'P'}
+                              </div>
+                              <div>
+                                <p className="font-bold text-gray-900">{p.name}</p>
+                                <p className="text-[11px] text-gray-400">{p.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-gray-700">{p.service_category || 'General'}</td>
+                          <td className="px-4 py-3 text-gray-500">{p.ward || 'Nepal'}</td>
+                          <td className="px-4 py-3">
+                            {p.is_verified ? (
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">Verified ✓</span>
+                            ) : (
+                              <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">Pending KYC</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`font-bold ${p.is_active ? 'text-emerald-600' : 'text-red-500'}`}>
+                              {p.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => handleToggleUserActive(p)}
+                              className={`text-[11px] font-bold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                                p.is_active ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {p.is_active ? 'Deactivate' : 'Activate'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            {pendingProviders.length === 0 ? (
-              <div className="py-12 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                <Check className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-                <p className="font-bold text-gray-700">All KYC verifications cleared!</p>
-                <p className="text-xs text-gray-400 mt-1">No pending provider applications.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pendingProviders.map(p => (
-                  <div key={p.id} className="border border-gray-200 rounded-2xl p-4 hover:border-[#07535f]/40 transition-all space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center font-bold text-teal-700 text-lg">
-                          {p.name?.charAt(0) || 'P'}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-gray-900 text-sm">{p.name}</h4>
-                          <p className="text-[11px] text-gray-400">{p.email}</p>
-                        </div>
-                      </div>
-                      <span className="bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
-                        Pending
-                      </span>
-                    </div>
-
-                    <div className="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2.5 space-y-1 border border-gray-100">
-                      <p><span className="font-semibold text-gray-700">Category:</span> {p.service_category || 'General'}</p>
-                      <p><span className="font-semibold text-gray-700">Location:</span> {p.ward || 'Kathmandu'}</p>
-                      <p><span className="font-semibold text-gray-700">Citizenship No:</span> <span className="font-mono font-bold">{p.citizenship_no || '27-01-79-12345'}</span></p>
-                    </div>
-
-                    <button
-                      onClick={() => setSelectedProviderModal(p)}
-                      className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold py-2 rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-[#07535f]" /> View Details & ID
-                    </button>
-
-                    <div className="flex gap-2 pt-1">
-                      <button onClick={() => handleApprove(p.id, p.name)} className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer">
-                        <Check className="w-3.5 h-3.5" /> Approve
-                      </button>
-                      <button onClick={() => handleReject(p.id, p.name)} className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer">
-                        <X className="w-3.5 h-3.5" /> Reject
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
         {/* ── Users Tab ─────────────────────────────────────────────────── */}
         {activeTab === 'users' && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center py-16">
-            <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="font-bold text-gray-500">User Management</p>
-            <p className="text-xs text-gray-400 mt-1">Navigate to <Link to="/admin/users" className="text-[#07535f] font-bold underline">Manage Users</Link> for full user administration.</p>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[#07535f]" /> All Platform Users ({allUsers.length})
+                </h3>
+                <p className="text-xs text-gray-400">View and search all registered customers and professionals</p>
+              </div>
+              <Link to="/admin/users" className="text-xs font-bold text-[#07535f] hover:underline">
+                Full User Management Page →
+              </Link>
+            </div>
+
+            {/* Search & Filter bar */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Search user by name, email, ward..."
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-[#07535f]"
+              />
+              <select
+                value={userRoleFilter}
+                onChange={e => setUserRoleFilter(e.target.value)}
+                className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#07535f]"
+              >
+                <option value="">All Roles</option>
+                <option value="customer">Customers</option>
+                <option value="provider">Service Professionals</option>
+              </select>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 rounded-l-xl">User</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3">Location</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right rounded-r-xl">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-xs">
+                  {filteredUsers.length === 0 ? (
+                    <tr><td colSpan="5" className="py-8 text-center text-gray-400">No users match criteria.</td></tr>
+                  ) : (
+                    filteredUsers.map(u => (
+                      <tr key={u.id} className="hover:bg-gray-50/60 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-[#07535f]/10 text-[#07535f] font-bold flex items-center justify-center">
+                              {u.name?.charAt(0) || 'U'}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-900">{u.name}</p>
+                              <p className="text-[11px] text-gray-400">{u.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                            u.role === 'provider' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                          }`}>
+                            {u.role === 'provider' ? 'Professional' : 'Customer'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">{u.ward || '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`font-bold ${u.is_active ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {u.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleToggleUserActive(u)}
+                            className={`text-[11px] font-bold px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                              u.is_active ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                            }`}
+                          >
+                            {u.is_active ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
