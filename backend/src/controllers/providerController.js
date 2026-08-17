@@ -49,9 +49,13 @@ export const getProviderProfile = async (req, res) => {
 
     const result = await query(
       `SELECT pp.id, pp.user_id, pp.category_id, pp.hourly_rate, pp.availability,
-              pp.rating_avg, pp.total_reviews, pp.service_wards, sc.name as service_category
+              pp.rating_avg, pp.total_reviews, pp.service_wards, pp.citizenship_no, pp.citizenship_image_url,
+              pp.background_check_status,
+              sc.name as service_category, sc.name as category_name,
+              u.is_verified, u.is_active, u.name as full_name, u.email, u.phone, u.bio, u.ward as service_area, u.avatar_url
        FROM provider_profiles pp
-       JOIN service_categories sc ON pp.category_id = sc.id
+       JOIN users u ON pp.user_id = u.id
+       LEFT JOIN service_categories sc ON pp.category_id = sc.id
        WHERE pp.user_id = $1`,
       [providerId]
     );

@@ -215,13 +215,18 @@ export const verifyProvider = async (req, res) => {
     const { userId } = req.params;
 
     const result = await query(
-      `UPDATE users SET is_verified = TRUE WHERE id = $1 AND role = 'provider' RETURNING id, name, email, is_verified`,
+      `UPDATE users SET is_verified = TRUE, is_active = TRUE WHERE id = $1 AND role = 'provider' RETURNING id, name, email, is_verified`,
       [userId]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Provider not found' });
     }
+
+    await query(
+      `UPDATE provider_profiles SET background_check_status = 'verified' WHERE user_id = $1`,
+      [userId]
+    );
 
     const user = result.rows[0];
 
@@ -249,13 +254,18 @@ export const rejectProvider = async (req, res) => {
     const { reason } = req.body;
 
     const result = await query(
-      `UPDATE users SET is_active = FALSE WHERE id = $1 AND role = 'provider' RETURNING id, name, email`,
+      `UPDATE users SET is_active = FALSE, is_verified = FALSE WHERE id = $1 AND role = 'provider' RETURNING id, name, email`,
       [userId]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Provider not found' });
     }
+
+    await query(
+      `UPDATE provider_profiles SET background_check_status = 'rejected' WHERE user_id = $1`,
+      [userId]
+    );
 
     const user = result.rows[0];
 

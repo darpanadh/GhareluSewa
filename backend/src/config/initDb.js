@@ -64,6 +64,14 @@ export const initializeDatabase = async () => {
       await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_price DECIMAL(10, 2) DEFAULT 650`);
       await query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`);
       await query(`ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'accepted', 'in_progress', 'awaiting_payment', 'completed', 'cancelled'))`);
+
+      // Sync background_check_status for existing verified providers
+      await query(`
+        UPDATE provider_profiles
+        SET background_check_status = 'approved'
+        WHERE user_id IN (SELECT id FROM users WHERE is_verified = TRUE AND role = 'provider')
+          AND (background_check_status IS NULL OR background_check_status = 'pending')
+      `);
     } catch (e) {
       console.log('Columns already exist or error adding them:', e.message);
     }
