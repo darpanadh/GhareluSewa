@@ -92,16 +92,23 @@ export const getAllProviders = async (req, res) => {
 
     const params = [];
 
-    if (category_id) {
+    if (category_id && category_id !== 'All' && category_id !== 'All categories') {
       sql += ` AND pp.category_id = $${params.length + 1}`;
       params.push(category_id);
     }
 
-    if (ward) {
-      const cityMatch = ward.match(/^(Kathmandu|Pokhara|Bharatpur)/i);
+    if (ward && ward !== 'All' && ward !== 'All wards') {
+      const cityMatch = ward.match(/(Kathmandu|Pokhara|Bharatpur)/i);
       const cityName = cityMatch ? cityMatch[1] : ward.split(' ')[0];
-      sql += ` AND (u.ward = $${params.length + 1} OR u.ward ILIKE $${params.length + 2} OR pp.service_wards ILIKE $${params.length + 3} OR pp.service_wards ILIKE $${params.length + 4})`;
-      params.push(ward, `${cityName}%Whole City%`, `%${ward}%`, `%Whole City%`);
+      sql += ` AND (
+        u.ward ILIKE $${params.length + 1} 
+        OR pp.service_wards ILIKE $${params.length + 1} 
+        OR pp.service_wards ILIKE '%Whole City%' 
+        OR u.ward ILIKE '%Whole City%' 
+        OR pp.service_wards IS NULL 
+        OR pp.service_wards = ''
+      )`;
+      params.push(`%${cityName}%`);
     }
 
     if (rating_min) {
@@ -123,17 +130,31 @@ export const getAllProviders = async (req, res) => {
 export const getProvidersByWard = async (req, res) => {
   try {
     const { ward, category_id } = req.params;
-    const cityMatch = ward.match(/^(Kathmandu|Pokhara|Bharatpur)/i);
+    const cityMatch = ward.match(/(Kathmandu|Pokhara|Bharatpur)/i);
     const cityName = cityMatch ? cityMatch[1] : ward.split(' ')[0];
 
-    const sql = `SELECT u.id, u.name, u.phone, u.avatar_url, pp.hourly_rate, pp.rating_avg, pp.availability, pp.service_wards
+    let sql = `SELECT u.id, u.name, u.phone, u.avatar_url, pp.hourly_rate, pp.rating_avg, pp.availability, pp.service_wards, sc.name as service_category
        FROM users u
        JOIN provider_profiles pp ON u.id = pp.user_id
-       WHERE (u.ward = $1 OR u.ward ILIKE $2 OR pp.service_wards ILIKE $3 OR pp.service_wards ILIKE $4) AND u.is_active = TRUE AND u.is_verified = TRUE AND pp.availability = TRUE
-       ${category_id ? 'AND pp.category_id = $5' : ''}
-       ORDER BY pp.rating_avg DESC`;
+       LEFT JOIN service_categories sc ON pp.category_id = sc.id
+       WHERE (
+         u.ward ILIKE $1 
+         OR pp.service_wards ILIKE $1 
+         OR pp.service_wards ILIKE '%Whole City%' 
+         OR u.ward ILIKE '%Whole City%' 
+         OR pp.service_wards IS NULL 
+         OR pp.service_wards = ''
+       ) 
+       AND u.is_active = TRUE AND u.is_verified = TRUE AND pp.availability = TRUE`;
+       
+    const params = [`%${cityName}%`];
 
-    const params = category_id ? [ward, `${cityName}%Whole City%`, `%${ward}%`, `%Whole City%`, category_id] : [ward, `${cityName}%Whole City%`, `%${ward}%`, `%Whole City%`];
+    if (category_id && category_id !== 'all') {
+      sql += ` AND pp.category_id = $2`;
+      params.push(category_id);
+    }
+
+    sql += ` ORDER BY pp.rating_avg DESC`;
 
     const result = await query(sql, params);
 

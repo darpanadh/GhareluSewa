@@ -31,78 +31,193 @@ export default function BrowseServices() {
   const [backendProviders, setBackendProviders] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Sample initial professionals matching the image
+  // Sample initial professionals covering all cities & categories
   const defaultProviders = [
+    // Bharatpur Providers
     {
-      id: 'p-1',
+      id: 'p-bt-1',
+      name: 'Bikram Thapa',
+      hourlyRate: 650,
+      rating: 4.9,
+      reviewsCount: 35,
+      category: 'Plumbing',
+      ward: 'Bharatpur Ward No. 1',
+      service_wards: 'Bharatpur (Whole City)',
+      description: 'Licensed master plumber in Bharatpur offering leak repair, tap fitting, and sanitation services.',
+      tags: ['Plumbing', 'Pipe Repair', 'Tap Installation', 'Drain Cleaning'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
+      id: 'p-bt-2',
+      name: 'Sujan Gurung',
+      hourlyRate: 700,
+      rating: 4.8,
+      reviewsCount: 28,
+      category: 'Electrical Repairs',
+      ward: 'Bharatpur Ward No. 5',
+      service_wards: 'Bharatpur (Whole City)',
+      description: 'Certified electrical technician offering wiring, MCB setup, and switchboard repair across Bharatpur.',
+      tags: ['Wiring', 'Switch Installation', 'Circuit Repair', 'Lighting'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
+      id: 'p-bt-3',
+      name: 'Sunita Chaudhary',
+      hourlyRate: 500,
+      rating: 4.7,
+      reviewsCount: 45,
+      category: 'House Cleaning',
+      ward: 'Bharatpur Ward No. 2',
+      service_wards: 'Bharatpur (Whole City)',
+      description: 'Professional deep cleaning specialist in Bharatpur. Sofa, carpet, and full kitchen sanitization.',
+      tags: ['Deep Clean', 'Kitchen Sanitization', 'Carpet Wash'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
+      id: 'p-bt-4',
+      name: 'Ramesh Adhikari',
+      hourlyRate: 800,
+      rating: 5.0,
+      reviewsCount: 52,
+      category: 'AC Service',
+      ward: 'Bharatpur Ward No. 10',
+      service_wards: 'Bharatpur (Whole City)',
+      description: 'HVAC technician specialized in AC servicing, gas refilling, and refrigerator repair.',
+      tags: ['AC Servicing', 'Gas Refill', 'Fridge Repair', 'Geyser Servicing'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
+      id: 'p-bt-5',
+      name: 'Kiran Shrestha',
+      hourlyRate: 600,
+      rating: 4.6,
+      reviewsCount: 22,
+      category: 'Carpentry',
+      ward: 'Bharatpur Ward No. 4',
+      service_wards: 'Bharatpur (Whole City)',
+      description: 'Experienced woodworker in Bharatpur for custom furniture repair, door fitting, and cabinet making.',
+      tags: ['Furniture Repair', 'Door Lock Fitting', 'Custom Cabinetry'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
+      id: 'p-bt-6',
+      name: 'Deepak Mahato',
+      hourlyRate: 550,
+      rating: 4.8,
+      reviewsCount: 31,
+      category: 'Painting',
+      ward: 'Bharatpur Ward No. 7',
+      service_wards: 'Bharatpur (Whole City)',
+      description: 'Interior and exterior wall painting expert in Bharatpur. Waterproofing and texture painting.',
+      tags: ['Wall Painting', 'Waterproofing', 'Texture Paint'],
+      backgroundCheckStatus: 'approved'
+    },
+
+    // Kathmandu Providers
+    {
+      id: 'p-ktm-1',
+      name: 'Ram Kumar Rai',
+      hourlyRate: 750,
+      rating: 4.9,
+      reviewsCount: 88,
+      category: 'Plumbing',
+      ward: 'Kathmandu Ward No. 10',
+      service_wards: 'Kathmandu (Whole City)',
+      description: 'Top-rated plumber in Kathmandu Valley. Specialized in high-pressure pipe leaks and sanitary fittings.',
+      tags: ['Plumbing', 'Pipe Leakage', 'Sanitary Fitting'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
+      id: 'p-ktm-2',
       name: 'Hari Bahadur',
       hourlyRate: 750,
       rating: 5.0,
-      reviewsCount: 42,
+      reviewsCount: 120,
       category: 'Electrical Repairs',
-      ward: 'Lakeside',
-      description: 'Certified electrician specialising in wiring and switchboard work.',
-      tags: ['Appliance Servicing', 'Electrical Repairs', 'Switch Installation', 'Wiring'],
+      ward: 'Kathmandu Ward No. 3',
+      service_wards: 'Kathmandu (Whole City)',
+      description: 'Certified electrician with 12+ years experience across Kathmandu. Home wiring and inverter setup.',
+      tags: ['Wiring', 'Inverter Repair', 'Short Circuit Fix'],
       backgroundCheckStatus: 'approved'
     },
     {
-      id: 'p-2',
+      id: 'p-ktm-3',
       name: 'Anita Shrestha',
-      hourlyRate: 700,
-      rating: 5.0,
-      reviewsCount: 38,
-      category: 'Appliance Servicing',
-      ward: 'Baneshwor',
-      description: 'Appliance repair expert — AC, fridge, washing machine, geyser.',
-      tags: ['Appliance Servicing', 'AC Filter Cleaning', 'Water Heater'],
+      hourlyRate: 550,
+      rating: 4.9,
+      reviewsCount: 64,
+      category: 'House Cleaning',
+      ward: 'Kathmandu Ward No. 1',
+      service_wards: 'Kathmandu (Whole City)',
+      description: 'Deep home cleaning and sofa/mattress shampooing expert in Kathmandu.',
+      tags: ['House Cleaning', 'Sofa Washing', 'Deep Sanitization'],
       backgroundCheckStatus: 'approved'
     },
     {
-      id: 'p-3',
-      name: 'Bikash Rai',
+      id: 'p-ktm-4',
+      name: 'Prakash Lama',
+      hourlyRate: 850,
+      rating: 4.8,
+      reviewsCount: 49,
+      category: 'AC Service',
+      ward: 'Kathmandu Ward No. 15',
+      service_wards: 'Kathmandu (Whole City)',
+      description: 'Expert AC installation, duct cleaning, and inverter AC repairs in Kathmandu.',
+      tags: ['AC Servicing', 'Gas Filling', 'Duct Cleaning'],
+      backgroundCheckStatus: 'approved'
+    },
+
+    // Pokhara Providers
+    {
+      id: 'p-pkr-1',
+      name: 'Rajesh Shrestha',
       hourlyRate: 600,
-      rating: 4.0,
-      reviewsCount: 29,
+      rating: 4.9,
+      reviewsCount: 142,
       category: 'Plumbing',
-      ward: 'Bagar',
-      description: 'Licensed plumber with 8 years of experience in residential fittings.',
+      ward: 'Pokhara Ward No. 6',
+      service_wards: 'Pokhara (Whole City)',
+      description: 'Professional plumber in Pokhara with over 10 years of experience in leak repairs.',
       tags: ['Plumbing', 'Pipe Repair', 'Tap Installation'],
       backgroundCheckStatus: 'approved'
     },
     {
-      id: 'p-4',
-      name: 'Suresh Magar',
-      hourlyRate: 550,
-      rating: 4.0,
-      reviewsCount: 19,
-      category: 'Carpentry',
-      ward: 'New Road, Pokhara',
-      description: 'Skilled carpenter for furniture, doors, and custom woodwork.',
-      tags: ['Carpentry', 'General Handyman'],
-      backgroundCheckStatus: 'approved'
-    },
-    {
-      id: 'p-5',
-      name: 'Rajesh Shrestha',
+      id: 'p-pkr-2',
+      name: 'Bikash Rai',
       hourlyRate: 650,
-      rating: 4.9,
-      reviewsCount: 54,
-      category: 'Plumbing',
-      ward: 'Lakeside',
-      description: 'Expert plumber for leak repairs, pipe installations, and sanitation.',
-      tags: ['Plumbing', 'Pipe Repair', 'Drain Cleaning'],
+      rating: 4.7,
+      reviewsCount: 39,
+      category: 'Electrical Repairs',
+      ward: 'Pokhara Ward No. 1',
+      service_wards: 'Pokhara (Whole City)',
+      description: 'Residential electrician in Pokhara. Specialist in LED lighting and panel boards.',
+      tags: ['Wiring', 'Lighting', 'Panel Fix'],
       backgroundCheckStatus: 'approved'
     },
     {
-      id: 'p-6',
+      id: 'p-pkr-3',
       name: 'Mira Thapa',
       hourlyRate: 500,
       rating: 4.8,
       reviewsCount: 67,
       category: 'House Cleaning',
-      ward: 'Chipiyata',
-      description: 'Thorough deep cleaning, sanitizing, and room disinfection.',
+      ward: 'Pokhara Ward No. 8',
+      service_wards: 'Pokhara (Whole City)',
+      description: 'Thorough deep cleaning, sanitizing, and room disinfection across Pokhara.',
       tags: ['House Cleaning', 'Deep Clean', 'Bathroom Sanitization'],
+      backgroundCheckStatus: 'approved'
+    },
+    {
+      id: 'p-pkr-4',
+      name: 'Suresh Magar',
+      hourlyRate: 550,
+      rating: 4.7,
+      reviewsCount: 29,
+      category: 'Carpentry',
+      ward: 'Pokhara Ward No. 9',
+      service_wards: 'Pokhara (Whole City)',
+      description: 'Skilled carpenter for furniture, doors, and custom woodwork in Pokhara.',
+      tags: ['Carpentry', 'General Handyman', 'Door Repair'],
       backgroundCheckStatus: 'approved'
     }
   ];
@@ -143,12 +258,12 @@ export default function BrowseServices() {
 
   const categoriesList = [
     'All categories',
-    'Electrical Repairs',
     'Plumbing',
-    'Appliance Servicing',
-    'Carpentry',
+    'Electrical Repairs',
     'House Cleaning',
+    'Appliance Servicing',
     'AC Service',
+    'Carpentry',
     'Painting'
   ];
 
@@ -164,17 +279,50 @@ export default function BrowseServices() {
       if (!matchName && !matchDesc && !matchCat && !matchTags) return false;
     }
 
-    // Category
-    if (selectedCategory !== 'All categories' && selectedCategory !== 'All') {
-      if (p.category.toLowerCase() !== selectedCategory.toLowerCase()) {
-        const hasTagMatch = p.tags.some(t => t.toLowerCase() === selectedCategory.toLowerCase());
+    // Category Filter (Flexible partial matching e.g. "Electrical Repairs" matches "Electrical")
+    if (selectedCategory !== 'All categories' && selectedCategory !== 'All' && selectedCategory !== '') {
+      const catLower = selectedCategory.toLowerCase();
+      const pCatLower = p.category.toLowerCase();
+      const isCatMatch = pCatLower.includes(catLower) || catLower.includes(pCatLower);
+      if (!isCatMatch) {
+        const hasTagMatch = p.tags.some(t => {
+          const tLower = t.toLowerCase();
+          return tLower.includes(catLower) || catLower.includes(tLower);
+        });
         if (!hasTagMatch) return false;
       }
     }
 
-    // Ward
-    if (selectedWard !== 'All wards' && selectedWard !== '') {
-      if (!p.ward.toLowerCase().includes(selectedWard.toLowerCase())) return false;
+    // Ward / Location Filter (City + Ward / Whole City matching)
+    if (selectedWard && selectedWard !== 'All wards' && selectedWard !== 'All' && selectedWard !== '') {
+      const targetWard = selectedWard.toLowerCase().trim();
+      const providerWard = (p.ward || '').toLowerCase().trim();
+      const providerServiceWards = (p.service_wards || '').toLowerCase().trim();
+      const combinedLocation = `${providerWard} ${providerServiceWards}`;
+
+      // Extract city name (Kathmandu, Pokhara, Bharatpur)
+      const cityMatch = targetWard.match(/(kathmandu|pokhara|bharatpur)/i);
+      const targetCity = cityMatch ? cityMatch[1].toLowerCase() : '';
+
+      if (targetCity) {
+        // Must be in or serve target city
+        const isInCity = combinedLocation.includes(targetCity);
+        if (!isInCity) return false;
+
+        // If a specific ward was selected e.g. "ward no. 1"
+        const wardNumMatch = targetWard.match(/ward\s+no\.\s*\d+/i);
+        if (wardNumMatch) {
+          const specificWard = wardNumMatch[0].toLowerCase();
+          const servesWholeCity = combinedLocation.includes('whole city') || combinedLocation.includes('all wards') || providerWard === targetCity || providerWard.includes(targetCity);
+          const servesSpecificWard = combinedLocation.includes(specificWard);
+          
+          if (!servesWholeCity && !servesSpecificWard) {
+            return false;
+          }
+        }
+      } else {
+        if (!combinedLocation.includes(targetWard)) return false;
+      }
     }
 
     // Min Rating
