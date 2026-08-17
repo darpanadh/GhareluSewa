@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { adminAPI } from '../../services/api';
+import { adminAPI, categoryAPI } from '../../services/api';
 import InteractiveChart from '../../components/InteractiveChart';
 import {
   Users, Calendar, Shield, ShieldCheck, CreditCard,
   RefreshCw, Check, X, AlertCircle, ArrowUpRight,
   ArrowDownRight, Download, LayoutGrid, Eye, FileText,
-  CheckCircle, XCircle, Award, Star, FileSpreadsheet
+  CheckCircle, XCircle, Award, Star, FileSpreadsheet,
+  ShieldAlert, Wrench, Plus, Trash2, Edit3, Sparkles, Zap,
+  Hammer, Paintbrush
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -32,6 +34,13 @@ export default function AdminDashboard() {
   const [selectedCustomerModal, setSelectedCustomerModal] = useState(null);
   const [allProviders, setAllProviders] = useState([]);
 
+  // Category & Service Management State
+  const [categories, setCategories] = useState([]);
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [serviceForm, setServiceForm] = useState({ name: '', icon: 'Wrench', description: '' });
+  const [serviceSubmitting, setServiceSubmitting] = useState(false);
+
   const fetchAdminChart = async (periodVal = adminChartPeriod) => {
     setAdminChartLoading(true);
     try {
@@ -55,12 +64,14 @@ export default function AdminDashboard() {
       adminAPI.getPendingProviders({ limit: 10 }),
       adminAPI.getAllUsers(),
       adminAPI.getAllProviders(),
-    ]).then(([sR, bR, pR, uR, prR]) => {
+      categoryAPI.getAllCategories(),
+    ]).then(([sR, bR, pR, uR, prR, cR]) => {
       if (sR.status === 'fulfilled') setStats(sR.value.data || {});
       if (bR.status === 'fulfilled') { const d = bR.value.data; setRecentBookings(Array.isArray(d) ? d : []); }
       if (pR.status === 'fulfilled') { const d = pR.value.data; setPendingProviders(Array.isArray(d) ? d : []); }
       if (uR.status === 'fulfilled') { const d = uR.value.data; setAllUsers(Array.isArray(d) ? d : []); }
       if (prR.status === 'fulfilled') { const d = prR.value.data; setAllProviders(Array.isArray(d) ? d : []); }
+      if (cR.status === 'fulfilled') { const d = cR.value.data; setCategories(Array.isArray(d) ? d : []); }
       setLoading(false);
     });
   };
@@ -121,7 +132,68 @@ export default function AdminDashboard() {
     }
   };
 
-  const tabs = ['overview', 'users', 'providers', 'services'];
+  // Service Management Handlers
+  const handleOpenAddService = () => {
+    setEditingCategory(null);
+    setServiceForm({ name: '', icon: 'Wrench', description: '' });
+    setServiceModalOpen(true);
+  };
+
+  const handleOpenEditService = (cat) => {
+    setEditingCategory(cat);
+    setServiceForm({ name: cat.name || '', icon: cat.icon || 'Wrench', description: cat.description || '' });
+    setServiceModalOpen(true);
+  };
+
+  const handleSaveService = async (e) => {
+    e.preventDefault();
+    if (!serviceForm.name.trim()) return flash('error', 'Please enter a service name.');
+    setServiceSubmitting(true);
+    try {
+      if (editingCategory && typeof editingCategory.id === 'number') {
+        await categoryAPI.updateCategory(editingCategory.id, serviceForm);
+        flash('success', `Service "${serviceForm.name}" updated successfully!`);
+      } else {
+        await categoryAPI.createCategory(serviceForm);
+        flash('success', `New service "${serviceForm.name}" created successfully!`);
+      }
+      setServiceModalOpen(false);
+      const res = await categoryAPI.getAllCategories();
+      if (res.data && Array.isArray(res.data)) {
+        setCategories(res.data);
+      }
+    } catch (err) {
+      flash('error', err.response?.data?.error || 'Failed to save service.');
+    } finally {
+      setServiceSubmitting(false);
+    }
+  };
+
+  const handleDeleteService = async (cat) => {
+    if (!window.confirm(`Are you sure you want to remove the "${cat.name}" service category?`)) return;
+    try {
+      if (typeof cat.id === 'number') {
+        await categoryAPI.deleteCategory(cat.id);
+      }
+      setCategories(prev => prev.filter(c => c.id !== cat.id));
+      flash('info', `Service "${cat.name}" removed successfully.`);
+    } catch (err) {
+      flash('error', err.response?.data?.error || `Failed to remove service "${cat.name}".`);
+    }
+  };
+
+  const defaultServices = [
+    { id: 'def-1', name: 'Plumbing', icon: 'Wrench', description: 'Pipe leak repairs, bathroom fittings, tap installations, and drainage solutions.', provider_count: 5 },
+    { id: 'def-2', name: 'Electrical', icon: 'Zap', description: 'Wiring, circuit breaker repair, fan & light installation, and socket fixes.', provider_count: 4 },
+    { id: 'def-3', name: 'House Cleaning', icon: 'Sparkles', description: 'Full home deep cleaning, kitchen degreasing, and sofa shampooing.', provider_count: 6 },
+    { id: 'def-4', name: 'Appliance Repair', icon: 'Wrench', description: 'Washing machine, refrigerator, microwave, and AC maintenance.', provider_count: 3 },
+    { id: 'def-5', name: 'Painting & Decor', icon: 'Paintbrush', description: 'Interior/exterior wall painting, wall touchups, and waterproofing.', provider_count: 2 },
+    { id: 'def-6', name: 'Carpentry & Furniture', icon: 'Hammer', description: 'Custom woodwork, door lock fixing, cabinet repairs, and assembly.', provider_count: 3 },
+  ];
+
+  const activeServicesList = categories.length > 0 ? categories : defaultServices;
+
+  const tabs = ['overview', 'kyc', 'users', 'providers', 'services'];
 
   const kpiCards = [
     {
@@ -256,16 +328,27 @@ export default function AdminDashboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-semibold capitalize whitespace-nowrap border-b-2 transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold capitalize whitespace-nowrap border-b-2 transition-all cursor-pointer ${
                 activeTab === tab
                   ? 'border-[#07535f] text-[#07535f]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               {tab === 'overview'  && <LayoutGrid className="w-4 h-4" />}
+              {tab === 'kyc'       && <ShieldAlert className="w-4 h-4 text-amber-500" />}
               {tab === 'users'     && <Users className="w-4 h-4" />}
-              {tab === 'providers' && <Shield className="w-4 h-4" />}
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'providers' && <ShieldCheck className="w-4 h-4" />}
+              {tab === 'services'  && <Wrench className="w-4 h-4" />}
+              
+              <span>
+                {tab === 'kyc' ? 'KYC Verifications' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </span>
+
+              {tab === 'kyc' && pendingProviders.length > 0 && (
+                <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full ml-0.5 animate-pulse">
+                  {pendingProviders.length} Pending
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -319,6 +402,27 @@ export default function AdminDashboard() {
                   className="!p-0 !border-0 !shadow-none"
                 />
               </div>
+            </div>
+
+            {/* Quick KYC Status Banner */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-extrabold text-gray-900 text-base flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-amber-500" /> KYC Provider Verifications
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {pendingProviders.length > 0
+                    ? `There are ${pendingProviders.length} new service provider applications pending identity verification.`
+                    : 'All service provider applications and identity documents are reviewed and up to date.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('kyc')}
+                className="bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all shrink-0 cursor-pointer shadow-sm flex items-center gap-1.5"
+              >
+                Go to KYC Workspace →
+              </button>
             </div>
 
             {/* Current & Recent Bookings List */}
@@ -377,74 +481,93 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+          </>
+        )}
 
-            {/* Pending KYC */}
+        {/* ── KYC Verifications Tab ─────────────────────────────────────── */}
+        {activeTab === 'kyc' && (
+          <div className="space-y-6">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-5 pb-4 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6 pb-4 border-b border-gray-100">
                 <div>
-                  <h2 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-[#07535f]" />
-                    KYC Provider Verifications
+                  <h2 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-amber-500" />
+                    KYC Provider Verifications Workspace
                   </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Review new service provider applications and identity documents.</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Inspect citizenship documents and verify or reject new service provider registrations.
+                  </p>
                 </div>
-                <span className="text-xs font-bold bg-[#07535f]/10 text-[#07535f] px-3 py-1 rounded-full w-fit">
-                  {pendingProviders.length} Pending
+                <span className="text-xs font-black bg-amber-50 text-amber-800 border border-amber-200 px-3.5 py-1.5 rounded-full w-fit">
+                  {pendingProviders.length} Applications Pending
                 </span>
               </div>
 
               {pendingProviders.length === 0 ? (
-                <div className="py-10 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                  <Check className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                  <p className="font-bold text-gray-700 text-sm">All Clear! No pending KYC requests.</p>
+                <div className="py-14 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                    <Check className="w-6 h-6 stroke-[3]" />
+                  </div>
+                  <h3 className="font-extrabold text-gray-800 text-base">All Clear! No Pending KYC Applications</h3>
+                  <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                    All registered service providers have been verified or processed. You will see new submissions here as soon as providers complete their registration.
+                  </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {pendingProviders.map(p => (
-                    <div key={p.id} className="border border-gray-200 hover:border-[#07535f]/40 rounded-2xl p-4 transition-all flex flex-col justify-between">
+                    <div key={p.id} className="border border-gray-200 hover:border-[#07535f] rounded-2xl p-5 transition-all bg-white shadow-xs flex flex-col justify-between space-y-4">
                       <div>
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center font-bold text-teal-700">
+                            <div className="w-10 h-10 rounded-xl bg-[#07535f]/10 text-[#07535f] flex items-center justify-center font-extrabold text-base">
                               {p.name?.charAt(0) || 'P'}
                             </div>
                             <div>
-                              <h4 className="font-bold text-gray-900 text-sm">{p.name}</h4>
+                              <h4 className="font-extrabold text-gray-900 text-sm">{p.name}</h4>
                               <p className="text-[11px] text-gray-400">{p.email}</p>
                             </div>
                           </div>
-                          <span className="bg-amber-50 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
-                            Pending KYC
+                          <span className="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200 shrink-0">
+                            KYC Pending
                           </span>
                         </div>
 
-                        <div className="text-[11px] text-gray-500 bg-gray-50 rounded-xl p-2.5 space-y-1 mb-3 border border-gray-100">
-                          <p><span className="font-semibold text-gray-700">Category:</span> {p.service_category || 'General'}</p>
-                          <p><span className="font-semibold text-gray-700">Location:</span> {p.ward || 'Kathmandu'}</p>
-                          <p className="flex justify-between items-center pt-1 border-t border-gray-200/50">
-                            <span className="font-semibold text-gray-700">Citizenship No:</span>
-                            <span className="font-mono font-bold text-gray-900 bg-white px-1.5 py-0.5 rounded border border-gray-200">{p.citizenship_no || '27-01-79-12345'}</span>
-                          </p>
+                        <div className="text-xs text-gray-600 bg-gray-50 rounded-xl p-3 space-y-1.5 border border-gray-100 font-medium">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Category:</span>
+                            <span className="font-bold text-gray-800">{p.service_category || 'General'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Ward/Location:</span>
+                            <span className="font-bold text-gray-800">{p.ward || 'Kathmandu'}</span>
+                          </div>
+                          <div className="flex justify-between items-center pt-1 border-t border-gray-200/60">
+                            <span className="text-gray-400">Citizenship No:</span>
+                            <span className="font-mono font-bold text-gray-900 bg-white px-2 py-0.5 rounded border border-gray-200 text-[11px]">
+                              {p.citizenship_no || 'Document Attached'}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
                       <div className="space-y-2 pt-1">
                         <button
                           onClick={() => setSelectedProviderModal(p)}
-                          className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold py-2 rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-bold py-2.5 rounded-xl border border-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Eye className="w-3.5 h-3.5 text-[#07535f]" /> View Details & ID Card
                         </button>
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleApprove(p.id, p.name)}
-                            className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
                           >
                             <Check className="w-3.5 h-3.5" /> Approve
                           </button>
                           <button
                             onClick={() => handleReject(p.id, p.name)}
-                            className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+                            className="flex-1 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
                           >
                             <X className="w-3.5 h-3.5" /> Reject
                           </button>
@@ -455,8 +578,7 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-
-          </>
+          </div>
         )}
 
         {/* ── Providers Tab ─────────────────────────────────────────────── */}
@@ -659,19 +781,83 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ── Services Tab ──────────────────────────────────────────────── */}
-        {(activeTab === 'services') && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h2 className="font-bold text-gray-900 text-base mb-5 pb-4 border-b border-gray-100">Services Distribution</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {serviceData.map(s => (
-                <div key={s.name} className="bg-gray-50 rounded-2xl p-4 text-center">
-                  <div className="w-10 h-10 rounded-full mx-auto mb-2" style={{ background: s.color + '22', border: `2px solid ${s.color}` }}></div>
-                  <p className="font-bold text-gray-900 text-sm">{s.name}</p>
-                  <p className="text-2xl font-extrabold mt-1" style={{ color: s.color }}>{s.value}%</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">of bookings</p>
+        {/* ── Services Management Tab ────────────────────────────────────── */}
+        {activeTab === 'services' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+              
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                <div>
+                  <h2 className="font-extrabold text-gray-900 text-lg flex items-center gap-2">
+                    <Wrench className="w-5 h-5 text-[#07535f]" />
+                    Platform Service Management
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Add, edit, or remove service categories available to customers and taskers on Gharelu Sewa.
+                  </p>
                 </div>
-              ))}
+                <button
+                  type="button"
+                  onClick={handleOpenAddService}
+                  className="bg-[#07535f] hover:bg-[#06424b] text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 shadow-sm shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Add New Service
+                </button>
+              </div>
+
+              {/* Service Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {activeServicesList.map(s => (
+                  <div key={s.id || s.name} className="border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-all bg-white flex flex-col justify-between space-y-4">
+                    <div>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="w-12 h-12 rounded-2xl bg-[#07535f]/10 text-[#07535f] flex items-center justify-center font-extrabold">
+                          {s.name?.toLowerCase().includes('plumb') ? <Wrench className="w-6 h-6" /> :
+                           s.name?.toLowerCase().includes('electr') ? <Zap className="w-6 h-6" /> :
+                           s.name?.toLowerCase().includes('clean') ? <Sparkles className="w-6 h-6" /> :
+                           s.name?.toLowerCase().includes('paint') ? <Paintbrush className="w-6 h-6" /> :
+                           s.name?.toLowerCase().includes('carpen') ? <Hammer className="w-6 h-6" /> :
+                           <Wrench className="w-6 h-6" />}
+                        </div>
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">
+                          Active Service ✓
+                        </span>
+                      </div>
+
+                      <h3 className="font-extrabold text-gray-900 text-base mb-1">{s.name}</h3>
+                      <p className="text-xs text-gray-500 leading-relaxed min-h-[36px] line-clamp-2">
+                        {s.description || 'Professional home maintenance and repair services.'}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
+                        {s.provider_count || 0} Registered Providers
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditService(s)}
+                          className="p-2 text-gray-500 hover:text-[#07535f] hover:bg-gray-100 rounded-xl transition-all cursor-pointer"
+                          title="Edit Service"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteService(s)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                          title="Remove Service"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
             </div>
           </div>
         )}
@@ -943,6 +1129,94 @@ export default function AdminDashboard() {
                 {selectedCustomerModal.is_active ? 'Deactivate Account' : 'Activate Account'}
               </button>
             </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── ADD / EDIT SERVICE MODAL ───────────────────────────────────── */}
+      {serviceModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 relative border border-gray-100 text-left animate-in fade-in zoom-in-95 duration-150">
+            <button
+              onClick={() => setServiceModalOpen(false)}
+              className="absolute right-5 top-5 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="border-b border-gray-100 pb-4">
+              <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <Wrench className="w-5 h-5 text-[#07535f]" />
+                {editingCategory ? 'Edit Service Category' : 'Add New Service Category'}
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                {editingCategory ? 'Update service details for platform taskers and customers.' : 'Create a new service category for Gharelu Sewa platform.'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveService} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Service Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Plumbing, Electrical, Solar Maintenance"
+                  value={serviceForm.name}
+                  onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#07535f] focus:bg-white transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Icon Category
+                </label>
+                <select
+                  value={serviceForm.icon}
+                  onChange={e => setServiceForm({ ...serviceForm, icon: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-semibold focus:outline-none focus:border-[#07535f]"
+                >
+                  <option value="Wrench">Wrench (Plumbing / General)</option>
+                  <option value="Zap">Zap (Electrical)</option>
+                  <option value="Sparkles">Sparkles (Cleaning / Wash)</option>
+                  <option value="Paintbrush">Paintbrush (Painting)</option>
+                  <option value="Hammer">Hammer (Carpentry)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Service Description
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="Describe the scope of work included in this service..."
+                  value={serviceForm.description}
+                  onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-medium focus:outline-none focus:border-[#07535f] focus:bg-white transition-all"
+                ></textarea>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setServiceModalOpen(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl text-xs font-extrabold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={serviceSubmitting}
+                  className="flex-1 bg-[#07535f] hover:bg-[#06424b] text-white py-3 rounded-2xl text-xs font-extrabold transition-all shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {serviceSubmitting ? 'Saving...' : editingCategory ? 'Save Changes' : 'Create Service'}
+                </button>
+              </div>
+            </form>
 
           </div>
         </div>

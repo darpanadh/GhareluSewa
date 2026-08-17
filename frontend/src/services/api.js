@@ -53,6 +53,9 @@ export const userAPI = {
 export const categoryAPI = {
   getAllCategories: () => api.get('/categories'),
   getProvidersByCategory: (categoryId) => api.get(`/categories/${categoryId}/providers`),
+  createCategory: (data) => api.post('/categories', data),
+  updateCategory: (id, data) => api.patch(`/categories/${id}`, data),
+  deleteCategory: (id) => api.delete(`/categories/${id}`),
 };
 
 // Booking endpoints
