@@ -172,7 +172,7 @@ export const updateBookingStatus = async (req, res) => {
         [req.userId]
       );
       const payoutReqsRes = await query(
-        `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested FROM payout_requests WHERE provider_id = $1`,
+        `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested FROM payout_requests WHERE provider_id = $1 AND status = 'completed'`,
         [req.userId]
       );
       const currentBalance = Number(balRes.rows[0]?.total_payout || 0) - Number(payoutReqsRes.rows[0]?.total_requested || 0);
@@ -185,6 +185,12 @@ export const updateBookingStatus = async (req, res) => {
         return res.status(403).json({
           error: `Account Restricted: Your account balance is negative (Rs. ${currentBalance.toFixed(2)}). You cannot accept or start new bookings until your platform commission balance is cleared.`
         });
+      } else {
+        // Balance is positive — auto-unfreeze if previously frozen incorrectly
+        await query(
+          `UPDATE provider_profiles SET is_frozen = FALSE, availability = TRUE, negative_since = NULL WHERE user_id = $1 AND is_frozen = TRUE`,
+          [req.userId]
+        );
       }
     }
 

@@ -482,7 +482,7 @@ export const recordCashPayment = async (req, res) => {
       [booking.provider_id]
     );
     const payoutReqsRes = await query(
-      `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested FROM payout_requests WHERE provider_id = $1`,
+      `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested FROM payout_requests WHERE provider_id = $1 AND status = 'completed'`,
       [booking.provider_id]
     );
     const currentBalance = Number(balRes.rows[0]?.total_payout || 0) - Number(payoutReqsRes.rows[0]?.total_requested || 0);
