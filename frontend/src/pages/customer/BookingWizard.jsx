@@ -1,9 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wrench, Calendar, MapPin, CreditCard, ChevronRight, X, Zap, Wind, Sparkles, ArrowLeft, Building2 } from 'lucide-react';
-import { bookingAPI } from '../../services/api';
+import { Wrench, Calendar, MapPin, CreditCard, ChevronRight, X, Zap, Wind, Sparkles, ArrowLeft, Building2, UserCheck } from 'lucide-react';
+import { bookingAPI, userAPI } from '../../services/api';
 import CityWardSelector from '../../components/CityWardSelector';
 import { useAuth } from '../../context/AuthContext';
+
+// Default showcase provider dictionary mapping string IDs to details & DB IDs
+const defaultProviderMap = {
+  'p-bt-1': { id: 1, name: 'Bikram Thapa', category: 'Plumbing', hourlyRate: 650, rating: 4.9 },
+  'p-bt-2': { id: 2, name: 'Sujan Gurung', category: 'Electrical Repairs', hourlyRate: 700, rating: 4.8 },
+  'p-bt-3': { id: 3, name: 'Sunita Chaudhary', category: 'House Cleaning', hourlyRate: 500, rating: 4.7 },
+  'p-bt-4': { id: 4, name: 'Ramesh Adhikari', category: 'AC Service', hourlyRate: 800, rating: 5.0 },
+  'p-bt-5': { id: 5, name: 'Kiran Shrestha', category: 'Carpentry', hourlyRate: 600, rating: 4.6 },
+  'p-bt-6': { id: 6, name: 'Deepak Mahato', category: 'Painting', hourlyRate: 550, rating: 4.8 },
+  'p-ktm-1': { id: 7, name: 'Ram Kumar Rai', category: 'Plumbing', hourlyRate: 750, rating: 4.9 },
+  'p-ktm-2': { id: 8, name: 'Hari Bahadur', category: 'Electrical Repairs', hourlyRate: 750, rating: 5.0 },
+  'p-ktm-3': { id: 9, name: 'Anita Shrestha', category: 'House Cleaning', hourlyRate: 550, rating: 4.9 },
+  'p-ktm-4': { id: 10, name: 'Prakash Lama', category: 'AC Service', hourlyRate: 850, rating: 4.8 },
+  'p-pkr-5': { id: 11, name: 'Subash Sharma', category: 'Plumbing', hourlyRate: 620, rating: 4.9 },
+  'p-pkr-6': { id: 12, name: 'Anil KC', category: 'Plumbing', hourlyRate: 640, rating: 4.8 },
+  'p-pkr-1': { id: 2, name: 'Rajesh Shrestha', category: 'Plumbing', hourlyRate: 600, rating: 4.9 },
+  'p-pkr-2': { id: 13, name: 'Bikash Rai', category: 'Electrical Repairs', hourlyRate: 650, rating: 4.7 },
+  'p-pkr-3': { id: 14, name: 'Mira Thapa', category: 'House Cleaning', hourlyRate: 500, rating: 4.8 },
+  'p-pkr-4': { id: 15, name: 'Suresh Magar', category: 'AC Service', hourlyRate: 800, rating: 4.7 },
+};
+
+const mapCategoryName = (catStr) => {
+  if (!catStr) return null;
+  const l = catStr.toLowerCase();
+  if (l.includes('plumb')) return 'Plumbing';
+  if (l.includes('electr')) return 'Electrical';
+  if (l.includes('clean')) return 'Cleaning';
+  if (l.includes('ac')) return 'AC Service';
+  return catStr;
+};
 
 export default function BookingWizard() {
   const { user, isAuthenticated } = useAuth();
@@ -11,6 +41,9 @@ export default function BookingWizard() {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const categoryParam = queryParams.get('category');
+  const providerIdParam = queryParams.get('providerId') || queryParams.get('provider_id');
+
+  const mappedCategory = mapCategoryName(categoryParam);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -73,10 +106,68 @@ export default function BookingWizard() {
     }
   };
 
-  // State
-  const [selectedCategory, setSelectedCategory] = useState(() => {
-    return servicesByCategory[categoryParam] ? categoryParam : null;
+  // Target provider resolution
+  const [selectedProvider, setSelectedProvider] = useState(() => {
+    if (providerIdParam && defaultProviderMap[providerIdParam]) {
+      return defaultProviderMap[providerIdParam];
+    }
+    return null;
   });
+
+  // Category state (maps query param or provider category)
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    if (mappedCategory && servicesByCategory[mappedCategory]) {
+      return mappedCategory;
+    }
+    if (providerIdParam && defaultProviderMap[providerIdParam]) {
+      const pCat = mapCategoryName(defaultProviderMap[providerIdParam].category);
+      if (pCat && servicesByCategory[pCat]) return pCat;
+    }
+    return null;
+  });
+
+  // Resolve Provider via URL param or API
+  useEffect(() => {
+    if (!providerIdParam) return;
+
+    if (defaultProviderMap[providerIdParam]) {
+      const p = defaultProviderMap[providerIdParam];
+      setSelectedProvider(p);
+      const cat = mapCategoryName(p.category);
+      if (cat && servicesByCategory[cat]) setSelectedCategory(cat);
+      return;
+    }
+
+    const numericId = parseInt(providerIdParam, 10);
+    if (!isNaN(numericId)) {
+      userAPI.getProviderById(numericId)
+        .then((res) => {
+          if (res.data) {
+            const p = res.data;
+            const provObj = {
+              id: p.id || numericId,
+              name: p.name || `Provider #${numericId}`,
+              category: p.category || p.service_category,
+              hourlyRate: p.hourly_rate || 650,
+              rating: p.rating || 5.0,
+              avatar: p.avatar_url
+            };
+            setSelectedProvider(provObj);
+            const cat = mapCategoryName(provObj.category);
+            if (cat && servicesByCategory[cat]) setSelectedCategory(cat);
+          }
+        })
+        .catch(() => {
+          setSelectedProvider({
+            id: numericId,
+            name: `Provider #${numericId}`,
+            hourlyRate: 650,
+            rating: 5.0
+          });
+        });
+    }
+  }, [providerIdParam]);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedService, setSelectedService] = useState('');
   const [notes, setNotes] = useState('');
@@ -140,12 +231,23 @@ export default function BookingWizard() {
       try {
         const serviceObj = services.find(s => s.id === selectedService);
         const fullAddress = getFullAddress();
+
+        // Dynamically compute target provider ID (or parse numeric ID)
+        let targetProviderId = 2; // fallback
+        if (selectedProvider && selectedProvider.id) {
+          targetProviderId = typeof selectedProvider.id === 'number'
+            ? selectedProvider.id
+            : (parseInt(String(selectedProvider.id).replace(/\D/g, ''), 10) || 2);
+        } else if (providerIdParam) {
+          targetProviderId = parseInt(providerIdParam, 10) || 2;
+        }
+
         const res = await bookingAPI.createBooking({
-          provider_id: 2,
-          category_id: categoryData.categoryId,
+          provider_id: targetProviderId,
+          category_id: categoryData?.categoryId || 1,
           booking_date: date ? new Date(date).toISOString() : new Date().toISOString(),
           location: fullAddress,
-          description: `${selectedCategory} - ${serviceObj?.name || selectedService}: ${notes || 'No notes'}`,
+          description: `${selectedCategory} - ${serviceObj?.name || selectedService}: ${notes || 'No notes'}${selectedProvider ? ` (Requested Professional: ${selectedProvider.name})` : ''}`,
           is_emergency: false
         });
         setIsLoading(false);
@@ -168,21 +270,35 @@ export default function BookingWizard() {
       <div className="max-w-3xl mx-auto bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden">
         
         {/* Wizard Header */}
-        <div className="px-6 py-6 border-b border-gray-50 flex justify-between items-start bg-gray-50/20">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 font-serif">Book a Service</h1>
-            {selectedCategory ? (
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-gray-500">Category: <span className="font-bold text-[#07535f]">{selectedCategory}</span></p>
-                <button 
-                  onClick={() => setSelectedCategory(null)}
-                  className="text-xs text-blue-600 font-bold hover:underline"
-                >
-                  (Change)
-                </button>
+        <div className="px-6 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/20">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 font-serif">Book a Service</h1>
+              {selectedCategory ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-sm text-gray-500">Category: <span className="font-bold text-[#07535f]">{selectedCategory}</span></p>
+                  <button 
+                    onClick={() => setSelectedCategory(null)}
+                    className="text-xs text-blue-600 font-bold hover:underline"
+                  >
+                    (Change)
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mt-0.5">Please select a service category to start</p>
+              )}
+            </div>
+
+            {selectedProvider && (
+              <div className="hidden sm:flex items-center gap-2.5 bg-[#07535f]/10 border border-[#07535f]/20 px-3.5 py-1.5 rounded-xl ml-2">
+                <div className="w-7 h-7 rounded-full bg-[#07535f] text-white flex items-center justify-center font-extrabold text-xs shadow-sm">
+                  {selectedProvider.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-xs font-extrabold text-[#07535f] leading-none">{selectedProvider.name}</p>
+                  <p className="text-[10px] text-gray-500 font-medium mt-0.5">⭐ {selectedProvider.rating || 5.0} • Assigned Professional</p>
+                </div>
               </div>
-            ) : (
-              <p className="text-sm text-gray-500 mt-0.5">Please select a service category to start</p>
             )}
           </div>
           <button
@@ -467,6 +583,15 @@ export default function BookingWizard() {
                   <p className="text-xs text-gray-400 mb-6">Review your booking summary and confirm payment mode</p>
 
                   <div className="border border-gray-100 rounded-2xl p-5 space-y-4 mb-6">
+                    {selectedProvider && (
+                      <div className="flex justify-between items-center text-sm bg-[#07535f]/5 p-3 rounded-xl border border-[#07535f]/15">
+                        <span className="text-gray-600 font-medium flex items-center gap-1.5">
+                          <UserCheck className="w-4 h-4 text-[#07535f]" />
+                          Assigned Professional:
+                        </span>
+                        <span className="font-extrabold text-[#07535f]">{selectedProvider.name}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Service:</span>
                       <span className="font-bold text-gray-800">
