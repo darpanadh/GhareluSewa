@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { bookingAPI, providerAPI } from '../../services/api';
+import { bookingAPI, providerAPI, paymentAPI } from '../../services/api';
 import InteractiveChart from '../../components/InteractiveChart';
 import {
   Bell, Calendar, Clock, MapPin, Check, X,
@@ -111,8 +111,23 @@ export default function ProviderDashboard() {
     finally { setActionLoading(null); }
   };
 
+  const handleRecordCashPayment = async (bookingId) => {
+    if (!window.confirm('Confirm customer paid full cash? 10% platform commission will be deducted for Gharelu Sewa.')) return;
+    setActionLoading(bookingId);
+    try {
+      await paymentAPI.recordCashPayment(bookingId);
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'completed' } : b));
+      alert('💵 Cash payment recorded! 10% Gharelu Sewa commission deducted.');
+      fetchEarningsChart();
+    } catch (err) {
+      alert(err?.response?.data?.error || 'Failed to record cash payment');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const newRequests = bookings.filter(b => b.status === 'pending');
-  const activeJobs  = bookings.filter(b => b.status === 'accepted' || b.status === 'in_progress');
+  const activeJobs  = bookings.filter(b => b.status === 'accepted' || b.status === 'in_progress' || b.status === 'awaiting_payment');
   const completedJobs = bookings.filter(b => b.status === 'completed');
   const hourlyRate  = parseFloat(user?.hourly_rate || 650);
   // Use real API earnings when available
@@ -334,9 +349,11 @@ export default function ProviderDashboard() {
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
                         job.status === 'in_progress'
                           ? 'bg-blue-100 text-blue-700'
-                          : 'bg-amber-100 text-amber-700'
+                          : job.status === 'awaiting_payment'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-green-100 text-green-700'
                       }`}>
-                        {job.status === 'in_progress' ? 'In Progress' : 'En Route'}
+                        {job.status === 'in_progress' ? 'In Progress' : job.status === 'awaiting_payment' ? 'Awaiting Payment' : 'Accepted'}
                       </span>
                     </div>
 
@@ -358,27 +375,53 @@ export default function ProviderDashboard() {
                     <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4 overflow-hidden">
                       <div
                         className="bg-[#07535f] h-1.5 rounded-full transition-all"
-                        style={{ width: job.status === 'in_progress' ? '65%' : '30%' }}
+                        style={{ width: job.status === 'awaiting_payment' ? '90%' : job.status === 'in_progress' ? '65%' : '30%' }}
                       ></div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <button className="flex items-center gap-1 border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-xl text-xs font-bold transition-all">
-                        <Phone className="w-3.5 h-3.5" /> Call
-                      </button>
+                    <div className="flex gap-2 flex-wrap">
                       <Link
                         to={`/provider/bookings/${job.id}`}
                         className="flex items-center gap-1 border border-gray-200 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-xl text-xs font-bold transition-all"
                       >
-                        <Eye className="w-3.5 h-3.5" /> View Details
+                        <Eye className="w-3.5 h-3.5" /> Details
                       </Link>
-                      <button
-                        onClick={() => handleUpdateStatus(job.id, job.status === 'accepted' ? 'in_progress' : 'completed')}
-                        disabled={actionLoading === job.id}
-                        className="flex-1 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-60 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                      >
-                        Update
-                      </button>
+                      {job.status === 'accepted' && (
+                        <button
+                          onClick={() => handleUpdateStatus(job.id, 'in_progress')}
+                          disabled={actionLoading === job.id}
+                          className="flex-1 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-60 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                        >
+                          Start Job
+                        </button>
+                      )}
+                      {job.status === 'in_progress' && (
+                        <>
+                          <button
+                            onClick={() => handleUpdateStatus(job.id, 'awaiting_payment')}
+                            disabled={actionLoading === job.id}
+                            className="flex-1 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-60 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                          >
+                            Mark Task Completed
+                          </button>
+                          <button
+                            onClick={() => handleRecordCashPayment(job.id)}
+                            disabled={actionLoading === job.id}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                          >
+                            💵 Payment by Cash
+                          </button>
+                        </>
+                      )}
+                      {job.status === 'awaiting_payment' && (
+                        <button
+                          onClick={() => handleRecordCashPayment(job.id)}
+                          disabled={actionLoading === job.id}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                        >
+                          💵 Payment by Cash
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

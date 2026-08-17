@@ -36,9 +36,9 @@ export const initiatePayment = async (req, res) => {
       return res.status(403).json({ error: 'Only the customer can initiate payment' });
     }
 
-    // Only allow payment on completed bookings
-    if (booking.status !== 'completed') {
-      return res.status(400).json({ error: 'Can only pay for completed bookings' });
+    // Only allow payment on awaiting_payment or completed bookings
+    if (booking.status !== 'awaiting_payment' && booking.status !== 'completed') {
+      return res.status(400).json({ error: 'Payment is only available after the provider marks the task as completed' });
     }
 
     // Check if already paid
@@ -145,6 +145,14 @@ export const verifyPayment = async (req, res) => {
       `UPDATE payments SET status = 'completed', esewa_ref_id = $1, paid_at = CURRENT_TIMESTAMP WHERE esewa_oid = $2`,
       [refId, oid]
     );
+
+    // Update booking status to completed once payment is received
+    if (payment.booking_id) {
+      await query(
+        `UPDATE bookings SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [payment.booking_id]
+      );
+    }
 
     // Get names for notification messages
     const customerResult = await query('SELECT name FROM users WHERE id = $1', [payment.customer_id]);
@@ -271,7 +279,7 @@ export const submitManualPayment = async (req, res) => {
     if (bookingResult.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
     const booking = bookingResult.rows[0];
     if (booking.customer_id !== req.userId) return res.status(403).json({ error: 'Forbidden' });
-    if (booking.status !== 'completed') return res.status(400).json({ error: 'Can only pay for completed bookings' });
+    if (booking.status !== 'awaiting_payment' && booking.status !== 'completed') return res.status(400).json({ error: 'Payment is only available after the provider marks the task as completed' });
 
     // Check not already paid
     const existing = await query(
@@ -288,8 +296,8 @@ export const submitManualPayment = async (req, res) => {
     const result = await query(
       `INSERT INTO payments
          (booking_id, customer_id, provider_id, amount, commission, provider_payout,
-          esewa_oid, status, payment_method, manual_ref_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9)
+          esewa_oid, status, payment_method, manual_ref_id, paid_at, escrow_released)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'completed',$8,$9,CURRENT_TIMESTAMP,FALSE)
        RETURNING *`,
       [bookingId, booking.customer_id, booking.provider_id, amount, commission, providerPayout,
        oid, payment_method, manual_ref_id.trim()]
@@ -297,16 +305,43 @@ export const submitManualPayment = async (req, res) => {
 
     const payment = result.rows[0];
 
-    // Notify admins to verify payment
+    // Update booking status to completed
+    await query(
+      `UPDATE bookings SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [bookingId]
+    );
+
+    // Get names for notifications
+    const customerResult = await query('SELECT name FROM users WHERE id = $1', [booking.customer_id]);
+    const providerResult = await query('SELECT name FROM users WHERE id = $1', [booking.provider_id]);
+    const customerName = customerResult.rows[0]?.name || 'Customer';
+    const providerName = providerResult.rows[0]?.name || 'Provider';
+    const methodTitle = payment_method === 'bank_transfer' ? 'Bank Transfer' : 'Cash Deposit';
+
+    // Notify Provider
+    await sendNotification(
+      booking.provider_id, parseInt(bookingId),
+      `💰 Customer paid Rs. ${amount} via ${methodTitle} to Gharelu Sewa for booking #${bookingId} (Ref: ${manual_ref_id.trim()}). Your payout of Rs. ${providerPayout} will be released after admin verification.`,
+      'payment_received'
+    );
+
+    // Notify Customer
+    await sendNotification(
+      booking.customer_id, parseInt(bookingId),
+      `✅ Payment of Rs. ${amount} sent to Gharelu Sewa via ${methodTitle} (Ref: ${manual_ref_id.trim()}).`,
+      'payment_confirmed'
+    );
+
+    // Notify Admins
     await notifyAllAdmins(
       parseInt(bookingId),
-      `📋 Manual payment submitted for Booking #${bookingId}. Method: ${payment_method}. Ref: ${manual_ref_id}. Amount: Rs. ${amount}. Please verify and release.`,
-      'manual_payment_submitted'
+      `💰 Manual payment received (${methodTitle}): ${customerName} paid Rs. ${amount} for booking #${bookingId} (Ref: ${manual_ref_id.trim()}). Commission: Rs. ${commission}. Release Rs. ${providerPayout} to ${providerName}.`,
+      'admin_payment_received'
     );
 
     res.status(201).json({
       success: true,
-      message: 'Payment reference submitted. Admin will verify and release funds to provider.',
+      message: 'Payment sent directly to Gharelu Sewa. Admin will release funds to provider.',
       payment: {
         id: payment.id,
         amount,
@@ -314,7 +349,8 @@ export const submitManualPayment = async (req, res) => {
         providerPayout,
         payment_method,
         manual_ref_id: payment.manual_ref_id,
-        status: 'pending',
+        status: 'completed',
+        escrow_released: false,
         bookingId: parseInt(bookingId),
       },
     });
@@ -375,6 +411,96 @@ export const releaseEscrow = async (req, res) => {
   } catch (error) {
     console.error('Release escrow error:', error);
     res.status(500).json({ error: 'Failed to release escrow' });
+  }
+};
+
+// Record cash payment collected by provider
+export const recordCashPayment = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    // Get booking details
+    const bookingResult = await query(
+      `SELECT b.id, b.customer_id, b.provider_id, b.status, b.total_price, pp.hourly_rate
+       FROM bookings b
+       LEFT JOIN provider_profiles pp ON b.provider_id = pp.user_id
+       WHERE b.id = $1`,
+      [bookingId]
+    );
+
+    if (bookingResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const booking = bookingResult.rows[0];
+
+    // Auth check: provider of booking or admin
+    if (req.userId !== booking.provider_id && req.role !== 'admin') {
+      return res.status(403).json({ error: 'Only the service provider or admin can record cash payment' });
+    }
+
+    const jobPrice = parseFloat(booking.total_price || booking.hourly_rate || 800);
+    const commission = parseFloat((jobPrice * 0.10).toFixed(2));
+    const providerPayout = parseFloat((jobPrice - commission).toFixed(2));
+    const oid = `GS-CASH-${bookingId}-${Date.now()}`;
+
+    // Check if payment row already exists
+    const existingPay = await query(`SELECT * FROM payments WHERE booking_id = $1`, [bookingId]);
+
+    let payment;
+    if (existingPay.rows.length > 0) {
+      const updateRes = await query(
+        `UPDATE payments
+         SET payment_method = 'cash', status = 'completed', escrow_released = TRUE,
+             amount = $1, commission = $2, provider_payout = $3,
+             escrow_released_at = CURRENT_TIMESTAMP, paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP)
+         WHERE booking_id = $4
+         RETURNING *`,
+        [jobPrice, commission, providerPayout, bookingId]
+      );
+      payment = updateRes.rows[0];
+    } else {
+      const insertRes = await query(
+        `INSERT INTO payments
+           (booking_id, customer_id, provider_id, amount, commission, provider_payout,
+            esewa_oid, status, payment_method, escrow_released, escrow_released_at, paid_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'completed', 'cash', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+         RETURNING *`,
+        [bookingId, booking.customer_id, booking.provider_id, jobPrice, commission, providerPayout, oid]
+      );
+      payment = insertRes.rows[0];
+    }
+
+    // Always ensure booking status is marked completed
+    await query(`UPDATE bookings SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [bookingId]);
+
+    // Send Notifications
+    await sendNotification(
+      booking.provider_id, parseInt(bookingId),
+      `💵 Cash payment of Rs. ${jobPrice} confirmed. 10% commission (Rs. ${commission}) deducted for Gharelu Sewa.`,
+      'cash_payment_confirmed'
+    );
+
+    await sendNotification(
+      booking.customer_id, parseInt(bookingId),
+      `💵 Cash payment of Rs. ${jobPrice} for booking #${bookingId} confirmed by professional.`,
+      'cash_payment_confirmed'
+    );
+
+    await notifyAllAdmins(
+      parseInt(bookingId),
+      `💵 Cash payment confirmed for booking #${bookingId}. Total: Rs. ${jobPrice}, Commission: Rs. ${commission}.`,
+      'admin_cash_payment_received'
+    );
+
+    res.json({
+      success: true,
+      message: `Cash payment of Rs. ${jobPrice} recorded. Rs. ${commission} (10%) platform commission deducted.`,
+      payment,
+    });
+  } catch (error) {
+    console.error('Record cash payment error:', error);
+    res.status(500).json({ error: 'Failed to record cash payment' });
   }
 };
 

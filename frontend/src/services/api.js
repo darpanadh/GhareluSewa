@@ -126,6 +126,7 @@ export const paymentAPI = {
   getPaymentByBooking:(bookingId)       => api.get(`/payments/booking/${bookingId}`),
   getAllPayments:      (params)          => api.get('/payments/all', { params }),
   submitManualPayment:(bookingId, data) => api.post(`/payments/manual/${bookingId}`, data),
+  recordCashPayment:  (bookingId)       => api.post(`/payments/cash/${bookingId}`),
   releaseEscrow:      (paymentId)       => api.post(`/payments/release/${paymentId}`),
 };
 

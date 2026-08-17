@@ -64,11 +64,16 @@ export const getUserBookings = async (req, res) => {
       SELECT b.id, b.customer_id, b.provider_id, b.status, b.booking_date, b.location, b.is_emergency,
              cu.name as customer_name, cu.phone as customer_phone, cu.avatar_url as customer_avatar,
              p.name as provider_name, p.phone as provider_phone, p.avatar_url as provider_avatar,
-             sc.name as service_category, b.created_at, b.updated_at
+             sc.name as service_category, b.created_at, b.updated_at,
+             pay.status as payment_status, pay.payment_method as payment_method,
+             CASE WHEN pay.status = 'completed' THEN TRUE ELSE FALSE END as is_paid
       FROM bookings b
       JOIN users cu ON b.customer_id = cu.id
       JOIN users p ON b.provider_id = p.id
       JOIN service_categories sc ON b.category_id = sc.id
+      LEFT JOIN LATERAL (
+        SELECT status, payment_method FROM payments WHERE booking_id = b.id ORDER BY created_at DESC LIMIT 1
+      ) pay ON true
       WHERE (b.customer_id = $1 OR b.provider_id = $1)
     `;
 
@@ -132,7 +137,7 @@ export const updateBookingStatus = async (req, res) => {
     const { bookingId } = req.params;
     const { status, message } = req.body;
 
-    const validStatuses = ['pending', 'accepted', 'in_progress', 'completed', 'cancelled'];
+    const validStatuses = ['pending', 'accepted', 'in_progress', 'awaiting_payment', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
@@ -166,27 +171,6 @@ export const updateBookingStatus = async (req, res) => {
       [status, bookingId]
     );
 
-    // If status is completed, ensure payment entry exists with commission & released escrow
-    if (status === 'completed') {
-      try {
-        const existingPay = await query(`SELECT id FROM payments WHERE booking_id = $1`, [bookingId]);
-        if (existingPay.rows.length === 0) {
-          const jobPrice = parseFloat(result.rows[0]?.total_price || 800);
-          const commission = parseFloat((jobPrice * 0.10).toFixed(2));
-          const providerPayout = parseFloat((jobPrice - commission).toFixed(2));
-          const oid = `GS-AUTO-${bookingId}-${Date.now()}`;
-
-          await query(
-            `INSERT INTO payments (booking_id, customer_id, provider_id, amount, commission, provider_payout, esewa_oid, status, payment_method, escrow_released, escrow_released_at, paid_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'completed', 'cash_deposit', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-            [bookingId, booking.customer_id, booking.provider_id, jobPrice, commission, providerPayout, oid]
-          );
-        }
-      } catch (err) {
-        console.warn('Could not auto-create payment record on booking completion:', err);
-      }
-    }
-
     // ── Build meaningful notification messages ──
     const statusMessages = {
       accepted: {
@@ -199,8 +183,13 @@ export const updateBookingStatus = async (req, res) => {
         admin: `Booking #${bookingId}: ${booking.provider_name} started work for ${booking.customer_name}`,
         provider: null,
       },
+      awaiting_payment: {
+        customer: `Work completed by ${booking.provider_name}! Please proceed to pay online for booking #${bookingId}.`,
+        admin: `Booking #${bookingId}: Work completed by ${booking.provider_name}. Awaiting customer payment.`,
+        provider: null,
+      },
       completed: {
-        customer: `Your ${booking.service_category} job #${bookingId} is now complete! Please leave a review and make payment.`,
+        customer: `Your ${booking.service_category} job #${bookingId} is now complete! Thank you for using Gharelu Sewa.`,
         admin: `Booking #${bookingId} completed: ${booking.provider_name} finished ${booking.service_category} for ${booking.customer_name}`,
         provider: null,
       },

@@ -126,7 +126,7 @@ export default function ProviderSchedule() {
                             {format(new Date(item.booking_date), 'hh:mm a')}
                           </span>
                           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                            {item.status.replace('_', ' ')}
+                            {item.status.replaceAll('_', ' ')}
                           </span>
                         </div>
 

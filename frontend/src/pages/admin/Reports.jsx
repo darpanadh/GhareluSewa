@@ -8,6 +8,7 @@ const STATUS_BADGES = {
   completed: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
   in_progress: 'bg-blue-100 text-blue-800 border-blue-200',
+  awaiting_payment: 'bg-orange-100 text-orange-800 border-orange-200',
   accepted: 'bg-sky-100 text-sky-800 border-sky-200',
   cancelled: 'bg-rose-100 text-rose-800 border-rose-200',
 };
@@ -281,6 +282,7 @@ export default function Reports() {
             <option value="pending">Pending</option>
             <option value="accepted">Accepted</option>
             <option value="in_progress">In Progress</option>
+            <option value="awaiting_payment">Awaiting Payment</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
@@ -408,7 +410,7 @@ export default function Reports() {
                     {/* Status */}
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${STATUS_BADGES[row.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                        {row.status?.replace('_', ' ')}
+                        {row.status?.replaceAll('_', ' ')}
                       </span>
                       {row.is_emergency && (
                         <span className="ml-1 text-[9px] bg-red-500 text-white font-extrabold px-1 rounded">SOS</span>

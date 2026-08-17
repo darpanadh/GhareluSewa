@@ -62,6 +62,8 @@ export const initializeDatabase = async () => {
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS completion_status VARCHAR(100) DEFAULT 'completed_on_time'`);
       await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_repeated_customer BOOLEAN DEFAULT FALSE`);
       await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_price DECIMAL(10, 2) DEFAULT 650`);
+      await query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`);
+      await query(`ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'accepted', 'in_progress', 'awaiting_payment', 'completed', 'cancelled'))`);
     } catch (e) {
       console.log('Columns already exist or error adding them:', e.message);
     }
@@ -73,7 +75,7 @@ export const initializeDatabase = async () => {
         customer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         provider_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         category_id INTEGER NOT NULL REFERENCES service_categories(id),
-        status VARCHAR(50) CHECK (status IN ('pending', 'accepted', 'in_progress', 'completed', 'cancelled')) DEFAULT 'pending',
+        status VARCHAR(50) CHECK (status IN ('pending', 'accepted', 'in_progress', 'awaiting_payment', 'completed', 'cancelled')) DEFAULT 'pending',
         booking_date TIMESTAMP NOT NULL,
         location VARCHAR(255) NOT NULL,
         description TEXT,

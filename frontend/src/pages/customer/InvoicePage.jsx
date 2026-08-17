@@ -160,11 +160,15 @@ export default function InvoicePage() {
     setSubmitting(true);
     setSubmitError('');
     try {
-      await paymentAPI.submitManualPayment(bookingId, {
+      const res = await paymentAPI.submitManualPayment(bookingId, {
         payment_method: method,
         manual_ref_id:  manualRef.trim(),
       });
-      setManualSuccess(true);
+      if (res.data?.payment) {
+        setExistingPayment(res.data.payment);
+      } else {
+        await fetchData();
+      }
     } catch (err) {
       setSubmitError(err.response?.data?.error || 'Failed to submit payment reference');
     } finally {
@@ -318,14 +322,13 @@ export default function InvoicePage() {
           <div>
             <p className="font-bold text-base">You are paying Gharelu Sewa — not the professional</p>
             <p className="text-white/75 text-xs mt-1 leading-relaxed">
-              Your payment is held securely in our escrow account. The provider receives their payout <strong className="text-white">only after job completion is confirmed</strong>. You are fully protected.
+              Your payment is held securely in our escrow account. The provider receives their payout <strong className="text-white">only after admin releases it</strong>. You are fully protected.
             </p>
           </div>
         </div>
 
         {/* Invoice Card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          {/* Invoice header */}
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
             <Building2 className="w-4 h-4 text-[#07535f]" />
             <span className="text-sm font-bold text-gray-700">Invoice from Gharelu Sewa</span>
@@ -333,7 +336,6 @@ export default function InvoicePage() {
           </div>
 
           <div className="p-6 space-y-4">
-            {/* From / To */}
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bill To</p>
@@ -362,7 +364,6 @@ export default function InvoicePage() {
               </div>
             </div>
 
-            {/* Breakdown */}
             <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 border border-gray-100">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Payment Breakdown</p>
               <div className="flex justify-between text-sm text-gray-600">
@@ -374,7 +375,7 @@ export default function InvoicePage() {
                 <span>Rs. {commission.toFixed(2)} retained</span>
               </div>
               <div className="flex justify-between text-xs text-gray-400">
-                <span>Provider Payout (after confirmation)</span>
+                <span>Provider Payout (after admin release)</span>
                 <span>Rs. {providerPayout.toFixed(2)} released</span>
               </div>
               <div className="border-t border-gray-200 pt-2 flex justify-between font-extrabold text-base">
@@ -469,7 +470,7 @@ export default function InvoicePage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full flex items-center justify-center gap-2 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm shadow transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm shadow transition-all cursor-pointer"
                 >
                   {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</> : <>Submit Payment Reference <ArrowRight className="w-4 h-4" /></>}
                 </button>
@@ -512,7 +513,7 @@ export default function InvoicePage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full flex items-center justify-center gap-2 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm shadow transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-[#07535f] hover:bg-[#06424b] disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm shadow transition-all cursor-pointer"
                 >
                   {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</> : <>Submit Slip Number <ArrowRight className="w-4 h-4" /></>}
                 </button>
@@ -532,7 +533,7 @@ export default function InvoicePage() {
               <button
                 onClick={handlePayWithEsewa}
                 disabled={submitting}
-                className="w-full flex items-center justify-center gap-3 bg-[#60bb46] hover:bg-[#52a83b] disabled:opacity-60 text-white font-bold py-4 rounded-xl text-base shadow-lg transition-all"
+                className="w-full flex items-center justify-center gap-3 bg-[#60bb46] hover:bg-[#52a83b] disabled:opacity-60 text-white font-bold py-4 rounded-xl text-base shadow-lg transition-all cursor-pointer"
               >
                 {submitting ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Processing…</>
@@ -560,7 +561,7 @@ export default function InvoicePage() {
         {/* Security Footer */}
         <div className="flex items-center justify-center gap-3 text-xs text-gray-400 pb-4">
           <Shield className="w-4 h-4" />
-          <span>256-bit SSL Encrypted · Funds held in Gharelu Sewa Escrow · Provider paid only after confirmation</span>
+          <span>256-bit SSL Encrypted · Funds held in Gharelu Sewa Escrow · Provider paid only after admin release</span>
         </div>
 
         {/* Hidden eSewa form — auto-submitted */}
