@@ -296,8 +296,15 @@ export const getProviderEarnings = async (req, res) => {
       .filter(r => r.status === 'completed')
       .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-    // Available balance = Net Released Earnings - (Pending Payouts + Completed Payouts)
-    const availableBalance = netReleasedEarnings - pendingPayouts - completedPayouts;
+    // Fetch dues settlement credits
+    const settleRes = await query(
+      `SELECT COALESCE(SUM(amount), 0)::numeric as total_settled FROM dues_settlements WHERE provider_id = $1 AND status = 'completed'`,
+      [req.userId]
+    );
+    const totalSettled = Number(settleRes.rows[0]?.total_settled || 0);
+
+    // Available balance = Net Released Earnings + Dues Settlements - Completed Payouts
+    const availableBalance = netReleasedEarnings + totalSettled - completedPayouts;
 
     let isFrozen = profData.is_frozen || false;
     let negativeSince = profData.negative_since || null;
@@ -410,41 +417,63 @@ export const getMyPayouts = async (req, res) => {
 // Settle negative balance dues online (unfreezes provider account)
 export const settleDues = async (req, res) => {
   try {
-    const { amount, payment_method, transaction_ref } = req.body;
+    const { amount, payment_method } = req.body;
 
     const duesAmount = Math.abs(parseFloat(amount || 0));
     if (!duesAmount || duesAmount <= 0) {
       return res.status(400).json({ error: 'Invalid settlement amount' });
     }
 
-    const oid = `GS-DUES-${req.userId}-${Date.now()}`;
+    const txRef = `GS-DUES-${req.userId}-${Date.now()}`;
 
-    // Record dues settlement payment entry (provider_payout = +duesAmount)
+    // Insert into dues_settlements table (auto-verified, no admin approval needed)
     const insertRes = await query(
-      `INSERT INTO payments
-         (booking_id, customer_id, provider_id, amount, commission, provider_payout,
-          esewa_oid, status, payment_method, escrow_released, escrow_released_at, paid_at)
-       VALUES (NULL, $1, $1, $2, 0, $2, $3, 'completed', $4, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `INSERT INTO dues_settlements (provider_id, amount, payment_method, transaction_ref, status)
+       VALUES ($1, $2, $3, $4, 'completed')
        RETURNING *`,
-      [req.userId, duesAmount, oid, payment_method || 'esewa']
+      [req.userId, duesAmount, payment_method || 'esewa', txRef]
     );
 
-    // Unfreeze provider account and clear negative timer
-    await query(
-      `UPDATE provider_profiles 
-       SET is_frozen = FALSE, availability = TRUE, negative_since = NULL 
-       WHERE user_id = $1`,
+    // Recalculate balance: released payouts + dues settlements - completed payout requests
+    const balRes = await query(
+      `SELECT COALESCE(SUM(provider_payout), 0)::numeric as total_payout
+       FROM payments WHERE provider_id = $1 AND status = 'completed' AND escrow_released = TRUE`,
+      [req.userId]
+    );
+    const settleRes = await query(
+      `SELECT COALESCE(SUM(amount), 0)::numeric as total_settled
+       FROM dues_settlements WHERE provider_id = $1 AND status = 'completed'`,
+      [req.userId]
+    );
+    const payoutReqsRes = await query(
+      `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested
+       FROM payout_requests WHERE provider_id = $1 AND status = 'completed'`,
       [req.userId]
     );
 
+    const newBalance = Number(balRes.rows[0]?.total_payout || 0)
+      + Number(settleRes.rows[0]?.total_settled || 0)
+      - Number(payoutReqsRes.rows[0]?.total_requested || 0);
+
+    // Unfreeze provider account if balance is now >= 0
+    if (newBalance >= 0) {
+      await query(
+        `UPDATE provider_profiles
+         SET is_frozen = FALSE, availability = TRUE, negative_since = NULL
+         WHERE user_id = $1`,
+        [req.userId]
+      );
+    }
+
     res.json({
       success: true,
-      message: `Successfully paid Rs. ${duesAmount} platform dues. Your account is now unfrozen and active!`,
-      payment: insertRes.rows[0],
+      message: `Successfully paid Rs. ${duesAmount} platform dues via ${payment_method || 'eSewa'}. Your account is now unfrozen and active!`,
+      settlement: insertRes.rows[0],
+      new_balance: newBalance,
     });
   } catch (error) {
     console.error('Settle dues error:', error);
-    res.status(500).json({ error: 'Failed to process dues settlement payment' });
+    res.status(500).json({ error: 'Failed to process dues settlement payment. Please try again.' });
   }
 };
 

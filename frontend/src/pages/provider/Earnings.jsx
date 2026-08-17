@@ -764,57 +764,72 @@ export default function MyEarnings() {
                       Select Payment Method to Settle Dues:
                     </label>
 
-                    {/* eSewa / Khalti Selector Card */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDuesMethod('esewa')}
-                      className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                        selectedDuesMethod === 'esewa'
-                          ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20 shadow-xs'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* eSewa */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDuesMethod('esewa')}
+                        className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
+                          selectedDuesMethod === 'esewa'
+                            ? 'border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/20 shadow-xs'
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-[10px]">
                           eS
                         </div>
-                        <div>
-                          <p className="font-bold text-emerald-950 text-xs">eSewa / Khalti Direct</p>
-                          <p className="text-[11px] text-emerald-700 font-mono">9841000000 (Gharelu Sewa Admin)</p>
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        selectedDuesMethod === 'esewa' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {selectedDuesMethod === 'esewa' ? 'Selected ✓' : 'Primary'}
-                      </span>
-                    </button>
+                        <span className={`text-[11px] font-bold ${selectedDuesMethod === 'esewa' ? 'text-emerald-800' : 'text-gray-600'}`}>eSewa</span>
+                      </button>
 
-                    {/* Direct Bank Transfer Selector Card */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDuesMethod('bank')}
-                      className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                        selectedDuesMethod === 'bank'
-                          ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-500/20 shadow-xs'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
+                      {/* Khalti */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDuesMethod('khalti')}
+                        className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
+                          selectedDuesMethod === 'khalti'
+                            ? 'border-purple-500 bg-purple-50/80 ring-2 ring-purple-500/20 shadow-xs'
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-[10px]">
+                          K
+                        </div>
+                        <span className={`text-[11px] font-bold ${selectedDuesMethod === 'khalti' ? 'text-purple-800' : 'text-gray-600'}`}>Khalti</span>
+                      </button>
+
+                      {/* Bank Deposit */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDuesMethod('bank')}
+                        className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-1.5 cursor-pointer ${
+                          selectedDuesMethod === 'bank'
+                            ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-500/20 shadow-xs'
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
                           <Building className="w-4 h-4" />
                         </div>
-                        <div>
-                          <p className="font-bold text-blue-950 text-xs">Direct Bank Transfer</p>
-                          <p className="text-[11px] text-blue-700">NIC Asia Bank - A/C 012345678910</p>
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        selectedDuesMethod === 'bank' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {selectedDuesMethod === 'bank' ? 'Selected ✓' : 'Bank'}
-                      </span>
-                    </button>
+                        <span className={`text-[11px] font-bold ${selectedDuesMethod === 'bank' ? 'text-blue-800' : 'text-gray-600'}`}>Bank</span>
+                      </button>
+                    </div>
+
+                    {/* Payment details based on selected method */}
+                    <div className={`p-3 rounded-xl border text-[11px] ${
+                      selectedDuesMethod === 'esewa' ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800'
+                        : selectedDuesMethod === 'khalti' ? 'bg-purple-50/60 border-purple-200 text-purple-800'
+                        : 'bg-blue-50/60 border-blue-200 text-blue-800'
+                    }`}>
+                      {selectedDuesMethod === 'esewa' && (
+                        <p>Transfer <strong>Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</strong> to eSewa ID: <strong className="font-mono">9841000000</strong> (Gharelu Sewa)</p>
+                      )}
+                      {selectedDuesMethod === 'khalti' && (
+                        <p>Transfer <strong>Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</strong> to Khalti ID: <strong className="font-mono">9841000000</strong> (Gharelu Sewa)</p>
+                      )}
+                      {selectedDuesMethod === 'bank' && (
+                        <p>Deposit <strong>Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</strong> to NIC Asia Bank A/C: <strong className="font-mono">012345678910</strong> (Gharelu Sewa Admin)</p>
+                      )}
+                    </div>
                   </div>
 
                   {settleError && (
@@ -826,7 +841,7 @@ export default function MyEarnings() {
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-[11px] text-gray-600 leading-relaxed flex items-start gap-2">
                     <ShieldCheck className="w-4 h-4 text-[#07535f] shrink-0 mt-0.5" />
                     <span>
-                      Clicking <strong>Pay & Settle Dues Now</strong> will process your settlement of <strong>Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</strong> via {selectedDuesMethod === 'esewa' ? 'eSewa / Khalti' : 'Bank Transfer'} and automatically unfreeze your provider profile immediately.
+                      Clicking <strong>Pay & Settle Dues Now</strong> records your payment of <strong>Rs. {Math.abs(calcAvailableBalance).toLocaleString()}</strong> via {selectedDuesMethod === 'esewa' ? 'eSewa' : selectedDuesMethod === 'khalti' ? 'Khalti' : 'Bank Deposit'} and automatically unfreezes your account. No admin verification needed.
                     </span>
                   </div>
 
@@ -834,7 +849,11 @@ export default function MyEarnings() {
                   <button
                     type="submit"
                     disabled={settlingDues || Math.abs(calcAvailableBalance) <= 0}
-                    className="w-full bg-[#10b981] hover:bg-[#0ea572] active:scale-98 text-white py-3.5 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                    className={`w-full py-3.5 rounded-2xl text-xs font-extrabold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer text-white ${
+                      selectedDuesMethod === 'esewa' ? 'bg-emerald-600 hover:bg-emerald-700'
+                        : selectedDuesMethod === 'khalti' ? 'bg-purple-600 hover:bg-purple-700'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
                   >
                     {settlingDues ? (
                       <>
@@ -843,7 +862,7 @@ export default function MyEarnings() {
                     ) : (
                       <>
                         <DollarSign className="w-4 h-4" />
-                        Pay & Settle Rs. {Math.abs(calcAvailableBalance).toLocaleString()} Dues Now
+                        Pay Rs. {Math.abs(calcAvailableBalance).toLocaleString()} via {selectedDuesMethod === 'esewa' ? 'eSewa' : selectedDuesMethod === 'khalti' ? 'Khalti' : 'Bank Deposit'}
                       </>
                     )}
                   </button>

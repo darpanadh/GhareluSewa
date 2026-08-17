@@ -176,7 +176,18 @@ export const initializeDatabase = async () => {
       await query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS escrow_released_at TIMESTAMP`);
     } catch(e) { /* indexes/columns may already exist */ }
 
-
+    // Create dues_settlements table (for provider commission dues payments)
+    await query(`
+      CREATE TABLE IF NOT EXISTS dues_settlements (
+        id SERIAL PRIMARY KEY,
+        provider_id INTEGER NOT NULL REFERENCES users(id),
+        amount DECIMAL(10, 2) NOT NULL,
+        payment_method VARCHAR(50) DEFAULT 'esewa',
+        transaction_ref VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'completed',
+        settled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     // Create indexes for better performance
     await query(`

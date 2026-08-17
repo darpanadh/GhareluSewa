@@ -171,11 +171,15 @@ export const updateBookingStatus = async (req, res) => {
         `SELECT COALESCE(SUM(provider_payout), 0)::numeric as total_payout FROM payments WHERE provider_id = $1 AND status = 'completed' AND escrow_released = TRUE`,
         [req.userId]
       );
+      const settleRes = await query(
+        `SELECT COALESCE(SUM(amount), 0)::numeric as total_settled FROM dues_settlements WHERE provider_id = $1 AND status = 'completed'`,
+        [req.userId]
+      );
       const payoutReqsRes = await query(
         `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested FROM payout_requests WHERE provider_id = $1 AND status = 'completed'`,
         [req.userId]
       );
-      const currentBalance = Number(balRes.rows[0]?.total_payout || 0) - Number(payoutReqsRes.rows[0]?.total_requested || 0);
+      const currentBalance = Number(balRes.rows[0]?.total_payout || 0) + Number(settleRes.rows[0]?.total_settled || 0) - Number(payoutReqsRes.rows[0]?.total_requested || 0);
 
       if (currentBalance < 0) {
         await query(

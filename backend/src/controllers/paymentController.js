@@ -481,11 +481,15 @@ export const recordCashPayment = async (req, res) => {
       `SELECT COALESCE(SUM(provider_payout), 0)::numeric as total_payout FROM payments WHERE provider_id = $1 AND status = 'completed' AND escrow_released = TRUE`,
       [booking.provider_id]
     );
+    const settleRes = await query(
+      `SELECT COALESCE(SUM(amount), 0)::numeric as total_settled FROM dues_settlements WHERE provider_id = $1 AND status = 'completed'`,
+      [booking.provider_id]
+    );
     const payoutReqsRes = await query(
       `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested FROM payout_requests WHERE provider_id = $1 AND status = 'completed'`,
       [booking.provider_id]
     );
-    const currentBalance = Number(balRes.rows[0]?.total_payout || 0) - Number(payoutReqsRes.rows[0]?.total_requested || 0);
+    const currentBalance = Number(balRes.rows[0]?.total_payout || 0) + Number(settleRes.rows[0]?.total_settled || 0) - Number(payoutReqsRes.rows[0]?.total_requested || 0);
 
     // If balance went negative, restrict provider profile availability
     if (currentBalance < 0) {
