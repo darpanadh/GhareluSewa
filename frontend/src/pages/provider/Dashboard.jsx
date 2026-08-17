@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { bookingAPI, providerAPI, paymentAPI } from '../../services/api';
 import InteractiveChart from '../../components/InteractiveChart';
+import CashPaymentModal from '../../components/CashPaymentModal';
 import {
   Bell, Calendar, Clock, MapPin, Check, X,
   Phone, Eye, TrendingUp, AlertCircle, Star,
@@ -23,27 +24,19 @@ function WeeklyEarningsChart({ data }) {
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-24">
-      {/* Gridlines */}
-      {[0.25, 0.5, 0.75, 1].map(f => (
-        <line key={f} x1={PAD} x2={W - PAD}
-          y1={H - PAD - f * (H - PAD * 2)}
-          y2={H - PAD - f * (H - PAD * 2)}
-          stroke="#e5e7eb" strokeWidth="1" strokeDasharray="3 3" />
-      ))}
-      {/* Y-labels */}
-      {[0, 1500, 3000, 6000].map((v, i) => (
-        <text key={v} x={PAD - 2} y={H - PAD - (v / maxVal) * (H - PAD * 2) + 3}
-          textAnchor="end" fontSize="7" fill="#9ca3af">{v > 0 ? v : ''}</text>
-      ))}
-      {/* Area fill */}
+      <defs>
+        <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
+        </linearGradient>
+      </defs>
       <polygon
-        points={`${pts[0].x},${H - PAD} ${polyline} ${pts[pts.length - 1].x},${H - PAD}`}
-        fill="rgba(7,83,95,0.08)" />
-      {/* Line */}
-      <polyline points={polyline} fill="none" stroke="#07535f" strokeWidth="2" strokeLinejoin="round" />
-      {/* Dots */}
+        points={`${pts[0].x},${H} ${polyline} ${pts[pts.length - 1].x},${H}`}
+        fill="url(#chartGrad)"
+      />
+      <polyline fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2.5" points={polyline} strokeLinecap="round" strokeLinejoin="round" />
       {pts.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#07535f" stroke="white" strokeWidth="1.5" />
+        <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="#ffffff" />
       ))}
     </svg>
   );
@@ -59,6 +52,13 @@ export default function ProviderDashboard() {
   const [chartPeriod, setChartPeriod] = useState('week');
   const [earningsData, setEarningsData] = useState(null);
   const [chartLoading, setChartLoading] = useState(false);
+
+  // Cash payment modal & toast state
+  const [cashModalBooking, setCashModalBooking] = useState(null);
+  const [cashModalOpen, setCashModalOpen] = useState(false);
+  const [cashLoading, setCashLoading] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
     refreshUser();
@@ -104,25 +104,41 @@ export default function ProviderDashboard() {
 
   const handleUpdateStatus = async (bookingId, newStatus) => {
     setActionLoading(bookingId);
+    setErrorMsg(null);
     try {
       await bookingAPI.updateBookingStatus(bookingId, { status: newStatus });
       setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
-    } catch (err) { alert('Failed to update booking status'); }
-    finally { setActionLoading(null); }
+    } catch (err) { 
+      setErrorMsg(err?.response?.data?.error || 'Failed to update booking status');
+    } finally { 
+      setActionLoading(null); 
+    }
   };
 
-  const handleRecordCashPayment = async (bookingId) => {
-    if (!window.confirm('Confirm customer paid full cash? 10% platform commission will be deducted for Gharelu Sewa.')) return;
-    setActionLoading(bookingId);
+  const openCashModal = (booking) => {
+    setCashModalBooking(booking);
+    setCashModalOpen(true);
+  };
+
+  const handleConfirmCashPayment = async () => {
+    if (!cashModalBooking) return;
+    const bookingId = cashModalBooking.id;
+    setCashLoading(true);
+    setErrorMsg(null);
     try {
       await paymentAPI.recordCashPayment(bookingId);
       setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: 'completed' } : b));
-      alert('💵 Cash payment recorded! 10% Gharelu Sewa commission deducted.');
+      setCashModalOpen(false);
+      setCashModalBooking(null);
+      setToastMsg('💵 Cash payment recorded! 10% Gharelu Sewa commission deducted.');
+      setTimeout(() => setToastMsg(null), 6000);
       fetchEarningsChart();
+      refreshUser();
     } catch (err) {
-      alert(err?.response?.data?.error || 'Failed to record cash payment');
+      setErrorMsg(err?.response?.data?.error || 'Failed to record cash payment');
+      setCashModalOpen(false);
     } finally {
-      setActionLoading(null);
+      setCashLoading(false);
     }
   };
 
@@ -405,7 +421,7 @@ export default function ProviderDashboard() {
                             Mark Task Completed
                           </button>
                           <button
-                            onClick={() => handleRecordCashPayment(job.id)}
+                            onClick={() => openCashModal(job)}
                             disabled={actionLoading === job.id}
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all"
                           >
@@ -415,7 +431,7 @@ export default function ProviderDashboard() {
                       )}
                       {job.status === 'awaiting_payment' && (
                         <button
-                          onClick={() => handleRecordCashPayment(job.id)}
+                          onClick={() => openCashModal(job)}
                           disabled={actionLoading === job.id}
                           className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all"
                         >
@@ -542,6 +558,34 @@ export default function ProviderDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Cash Payment Confirmation Modal */}
+      <CashPaymentModal
+        isOpen={cashModalOpen}
+        onClose={() => { setCashModalOpen(false); setCashModalBooking(null); }}
+        onConfirm={handleConfirmCashPayment}
+        loading={cashLoading}
+        amount={cashModalBooking ? `Rs. ${hourlyRate}` : null}
+      />
+
+      {/* Error Alert Banner */}
+      {errorMsg && (
+        <div className="fixed bottom-6 left-6 z-50 bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 max-w-md">
+          <AlertCircle className="w-5 h-5 shrink-0 text-red-200" />
+          <div className="flex-1">
+            <p className="text-xs font-bold leading-relaxed">{errorMsg}</p>
+          </div>
+          <button onClick={() => setErrorMsg(null)} className="text-white/80 hover:text-white font-bold text-xs ml-2">✕</button>
+        </div>
+      )}
+
+      {/* Success Toast Banner */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#07535f] text-white px-6 py-4 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <Check className="w-5 h-5 text-emerald-400 shrink-0" />
+          <p className="text-xs font-bold leading-relaxed">{toastMsg}</p>
+        </div>
+      )}
     </div>
   );
 }

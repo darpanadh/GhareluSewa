@@ -441,7 +441,9 @@ export const recordCashPayment = async (req, res) => {
 
     const jobPrice = parseFloat(booking.total_price || booking.hourly_rate || 800);
     const commission = parseFloat((jobPrice * 0.10).toFixed(2));
-    const providerPayout = parseFloat((jobPrice - commission).toFixed(2));
+    // For cash payments, provider already collected 100% cash in hand from customer.
+    // Platform balance must NOT increase. Instead, deduct 10% commission (-commission).
+    const providerPayout = -commission;
     const oid = `GS-CASH-${bookingId}-${Date.now()}`;
 
     // Check if payment row already exists
@@ -473,6 +475,27 @@ export const recordCashPayment = async (req, res) => {
 
     // Always ensure booking status is marked completed
     await query(`UPDATE bookings SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [bookingId]);
+
+    // Calculate updated provider balance
+    const balRes = await query(
+      `SELECT COALESCE(SUM(provider_payout), 0)::numeric as total_payout FROM payments WHERE provider_id = $1 AND status = 'completed' AND escrow_released = TRUE`,
+      [booking.provider_id]
+    );
+    const payoutReqsRes = await query(
+      `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested FROM payout_requests WHERE provider_id = $1`,
+      [booking.provider_id]
+    );
+    const currentBalance = Number(balRes.rows[0]?.total_payout || 0) - Number(payoutReqsRes.rows[0]?.total_requested || 0);
+
+    // If balance went negative, restrict provider profile availability
+    if (currentBalance < 0) {
+      await query(
+        `UPDATE provider_profiles
+         SET is_frozen = TRUE, availability = FALSE, negative_since = COALESCE(negative_since, CURRENT_TIMESTAMP)
+         WHERE user_id = $1`,
+        [booking.provider_id]
+      );
+    }
 
     // Send Notifications
     await sendNotification(

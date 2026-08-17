@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import Card from '../../components/Card';
 import Chat from '../../components/Chat';
+import CashPaymentModal from '../../components/CashPaymentModal';
 import { bookingAPI, reviewAPI, paymentAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { MapPin, Calendar, Wrench, CheckCircle, XCircle, PlayCircle, AlertCircle, Star, Navigation, DollarSign, CreditCard, ShieldCheck } from 'lucide-react';
@@ -30,9 +31,9 @@ function StarRating({ rating, setRating }) {
           className="focus:outline-none transition-transform hover:scale-110"
         >
           <Star
-            className={`w-9 h-9 transition-colors ${
+            className={`w-6 h-6 ${
               star <= (hovered || rating)
-                ? 'text-yellow-400 fill-yellow-400'
+                ? 'fill-amber-400 text-amber-400'
                 : 'text-gray-300'
             }`}
           />
@@ -46,9 +47,12 @@ export default function BookingDetails() {
   const { bookingId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  
   const [booking, setBooking] = useState(null);
   const [paymentRecord, setPaymentRecord] = useState(null);
   const [cashLoading, setCashLoading] = useState(false);
+  const [isCashModalOpen, setIsCashModalOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
@@ -108,19 +112,20 @@ export default function BookingDetails() {
   };
 
   const handleRecordCashPayment = async () => {
-    if (!window.confirm('Confirm that customer has paid full cash? 10% platform commission will be deducted for Gharelu Sewa.')) {
-      return;
-    }
     setCashLoading(true);
+    setError('');
     try {
       const res = await paymentAPI.recordCashPayment(bookingId);
       setBooking(prev => ({ ...prev, status: 'completed' }));
       if (res.data?.payment) {
         setPaymentRecord(res.data.payment);
       }
-      alert('💵 Cash payment recorded successfully! 10% Gharelu Sewa commission deducted.');
+      setIsCashModalOpen(false);
+      setToastMsg('💵 Cash payment confirmed! 10% platform commission deducted for Gharelu Sewa.');
+      setTimeout(() => setToastMsg(null), 6000);
     } catch (err) {
-      alert(err?.response?.data?.error || 'Failed to record cash payment');
+      setError(err?.response?.data?.error || 'Failed to record cash payment');
+      setIsCashModalOpen(false);
     } finally {
       setCashLoading(false);
     }
@@ -128,12 +133,13 @@ export default function BookingDetails() {
 
   const updateStatus = async (newStatus) => {
     setActionLoading(true);
+    setError('');
     try {
       await bookingAPI.updateBookingStatus(bookingId, { status: newStatus });
       setBooking(prev => ({ ...prev, status: newStatus }));
     } catch (err) {
       console.error(err);
-      alert('Failed to update booking status');
+      setError(err?.response?.data?.error || 'Failed to update booking status');
     } finally {
       setActionLoading(false);
     }
@@ -225,7 +231,7 @@ export default function BookingDetails() {
                     <CheckCircle className="w-4 h-4" /> Mark Task Completed
                   </button>
                   <button
-                    onClick={handleRecordCashPayment}
+                    onClick={() => setIsCashModalOpen(true)}
                     disabled={cashLoading || actionLoading}
                     className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow transition-all disabled:opacity-60"
                   >
@@ -235,7 +241,7 @@ export default function BookingDetails() {
               )}
               {booking.status === 'awaiting_payment' && (
                 <button
-                  onClick={handleRecordCashPayment}
+                  onClick={() => setIsCashModalOpen(true)}
                   disabled={cashLoading || actionLoading}
                   className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-full font-bold text-sm shadow transition-all disabled:opacity-60"
                 >
@@ -467,6 +473,23 @@ export default function BookingDetails() {
           </div>
         </div>
       </div>
+
+      {/* Cash Payment Confirmation Modal */}
+      <CashPaymentModal
+        isOpen={isCashModalOpen}
+        onClose={() => setIsCashModalOpen(false)}
+        onConfirm={handleRecordCashPayment}
+        loading={cashLoading}
+        amount={`Rs. ${booking?.total_price || booking?.hourly_rate || 800}`}
+      />
+
+      {/* Toast / Notification Banner */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#07535f] text-white px-6 py-4 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+          <p className="text-xs font-bold leading-relaxed">{toastMsg}</p>
+        </div>
+      )}
     </div>
   );
 }

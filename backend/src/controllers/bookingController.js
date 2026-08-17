@@ -165,6 +165,29 @@ export const updateBookingStatus = async (req, res) => {
       return res.status(403).json({ error: 'Only provider or admin can update booking' });
     }
 
+    // Negative Balance Restriction: Prevent providers with negative balance from accepting customer jobs
+    if ((status === 'accepted' || status === 'in_progress') && req.role !== 'admin') {
+      const balRes = await query(
+        `SELECT COALESCE(SUM(provider_payout), 0)::numeric as total_payout FROM payments WHERE provider_id = $1 AND status = 'completed' AND escrow_released = TRUE`,
+        [req.userId]
+      );
+      const payoutReqsRes = await query(
+        `SELECT COALESCE(SUM(amount), 0)::numeric as total_requested FROM payout_requests WHERE provider_id = $1`,
+        [req.userId]
+      );
+      const currentBalance = Number(balRes.rows[0]?.total_payout || 0) - Number(payoutReqsRes.rows[0]?.total_requested || 0);
+
+      if (currentBalance < 0) {
+        await query(
+          `UPDATE provider_profiles SET is_frozen = TRUE, availability = FALSE WHERE user_id = $1`,
+          [req.userId]
+        );
+        return res.status(403).json({
+          error: `Account Restricted: Your account balance is negative (Rs. ${currentBalance.toFixed(2)}). You cannot accept or start new bookings until your platform commission balance is cleared.`
+        });
+      }
+    }
+
     // Update booking
     const result = await query(
       `UPDATE bookings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
