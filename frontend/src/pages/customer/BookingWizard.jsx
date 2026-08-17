@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Wrench, Calendar, MapPin, CreditCard, ChevronRight, X, Zap, Wind, Sparkles, ArrowLeft } from 'lucide-react';
+import { Wrench, Calendar, MapPin, CreditCard, ChevronRight, X, Zap, Wind, Sparkles, ArrowLeft, Building2 } from 'lucide-react';
 import { bookingAPI } from '../../services/api';
-
+import CityWardSelector from '../../components/CityWardSelector';
 import { useAuth } from '../../context/AuthContext';
 
 export default function BookingWizard() {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -86,17 +86,22 @@ export default function BookingWizard() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(10, 0, 0, 0);
   const [date, setDate] = useState(tomorrow.toISOString().slice(0, 16));
-  const [address, setAddress] = useState('Lakeside, Pokhara');
+  
+  // Location States (City/Ward, Tole, Landmark)
+  const [selectedWard, setSelectedWard] = useState(user?.ward || 'Pokhara Ward No. 6');
+  const [tole, setTole] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const pokharaLocations = [
-    'Lakeside, Pokhara', 'New Road, Pokhara', 'Chipiyata, Pokhara',
-    'Bagar, Pokhara', 'Mahendrapul, Pokhara', 'Simalchaur, Pokhara', 'Prithvichowk, Pokhara'
-  ];
-  const kathmanduLocations = [
-    'Baneshwor, Kathmandu', 'Thamel, Kathmandu', 'Koteshwor, Kathmandu',
-    'Pulchowk, Lalitpur', 'Jawalakhel, Lalitpur', 'Bhaktapur'
-  ];
+  // Assemble full address string
+  const getFullAddress = () => {
+    const parts = [];
+    if (tole.trim()) parts.push(`Tole: ${tole.trim()}`);
+    if (landmark.trim()) parts.push(`Landmark: ${landmark.trim()}`);
+    if (selectedWard) parts.push(selectedWard);
+    return parts.join(', ') || selectedWard || 'Not specified';
+  };
 
   // Keep selectedService in sync when category changes
   useEffect(() => {
@@ -110,17 +115,36 @@ export default function BookingWizard() {
   const services = categoryData ? categoryData.items : [];
 
   const handleContinue = async () => {
+    setErrorMsg('');
+
+    // Step 3 Validation: Require Ward, Tole, and Landmark
+    if (currentStep === 3) {
+      if (!selectedWard) {
+        setErrorMsg('Please select your city and ward.');
+        return;
+      }
+      if (!tole.trim()) {
+        setErrorMsg('Please enter your Tole / Street name.');
+        return;
+      }
+      if (!landmark.trim()) {
+        setErrorMsg('Please enter a nearby landmark.');
+        return;
+      }
+    }
+
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     } else {
       setIsLoading(true);
       try {
         const serviceObj = services.find(s => s.id === selectedService);
+        const fullAddress = getFullAddress();
         const res = await bookingAPI.createBooking({
           provider_id: 2,
           category_id: categoryData.categoryId,
           booking_date: date ? new Date(date).toISOString() : new Date().toISOString(),
-          location: address,
+          location: fullAddress,
           description: `${selectedCategory} - ${serviceObj?.name || selectedService}: ${notes || 'No notes'}`,
           is_emergency: false
         });
@@ -363,27 +387,68 @@ export default function BookingWizard() {
                     >
                       <ArrowLeft className="w-4 h-4 text-gray-500" />
                     </button>
-                    <h2 className="text-lg font-bold text-gray-800">Service Address</h2>
+                    <h2 className="text-lg font-bold text-gray-800">Service Address &amp; Location</h2>
                   </div>
-                  <p className="text-xs text-gray-400 mb-6">Enter the location details where the service is needed</p>
+                  <p className="text-xs text-gray-400 mb-6">Select your city &amp; ward, and enter your tole and landmark</p>
 
                   <div className="space-y-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-700 block mb-2">Service Address</label>
-                      <select
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl p-3.5 text-sm font-semibold focus:outline-none focus:border-[#07535f] focus:ring-1 focus:ring-[#07535f] text-gray-800 bg-white"
-                      >
-                        <optgroup label="🏔 Pokhara">
-                          {pokharaLocations.map(l => <option key={l} value={l}>{l}</option>)}
-                        </optgroup>
-                        <optgroup label="🏙 Kathmandu Valley">
-                          {kathmanduLocations.map(l => <option key={l} value={l}>{l}</option>)}
-                        </optgroup>
-                      </select>
-                      <p className="text-xs text-gray-400 mt-2">Select the area closest to your home.</p>
+                    {/* 1. City & Ward Cascading Selector */}
+                    <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-150">
+                      <CityWardSelector
+                        value={selectedWard}
+                        onChange={(w) => {
+                          setSelectedWard(w);
+                          setErrorMsg('');
+                        }}
+                        required
+                        layout="row"
+                      />
+                      <p className="text-[11px] text-gray-400 mt-2">Select your city (Bharatpur, Kathmandu, or Pokhara) and your specific ward.</p>
                     </div>
+
+                    {/* 2. Tole Name */}
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 block mb-1.5 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-[#07535f]" />
+                        Tole / Street Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={tole}
+                        onChange={(e) => { setTole(e.target.value); setErrorMsg(''); }}
+                        placeholder="e.g. Siddhartha Tole, Ganesh Marg, New Road..."
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#07535f] focus:ring-1 focus:ring-[#07535f] text-gray-800 bg-white"
+                      />
+                    </div>
+
+                    {/* 3. Landmark */}
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 block mb-1.5 flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-[#07535f]" />
+                        Nearby Landmark <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={landmark}
+                        onChange={(e) => { setLandmark(e.target.value); setErrorMsg(''); }}
+                        placeholder="e.g. Opposite Prabhu Bank, Near Water Tank, Behind Hospital..."
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm font-semibold focus:outline-none focus:border-[#07535f] focus:ring-1 focus:ring-[#07535f] text-gray-800 bg-white"
+                      />
+                    </div>
+
+                    {errorMsg && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-xl">
+                        ⚠️ {errorMsg}
+                      </div>
+                    )}
+
+                    {/* Full Address Live Preview */}
+                    {selectedWard && (
+                      <div className="bg-sky-50/70 border border-sky-150 p-3.5 rounded-xl text-xs text-sky-900">
+                        <span className="font-bold block mb-0.5">📍 Service Address Preview:</span>
+                        <span className="font-semibold text-sky-800">{getFullAddress()}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -414,7 +479,7 @@ export default function BookingWizard() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Address:</span>
-                      <span className="font-bold text-gray-800">{address}</span>
+                      <span className="font-bold text-gray-800">{getFullAddress()}</span>
                     </div>
                     <div className="flex justify-between text-sm border-t border-gray-50 pt-4">
                       <span className="text-gray-400">Estimated Cost:</span>
