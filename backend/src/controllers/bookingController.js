@@ -4,7 +4,7 @@ import { sendNotification, notifyAllAdmins } from '../config/socketHelper.js';
 // Create booking (Customer)
 export const createBooking = async (req, res) => {
   try {
-    const { provider_id, category_id, booking_date, location, description, is_emergency } = req.body;
+    const { provider_id, category_id, booking_date, location, description, is_emergency, sub_service } = req.body;
 
     if (!provider_id || !category_id || !booking_date || !location) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -31,17 +31,27 @@ export const createBooking = async (req, res) => {
     const catResult = await query('SELECT name FROM service_categories WHERE id = $1', [category_id]);
     const catName = catResult.rows[0]?.name || 'a service';
 
+    // Extract sub-service name if provided or parse from description
+    let subTask = sub_service || '';
+    if (!subTask && description) {
+      const match = description.match(/^[^-]+-\s*([^:]+):/);
+      if (match) {
+        subTask = match[1].trim();
+      }
+    }
+    const subText = subTask ? ` for "${subTask}"` : '';
+
     // ── Notify Provider ──
     await sendNotification(
       provider_id, booking.id,
-      `New ${catName} booking request from ${customerName}`,
+      `New ${catName} booking request${subText} from ${customerName}`,
       'booking_request'
     );
 
     // ── Notify All Admins ──
     await notifyAllAdmins(
       booking.id,
-      `New booking #${booking.id}: ${customerName} booked ${catName}`,
+      `New booking #${booking.id}: ${customerName} booked ${catName}${subText}`,
       'admin_new_booking'
     );
 

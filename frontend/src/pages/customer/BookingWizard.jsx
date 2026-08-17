@@ -59,11 +59,11 @@ export default function BookingWizard() {
       emoji: '🔧',
       color: 'bg-blue-50 text-blue-600 border-blue-100',
       items: [
-        { id: 'pipe-leak', name: 'Pipe Leak Repair', duration: '1–2 hrs', price: 'Rs. 500 – 800' },
-        { id: 'drain-cleaning', name: 'Drain Cleaning', duration: '1 hr', price: 'Rs. 400 – 600' },
-        { id: 'tap-repair', name: 'Tap / Faucet Repair', duration: '30–60 min', price: 'Rs. 300 – 500' },
-        { id: 'new-pipe', name: 'New Pipe Installation', duration: '2–4 hrs', price: 'Rs. 1,000+' },
-        { id: 'water-tank', name: 'Water Tank Cleaning', duration: '2–3 hrs', price: 'Rs. 800 – 1,200' },
+        { id: 'pipe-leak', name: 'Pipe Leak Repair', duration: '1–2 hrs' },
+        { id: 'drain-cleaning', name: 'Drain Cleaning', duration: '1 hr' },
+        { id: 'tap-repair', name: 'Tap / Faucet Repair', duration: '30–60 min' },
+        { id: 'new-pipe', name: 'New Pipe Installation', duration: '2–4 hrs' },
+        { id: 'water-tank', name: 'Water Tank Cleaning', duration: '2–3 hrs' },
       ]
     },
     Electrical: {
@@ -72,11 +72,11 @@ export default function BookingWizard() {
       emoji: '⚡',
       color: 'bg-yellow-50 text-yellow-600 border-yellow-100',
       items: [
-        { id: 'wiring', name: 'Home Rewiring', duration: '4–8 hrs', price: 'Rs. 2,000+' },
-        { id: 'switchboard', name: 'Switchboard Repair', duration: '1–2 hrs', price: 'Rs. 400 – 700' },
-        { id: 'appliance', name: 'Appliance Installation', duration: '1–3 hrs', price: 'Rs. 500 – 1,000' },
-        { id: 'light-fitting', name: 'Light Fitting', duration: '1–2 hrs', price: 'Rs. 300 – 600' },
-        { id: 'panel-box', name: 'Panel Box / MCB Repair', duration: '2–4 hrs', price: 'Rs. 800 – 1,500' },
+        { id: 'wiring', name: 'Home Rewiring', duration: '4–8 hrs' },
+        { id: 'switchboard', name: 'Switchboard Repair', duration: '1–2 hrs' },
+        { id: 'appliance', name: 'Appliance Installation', duration: '1–3 hrs' },
+        { id: 'light-fitting', name: 'Light Fitting', duration: '1–2 hrs' },
+        { id: 'panel-box', name: 'Panel Box / MCB Repair', duration: '2–4 hrs' },
       ]
     },
     Cleaning: {
@@ -85,11 +85,11 @@ export default function BookingWizard() {
       emoji: '🧹',
       color: 'bg-green-50 text-green-600 border-green-100',
       items: [
-        { id: 'deep-clean', name: 'Full Home Deep Clean', duration: '4–6 hrs', price: 'Rs. 1,500 – 2,500' },
-        { id: 'kitchen-clean', name: 'Kitchen Deep Clean', duration: '2–3 hrs', price: 'Rs. 800 – 1,200' },
-        { id: 'bathroom-clean', name: 'Bathroom Scrubbing', duration: '1–2 hrs', price: 'Rs. 400 – 700' },
-        { id: 'sofa-clean', name: 'Sofa / Carpet Cleaning', duration: '2–4 hrs', price: 'Rs. 600 – 1,200' },
-        { id: 'office-clean', name: 'Office Cleaning', duration: '3–5 hrs', price: 'Rs. 1,200 – 2,000' },
+        { id: 'deep-clean', name: 'Full Home Deep Clean', duration: '4–6 hrs' },
+        { id: 'kitchen-clean', name: 'Kitchen Deep Clean', duration: '2–3 hrs' },
+        { id: 'bathroom-clean', name: 'Bathroom Scrubbing', duration: '1–2 hrs' },
+        { id: 'sofa-clean', name: 'Sofa / Carpet Cleaning', duration: '2–4 hrs' },
+        { id: 'office-clean', name: 'Office Cleaning', duration: '3–5 hrs' },
       ]
     },
     'AC Service': {
@@ -98,10 +98,10 @@ export default function BookingWizard() {
       emoji: '❄️',
       color: 'bg-teal-50 text-teal-600 border-teal-100',
       items: [
-        { id: 'ac-service', name: 'Regular AC Servicing', duration: '1–2 hrs', price: 'Rs. 600 – 900' },
-        { id: 'gas-refill', name: 'Gas Refilling', duration: '1 hr', price: 'Rs. 800 – 1,200' },
-        { id: 'ac-repair', name: 'AC Not Cooling Repair', duration: '2–3 hrs', price: 'Rs. 1,000 – 2,000' },
-        { id: 'ac-install', name: 'New AC Installation', duration: '3–5 hrs', price: 'Rs. 2,500+' },
+        { id: 'ac-service', name: 'Regular AC Servicing', duration: '1–2 hrs' },
+        { id: 'gas-refill', name: 'Gas Refilling', duration: '1 hr' },
+        { id: 'ac-repair', name: 'AC Not Cooling Repair', duration: '2–3 hrs' },
+        { id: 'ac-install', name: 'New AC Installation', duration: '3–5 hrs' },
       ]
     }
   };
@@ -248,6 +248,7 @@ export default function BookingWizard() {
           booking_date: date ? new Date(date).toISOString() : new Date().toISOString(),
           location: fullAddress,
           description: `${selectedCategory} - ${serviceObj?.name || selectedService}: ${notes || 'No notes'}${selectedProvider ? ` (Requested Professional: ${selectedProvider.name})` : ''}`,
+          sub_service: serviceObj?.name || selectedService,
           is_emergency: false
         });
         setIsLoading(false);
@@ -419,7 +420,9 @@ export default function BookingWizard() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-extrabold text-[#07535f]">{s.price}</p>
+                            <span className="text-xs font-bold text-[#07535f] bg-[#07535f]/10 px-2.5 py-1 rounded-lg">
+                              {selectedProvider?.hourlyRate ? `Rs. ${selectedProvider.hourlyRate}/hr` : 'Per Hour Billing'}
+                            </span>
                           </div>
                         </label>
                       );
@@ -593,7 +596,7 @@ export default function BookingWizard() {
                       </div>
                     )}
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Service:</span>
+                      <span className="text-gray-400">Selected Task:</span>
                       <span className="font-bold text-gray-800">
                         {services.find(s => s.id === selectedService)?.name}
                       </span>
@@ -607,9 +610,9 @@ export default function BookingWizard() {
                       <span className="font-bold text-gray-800">{getFullAddress()}</span>
                     </div>
                     <div className="flex justify-between text-sm border-t border-gray-50 pt-4">
-                      <span className="text-gray-400">Estimated Cost:</span>
+                      <span className="text-gray-400">Rate Basis:</span>
                       <span className="font-extrabold text-[#07535f]">
-                        {services.find(s => s.id === selectedService)?.price}
+                        Rs. {selectedProvider?.hourlyRate || 650}/hr (Professional's Hourly Rate)
                       </span>
                     </div>
                   </div>
