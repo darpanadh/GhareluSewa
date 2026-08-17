@@ -349,6 +349,14 @@ export const releaseEscrow = async (req, res) => {
       [paymentId]
     );
 
+    // Also update booking status to completed if not already
+    if (payment.booking_id) {
+      await query(
+        `UPDATE bookings SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [payment.booking_id]
+      );
+    }
+
     // Notify provider
     await sendNotification(
       payment.provider_id, payment.booking_id,

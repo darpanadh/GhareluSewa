@@ -102,9 +102,17 @@ export default function AdminDashboard() {
 
   const kpiCards = [
     {
-      label: 'Total Revenue',
-      value: `Rs. ${Number(stats?.total_revenue || 0).toLocaleString()}`,
-      trend: '+20.1% from last month',
+      label: 'Platform Revenue (10%)',
+      value: `Rs. ${Number(stats?.platform_revenue ?? stats?.total_revenue ?? 0).toLocaleString()}`,
+      trend: '10% Commission Earned',
+      up: true,
+      icon: <CreditCard className="w-5 h-5" />,
+      iconBg: 'bg-emerald-50 text-emerald-600',
+    },
+    {
+      label: 'Total Volume Budget',
+      value: `Rs. ${Number(stats?.total_transactions ?? (Number(stats?.platform_revenue || stats?.total_revenue || 0) * 10)).toLocaleString()}`,
+      trend: 'Gross Booking Volume',
       up: true,
       icon: <CreditCard className="w-5 h-5" />,
       iconBg: 'bg-blue-50 text-blue-600',
@@ -131,7 +139,7 @@ export default function AdminDashboard() {
       trend: '+201 since last hour',
       up: true,
       icon: <Calendar className="w-5 h-5" />,
-      iconBg: 'bg-emerald-50 text-emerald-600',
+      iconBg: 'bg-teal-50 text-teal-600',
     },
   ];
 
@@ -179,7 +187,7 @@ export default function AdminDashboard() {
         )}
 
         {/* ── KPI Cards ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {kpiCards.map((c, i) => (
             <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-start justify-between">

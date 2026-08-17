@@ -49,8 +49,13 @@ export default function MyEarnings() {
 
   const refreshPayoutRequests = useCallback(async () => {
     if (user?.id) {
-      const data = await fetchProviderPayoutRequestsAsync(user.id);
-      setPayoutRequests(data);
+      try {
+        const data = await fetchProviderPayoutRequestsAsync(user.id);
+        setPayoutRequests(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.warn('Failed to refresh payout requests', err);
+        setPayoutRequests([]);
+      }
     }
   }, [user?.id]);
 
@@ -100,25 +105,28 @@ export default function MyEarnings() {
     }
   };
 
-  const total = Number(earnings?.total ?? 0);
-  const netTotal = Number(earnings?.net ?? (total - Math.round(total * 0.10)));
-  const commission = Number(earnings?.commission ?? Math.round(total * 0.10));
-  const pendingEscrow = Number(earnings?.pendingEscrow ?? serverEarnings?.pending_escrow ?? 0);
-  const jobsCount = Number(earnings?.jobs ?? 0);
+  const safePayoutRequests = Array.isArray(payoutRequests) ? payoutRequests : [];
+  const safePayments = Array.isArray(payments) ? payments : [];
+
+  const total = Number(earnings?.total) || 0;
+  const netTotal = earnings?.net !== undefined ? Number(earnings.net) : Math.max(0, total - Math.round(total * 0.10));
+  const commission = earnings?.commission !== undefined ? Number(earnings.commission) : Math.round(total * 0.10);
+  const pendingEscrow = Number(earnings?.pendingEscrow ?? serverEarnings?.pending_escrow) || 0;
+  const jobsCount = Number(earnings?.jobs) || 0;
   const avg = jobsCount > 0 ? Math.round(netTotal / jobsCount) : 0;
 
   // Calculate Pending and Completed Withdrawals for exact financial consistency
-  const pendingPayouts = payoutRequests
-    .filter(r => r.status === 'pending')
-    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const pendingPayouts = safePayoutRequests
+    .filter(r => r && r.status === 'pending')
+    .reduce((sum, r) => sum + (Number(r?.amount) || 0), 0);
 
-  const completedPayouts = payoutRequests
-    .filter(r => r.status === 'completed')
-    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const completedPayouts = safePayoutRequests
+    .filter(r => r && r.status === 'completed')
+    .reduce((sum, r) => sum + (Number(r?.amount) || 0), 0);
 
   // Available balance = Net Released Earnings - (Pending + Completed Withdrawals)
   const availableBalance = serverEarnings?.available_balance !== undefined
-    ? Math.max(0, Number(serverEarnings.available_balance) - pendingPayouts)
+    ? Math.max(0, (Number(serverEarnings.available_balance) || 0) - pendingPayouts)
     : Math.max(0, netTotal - pendingPayouts - completedPayouts);
 
   const handleOpenWithdraw = () => {
@@ -188,19 +196,19 @@ export default function MyEarnings() {
 
   // Merge server payments with payout store requests for unified history
   const mergedPayments = (() => {
-    const storeIds = new Set(payoutRequests.map(r => r.id));
+    const storeIds = new Set(safePayoutRequests.map(r => r?.id).filter(Boolean));
     // Update local payments with live status from store
-    const updatedPayments = payments.map(p => {
-      if (storeIds.has(p.id)) {
-        const storeReq = payoutRequests.find(r => r.id === p.id);
-        return { ...p, status: storeReq.status };
+    const updatedPayments = safePayments.map(p => {
+      if (p && storeIds.has(p.id)) {
+        const storeReq = safePayoutRequests.find(r => r && r.id === p.id);
+        return { ...p, status: storeReq?.status || p.status };
       }
       return p;
     });
     // Add any store requests not yet in payments list
-    const existingIds = new Set(updatedPayments.map(p => p.id));
-    const newFromStore = payoutRequests
-      .filter(r => !existingIds.has(r.id))
+    const existingIds = new Set(updatedPayments.map(p => p?.id).filter(Boolean));
+    const newFromStore = safePayoutRequests
+      .filter(r => r && !existingIds.has(r.id))
       .map(r => ({ id: r.id, amount: r.amount, status: r.status, created_at: r.requested_at, method: r.method }));
     return [...newFromStore, ...updatedPayments];
   })();
@@ -209,7 +217,7 @@ export default function MyEarnings() {
 
   // ── Cash deduction / negative balance / freeze logic ──
   const calcAvailableBalance = serverEarnings?.available_balance !== undefined
-    ? serverEarnings.available_balance
+    ? Number(serverEarnings.available_balance) || 0
     : netTotal - pendingPayouts - completedPayouts;
   const isNegative = calcAvailableBalance < 0;
   const isFrozen = serverEarnings?.is_frozen || false;
@@ -424,11 +432,21 @@ export default function MyEarnings() {
               ) : (
                 <div className="divide-y divide-gray-50">
                   {mergedPayments.map((p, i) => {
+                    if (!p) return null;
                     const amt = Number(p.amount) || 0;
-                    const isWithdrawal = p.id?.startsWith('PW-') || p.id?.startsWith('WITHDRAW');
-                    const dateStr = p.created_at
-                      ? format(new Date(p.created_at), 'dd MMM yyyy, hh:mm a')
-                      : '—';
+                    const pIdStr = String(p.id || '');
+                    const isWithdrawal = pIdStr.startsWith('PW-') || pIdStr.startsWith('WITHDRAW');
+                    let dateStr = '—';
+                    try {
+                      if (p.created_at) {
+                        const d = new Date(p.created_at);
+                        if (!isNaN(d.getTime())) {
+                          dateStr = format(d, 'dd MMM yyyy, hh:mm a');
+                        }
+                      }
+                    } catch {
+                      dateStr = '—';
+                    }
 
                     return (
                       <div key={p.id || i} className="p-5 flex items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors">

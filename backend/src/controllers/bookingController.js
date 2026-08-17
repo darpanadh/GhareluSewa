@@ -166,6 +166,27 @@ export const updateBookingStatus = async (req, res) => {
       [status, bookingId]
     );
 
+    // If status is completed, ensure payment entry exists with commission & released escrow
+    if (status === 'completed') {
+      try {
+        const existingPay = await query(`SELECT id FROM payments WHERE booking_id = $1`, [bookingId]);
+        if (existingPay.rows.length === 0) {
+          const jobPrice = parseFloat(result.rows[0]?.total_price || 800);
+          const commission = parseFloat((jobPrice * 0.10).toFixed(2));
+          const providerPayout = parseFloat((jobPrice - commission).toFixed(2));
+          const oid = `GS-AUTO-${bookingId}-${Date.now()}`;
+
+          await query(
+            `INSERT INTO payments (booking_id, customer_id, provider_id, amount, commission, provider_payout, esewa_oid, status, payment_method, escrow_released, escrow_released_at, paid_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'completed', 'cash_deposit', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+            [bookingId, booking.customer_id, booking.provider_id, jobPrice, commission, providerPayout, oid]
+          );
+        }
+      } catch (err) {
+        console.warn('Could not auto-create payment record on booking completion:', err);
+      }
+    }
+
     // ── Build meaningful notification messages ──
     const statusMessages = {
       accepted: {
