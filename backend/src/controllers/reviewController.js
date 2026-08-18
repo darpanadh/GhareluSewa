@@ -3,9 +3,7 @@ import { sendNotification, notifyAllAdmins } from '../config/socketHelper.js';
 
 // List of profanity and inappropriate words to block/auto-delete
 const BAD_WORDS = [
-  'fuck', 'shit', 'asshole', 'bitch', 'bastard', 'cunt', 'dick', 'pussy',
-  'slut', 'whore', 'scam', 'fraud', 'idiot', 'stupid', 'dumb', 'bullshit',
-  'radi', 'khalasi', 'machikne', 'randi', 'muji', 'lado', 'chada', 'ghate'
+   'shit',  'bitch', 'scam', 'fraud', 'idiot', 'stupid', 'dumb', 'bullshit'
 ];
 
 export const containsBadWords = (text) => {
