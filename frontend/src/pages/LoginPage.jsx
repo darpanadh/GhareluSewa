@@ -277,35 +277,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Demo credentials hint */}
-        <div className="mt-4 p-3.5 bg-sky-50/80 border border-sky-200/80 rounded-2xl text-xs text-sky-950 space-y-2">
-          <p className="font-bold flex items-center justify-between">
-            <span>Demo Quick Login:</span>
-          </p>
-          <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-            <button
-              type="button"
-              onClick={() => { setEmail('priya@gmail.com'); setPassword('password'); }}
-              className="bg-white hover:bg-sky-100 text-sky-900 font-bold py-1.5 px-2 rounded-xl border border-sky-200 text-[11px] transition-colors text-center cursor-pointer shadow-2xs"
-            >
-              Customer
-            </button>
-            <button
-              type="button"
-              onClick={() => { setEmail('rajesh@gmail.com'); setPassword('password'); }}
-              className="bg-white hover:bg-sky-100 text-sky-900 font-bold py-1.5 px-2 rounded-xl border border-sky-200 text-[11px] transition-colors text-center cursor-pointer shadow-2xs"
-            >
-              Provider
-            </button>
-            <button
-              type="button"
-              onClick={() => { setEmail('admin@gharelusewa.com'); setPassword('password'); }}
-              className="bg-white hover:bg-sky-100 text-sky-900 font-bold py-1.5 px-2 rounded-xl border border-sky-200 text-[11px] transition-colors text-center cursor-pointer shadow-2xs"
-            >
-              Admin
-            </button>
-          </div>
-        </div>
+
       </Card>
 
       {/* ── RE-VERIFY KYC MODAL ─────────────────────────────────────────── */}
