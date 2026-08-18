@@ -1,425 +1,294 @@
-# Gharelu Sewa - Local Service Platform
+# Gharelu Sewa — Local Home Service Marketplace
 
-🏠 **Connecting you with trusted local service providers**
+Gharelu Sewa is a full-stack local service marketplace connecting households with verified, skilled local service professionals such as Plumbers, Electricians, Cleaners, AC Technicians, Tutors, and Repair Experts across Nepal.
 
-A full-stack web application for booking household services like electrical work, plumbing, tutoring, cleaning, and repairs. Built with modern web technologies for scalability, security, and user experience.
-## changes 
+The platform provides location-aware service matching down to municipal ward levels, real-time messaging, emergency booking dispatches, escrow-backed payment protection via eSewa and Khalti, provider KYC identity verification, and an automated commission and wallet settlement engine.
 
-## 📋 Quick Start
 
-### Prerequisites
-- **Node.js** (v16+ recommended)
-- **npm** or **yarn**
-- **PostgreSQL** (v12+)
+## Key Highlights & Capabilities
 
-### Installation
+- Precision Ward-Based Matching and Priority Sorting
+  - Location filtering by metropolitan cities (Kathmandu, Pokhara, Bharatpur) and their administrative wards.
+  - Smart sorting algorithm prioritizing providers with exact ward matches first, followed by numerical proximity for geographic matching.
 
-#### 1. Backend Setup
+- Multi-Mode Payment and Escrow Protection
+  - Integrated digital payments via eSewa with HMAC-SHA256 signature verification and Khalti.
+  - Platform Escrow System: Customer payments are held safely until service completion and customer satisfaction.
+  - Cash-on-delivery tracking with automatic 10% platform commission deduction from provider wallets.
 
-```bash
-cd backend
+- Wallet Dues Settlement and Auto-Freezing Engine
+  - Automated tracking of provider balances. Cash transactions deduct 10% commission.
+  - Negative balance threshold auto-freezes provider job acceptance until dues are settled.
+  - Self-service Dues Settlement Portal for providers allowing instant unfreezing via eSewa, Khalti, or Direct Bank Transfer.
 
-# Install dependencies
-npm install
+- Synchronized Rating and Review System
+  - Transactional ACID review creation with automatic bad word filtering.
+  - Dynamic mathematical recalculation of average ratings (`rating_avg`) and review counts (`total_reviews`), instantly reflected on professional profiles.
 
-# Create .env file
-cp .env.example .env
+- Mandatory Provider KYC and Admin Control
+  - Two-tier verification requiring citizenship numbers and photo document uploads.
+  - Comprehensive Admin Portal for managing users, approving/rejecting KYC applications, releasing escrow funds, managing categories, and exporting CSV reports.
 
-# Edit .env with your database credentials (required before starting!)
-nano .env
+- Real-Time Notifications and Tracking
+  - WebSockets powered by Socket.IO for instant messaging, status change alerts, and live tracking map.
 
-# Initialize database (creates tables and mock data)
-npm run init-db
 
-# Start development server
-npm run dev
-```
+## Architecture & Technology Stack
 
-**Environment Variables (.env):**
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=gharelu_sewa
-DB_USER=postgres
-DB_PASSWORD=yourpassword
-PORT=5000
-JWT_SECRET=your_super_secret_key_change_this
-FRONTEND_URL=http://localhost:5173
-```
+### Technology Stack
 
-The server will automatically create all tables on first run.
+| Layer | Technology / Tools |
+| :--- | :--- |
+| Frontend | React 18 (Vite), Tailwind CSS, Lucide Icons, React Router v6, Axios, Socket.IO-client |
+| Backend | Node.js, Express.js, Socket.IO, JWT (JSON Web Tokens), bcryptjs |
+| Database | PostgreSQL (Node-Postgres `pg` pool) |
+| Payment Gateway | eSewa Gateway (EPAY v2 with HMAC-SHA256 signature validation), Khalti, Platform Escrow |
+| Deployment | Vercel (Frontend), Render / Railway (Backend), Supabase / Managed PostgreSQL (Database) |
 
-#### 2. Frontend Setup
 
-```bash
-cd ../frontend
-
-# Install dependencies
-npm install
-
-# Create .env file
-cp .env.example .env
-
-# Start development server
-npm run dev
-```
-
-**Environment Variables (.env):**
-```
-VITE_API_URL=http://localhost:5000/api
-VITE_SOCKET_URL=http://localhost:5000
-```
-
-### Access Application
-
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:5000/api
-- **Health Check**: http://localhost:5000/health
-
-## 🏗️ Architecture
+### Repository Structure
 
 ```
-Gharelu Sewa/
-├── Backend/
+gharelu-sewa/
+├── backend/
 │   ├── src/
-│   │   ├── config/         # Database & Socket configuration
-│   │   ├── controllers/    # Business logic
-│   │   ├── middleware/     # Auth, error handling
-│   │   ├── routes/         # API endpoints
-│   │   ├── services/       # API client service
-│   │   ├── utils/          # JWT, password utilities
-│   │   └── server.js       # Express app entry
+│   │   ├── config/          # Database connection & initial migration scripts
+│   │   ├── controllers/     # Business logic (Auth, Bookings, Payments, Reviews, Admin, Dues)
+│   │   ├── middleware/      # JWT auth guard, role-based authorization
+│   │   ├── routes/          # Express REST API routes
+│   │   ├── utils/           # HMAC eSewa validation, password hashing, bad word filter
+│   │   └── server.js        # Server entry point & Socket.IO initialization
+│   ├── .env.example
 │   └── package.json
 │
-├── Frontend/
+├── frontend/
 │   ├── src/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── context/        # Auth context
-│   │   ├── pages/          # Page components
-│   │   ├── services/       # API & Socket clients
-│   │   ├── App.jsx         # Main app with routing
-│   │   └── main.jsx        # Entry point
-│   ├── index.html
+│   │   ├── components/      # Shared UI elements (Navbar, Footer, Modals, Ward Selector)
+│   │   ├── context/         # AuthContext (global authentication state)
+│   │   ├── pages/           # Page views (Customer, Provider, Admin portals)
+│   │   │   ├── admin/       # Dashboard, Manage Users, Pending KYC, Payouts, Bookings
+│   │   │   ├── customer/    # Browse Services, Booking Wizard, Emergency, Details, Tracking
+│   │   │   └── provider/    # Provider Dashboard, Earnings & Dues Settlement, Profile
+│   │   ├── services/        # Centralized Axios API client & Socket listeners
+│   │   ├── App.jsx          # Main application & Protected Routes
+│   │   └── main.jsx         # React application entry point
+│   ├── public/              # Brand assets & static images
+│   ├── .env.example
 │   └── package.json
 │
 └── README.md
 ```
 
-## 🔑 Demo Credentials
 
-### Customer
-- **Email**: customer@test.com
-- **Password**: password123
+## Quick Start & Local Setup
 
-### Service Provider
-- **Email**: provider@test.com
-- **Password**: password123
+### Prerequisites
 
-### Administrator
-- **Email**: admin@test.com
-- **Password**: password123
+- Node.js v18.0.0 or higher
+- npm v9.0.0 or higher
+- PostgreSQL v14.0 or higher (running locally or managed database instance)
 
-## 🛠️ Technology Stack
 
-### Frontend
-- **React 18** - UI library
-- **Tailwind CSS** - Styling
-- **React Router** - Navigation
-- **Axios** - HTTP client
-- **Socket.IO Client** - Real-time communication
-- **Lucide Icons** - Icon library
-- **Vite** - Build tool
+### 1. Backend Installation & Database Setup
 
-### Backend
-- **Node.js** - Runtime
-- **Express.js** - Web framework
-- **PostgreSQL** - Database
-- **Socket.IO** - WebSocket server
-- **JWT** - Authentication
-- **bcryptjs** - Password hashing
-- **CORS** - Cross-origin resource sharing
-
-## 📚 API Endpoints
-
-### Authentication
-```
-POST   /api/auth/register      - User registration
-POST   /api/auth/login         - User login
-GET    /api/auth/me            - Get current authenticated user
-POST   /api/auth/reverify-kyc  - Re-submit provider KYC verification
-```
-
-### Users & Providers Lookup
-```
-PATCH  /api/users/profile                    - Update user profile
-GET    /api/users/providers                  - Browse all service providers
-GET    /api/users/providers/:id              - Get provider profile details
-GET    /api/users/providers-by-ward/:ward/:category_id - Filter providers by ward & category
-GET    /api/users/search                     - Search users/providers
-GET    /api/users/public-stats               - Get public platform statistics
-```
-
-### Service Categories
-```
-GET    /api/categories                       - Get all service categories
-GET    /api/categories/:id/providers         - Get providers in category
-POST   /api/categories                       - Create category (Admin)
-PATCH  /api/categories/:id                   - Update category (Admin)
-DELETE /api/categories/:id                   - Delete category (Admin)
-```
-
-### Bookings
-```
-POST   /api/bookings                         - Create booking request
-GET    /api/bookings                         - User's bookings
-GET    /api/bookings/:id                     - Get booking details
-PATCH  /api/bookings/:id/status              - Update booking status
-PATCH  /api/bookings/:id/cancel              - Cancel booking
-POST   /api/bookings/emergency/create       - Create emergency booking request
-```
-
-### Payments & Escrow
-```
-POST   /api/payments/initiate/:bookingId     - Initiate digital payment (eSewa / Khalti)
-GET    /api/payments/verify                  - Verify eSewa HMAC signature & payment callback
-GET    /api/payments/booking/:bookingId      - Get payment record for booking
-POST   /api/payments/manual/:bookingId       - Submit manual payment details
-POST   /api/payments/cash/:bookingId         - Record cash payment
-POST   /api/payments/release/:paymentId      - Release escrow payment to provider (Admin)
-GET    /api/payments/all                     - View all platform transactions (Admin)
-```
-
-### Provider Portal & Earnings
-```
-POST   /api/providers/profile                - Create provider profile
-GET    /api/providers/profile/:providerId    - Get provider profile details
-PATCH  /api/providers/profile                - Update provider profile & KYC info
-PATCH  /api/providers/availability           - Toggle online/offline status
-GET    /api/providers/earnings               - View provider earnings summary
-POST   /api/providers/payouts                - Submit payout request
-GET    /api/providers/payouts                - Get provider payout history
-```
-
-### Reviews & Ratings
-```
-POST   /api/reviews                          - Submit service review
-GET    /api/reviews/provider/:id             - Get provider reviews
-GET    /api/reviews/booking/:id              - Get review for specific booking
-GET    /api/reviews/stats/:id                - Get provider rating stats
-DELETE /api/reviews/:reviewId                - Delete review (Admin)
-```
-
-### Messaging & Notifications
-```
-POST   /api/messages                         - Send in-booking message
-GET    /api/messages/booking/:id             - Get booking chat messages
-GET    /api/messages/booking/:id/count       - Unread message count
-GET    /api/notifications                    - User notifications
-PATCH  /api/notifications/:id/read           - Mark notification as read
-PATCH  /api/notifications/read-all           - Mark all notifications as read
-```
-
-### Admin Operations
-```
-GET    /api/admin/stats                      - Overview platform statistics
-GET    /api/admin/users                      - List all platform users
-PATCH  /api/admin/users/:userId/deactivate   - Deactivate user account
-PATCH  /api/admin/users/:userId/activate     - Reactivate user account
-GET    /api/admin/providers/pending         - Get pending KYC verification requests
-GET    /api/admin/providers/all             - Get all service providers
-PATCH  /api/admin/providers/:userId/verify   - Approve provider KYC verification
-PATCH  /api/admin/providers/:userId/reject   - Reject provider KYC verification
-PATCH  /api/admin/providers/:userId/clear-dues - Clear provider dues
-GET    /api/admin/bookings                   - View all bookings
-GET    /api/admin/bookings/export            - Export bookings as CSV report
-GET    /api/admin/payouts                    - View provider payout requests
-PATCH  /api/admin/payouts/:id/status         - Approve/reject payout request
-GET    /api/admin/analytics                  - Get platform analytics data
-```
-
-## 🔐 Security Features
-
-- ✅ **JWT Authentication** - Token-based secure authentication
-- ✅ **Password Hashing** - bcrypt with salt rounds for security
-- ✅ **Role-Based Access Control** - Customer, Provider, Admin roles
-- ✅ **HMAC Signature Verification** - Secure eSewa payment callback validation
-- ✅ **CORS Protection** - Configured cross-origin resource sharing
-- ✅ **Input Validation** - Client and server-side request validation
-- ✅ **Error Handling** - Comprehensive error management and logs
-- ✅ **Database Constraints** - Foreign keys, enums, and data integrity
-
-## 🚀 Features Implemented
-
-### For Customers
-- ✅ User registration & authentication with live input validation
-- ✅ Browse service providers by category, rating, and city/ward
-- ✅ Nearest provider prioritization based on service category & location proximity
-- ✅ Interactive Multi-step Booking Wizard with detailed location fields (landmark, street address, ward)
-- ✅ Emergency booking requests for urgent household needs
-- ✅ Direct online payment integration (eSewa with HMAC signature verification, Khalti, Manual, Cash)
-- ✅ Escrow payment protection (funds held safely until service completion)
-- ✅ Live Map Tracking for ongoing active bookings
-- ✅ In-booking real-time chat with assigned service provider
-- ✅ Rate and review completed services with synchronized ratings
-- ✅ Booking history with detailed invoice generation and download
-
-### For Service Providers
-- ✅ Provider registration & profile management
-- ✅ KYC identity verification upload (Citizenship No. & Document photos)
-- ✅ Verification status tracking (Approved, Pending, Rejected) with re-verification request
-- ✅ Toggle availability (Online / Offline mode)
-- ✅ View incoming booking requests with customer location details
-- ✅ Accept or decline booking requests
-- ✅ Real-time in-booking chat with customer
-- ✅ Comprehensive Earnings Dashboard & financial stats
-- ✅ Submit payout requests and track payout history
-- ✅ Track rating averages and customer review feedback
-
-### For Administrators
-- ✅ Comprehensive Admin Dashboard with real-time platform metrics & analytics
-- ✅ Complete User Management Table (view users, activate/deactivate accounts, inspect user details)
-- ✅ Dedicated Provider KYC Verification UI (review identity documents, verify or reject profiles)
-- ✅ Escrow & Payment Management (inspect payments, release escrow funds upon completion)
-- ✅ Payout Request Processing (approve or reject provider payout requests)
-- ✅ Export platform bookings report as CSV
-- ✅ Service category management (create, update, delete categories)
-
-### Real-Time & Infrastructure Features
-- ✅ **Socket.IO Integration** - Instant notifications, status change alerts, and live messaging
-- ✅ **Live Map Tracking** - Visual tracking of provider status and location
-- ✅ **PostgreSQL Auto-Initialization** - Self-healing schema setup with comprehensive multi-ward seeded providers
-- ✅ **Vercel SPA Deployment** - Optimized routing rewrite configuration for frontend hosting
-
-## 📦 Database Schema
-
-### Tables
-- **users** - Accounts for customers, providers, and admins with ward & verification fields
-- **service_categories** - Household service categories (Electrician, Plumber, Cleaner, etc.)
-- **provider_profiles** - Extended provider data (hourly rates, KYC docs, badges, rating metrics)
-- **bookings** - Booking details (location, landmarks, emergency flag, total price, status)
-- **reviews** - Customer ratings, photo attachments, and service feedback
-- **messages** - In-booking real-time chat messages
-- **notifications** - System and user notification log
-- **payments** - Payment records (eSewa OID/RefID, escrow status, amounts, commissions)
-- **payout_requests** - Provider withdrawal requests and administrative review statuses
-
-## 🔄 Development Workflow
-
-### Backend Development
 ```bash
+# Navigate to backend directory
 cd backend
-npm run dev         # Start with nodemon
-npm start          # Production start
+
+# Install dependencies
+npm install
+
+# Create environment configuration file
+cp .env.example .env
 ```
 
-### Frontend Development
+Configure environment variables in `backend/.env`:
+
+```env
+PORT=5000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=gharelu_sewa
+DB_USER=postgres
+DB_PASSWORD=your_db_password
+
+# Authentication & Security
+JWT_SECRET=your_jwt_secret_key
+
+# Payment Gateway Configuration
+ESEWA_MERCHANT_CODE=EPAYTEST
+ESEWA_SECRET_KEY=your_esewa_secret_key
+```
+
+Initialize the database tables and seed data:
+
 ```bash
-cd frontend
-npm run dev        # Start Vite dev server
-npm run build      # Build for production
-npm run preview    # Preview production build
+# Start backend server in development mode
+npm run dev
 ```
 
-## 📱 Responsive Design
+The backend API server will run on `http://localhost:5000`.
 
-- ✅ Mobile-first design
-- ✅ Tablet optimized
-- ✅ Desktop enhanced
-- ✅ Touch-friendly UI
-- ✅ Accessible navigation
 
-## 🚀 Deployment
+### 2. Frontend Setup
 
-### Frontend (Vercel)
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Create environment configuration file
+cp .env.example .env
+```
+
+Configure `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The frontend application will be accessible at `http://localhost:5173`.
+
+
+## System Workflows & Core Logic
+
+### 1. Commission & Wallet Dues Settlement Model
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Customer
+    actor P as Provider
+    participant S as Server/DB
+    actor A as Admin
+
+    Note over C,P: Case A: Cash Payment
+    P->>S: Confirm Cash Received (Rs. 1,000)
+    S->>S: Deduct 10% Commission (Rs. 100) from Provider Balance
+    alt Balance < 0
+        S->>P: Account Frozen (Cannot accept new bookings)
+        P->>S: Pay Dues (eSewa / Khalti / Bank Deposit)
+        S->>S: Add Credit & Auto-Unfreeze Account
+    end
+
+    Note over C,P: Case B: Online eSewa/Khalti Payment
+    C->>S: Pay via eSewa (Escrow Held)
+    S->>S: Status = Completed
+    A->>P: Release Escrow (Payout Requested)
+```
+
+
+### 2. Ward-Based Location Prioritization System
+
+When a customer searches for service providers in a specific city ward:
+
+1. Tier 1 Priority: Service providers who explicitly selected that exact ward in their coverage settings.
+2. Tier 2 Priority: Providers with the lowest numerical ward assigned for proximity ranking.
+3. Tier 3 Priority: City-wide fallback coverage providers.
+
+
+## REST API Reference
+
+### Authentication & Profile
+
+- `POST /api/auth/register` — Register a customer or service provider account
+- `POST /api/auth/login` — Authenticate and receive JWT token
+- `GET /api/auth/me` — Retrieve current authenticated user session
+- `POST /api/auth/reverify-kyc` — Re-submit KYC identification documents
+
+### Services & Service Providers
+
+- `GET /api/categories` — Fetch all service categories (Plumbing, Electrical, etc.)
+- `GET /api/users/providers` — List service providers with city/ward and rating filters
+- `GET /api/users/providers/:id` — Retrieve detailed provider profile
+
+### Bookings & Emergency Flow
+
+- `POST /api/bookings` — Create a standard booking request with detailed ward/landmark info
+- `POST /api/bookings/emergency/create` — Dispatch emergency service request
+- `GET /api/bookings` — Get list of user bookings
+- `PATCH /api/bookings/:id/status` — Update booking status (`accepted`, `in_progress`, `completed`, `cancelled`)
+
+### Payments & Dues Settlement
+
+- `POST /api/payments/initiate/:bookingId` — Initiate digital payment with eSewa HMAC validation
+- `GET /api/payments/verify` — eSewa callback verification endpoint
+- `POST /api/payments/cash/:bookingId` — Record cash payment and auto-deduct 10% commission
+- `POST /api/providers/settle-dues` — Settle negative wallet balance and unfreeze account
+
+### Reviews & Rating
+
+- `POST /api/reviews` — Submit review for a completed booking and recalculate provider rating
+- `GET /api/reviews/provider/:id` — Get provider review list and stats
+
+### Admin Portal
+
+- `GET /api/admin/stats` — Platform metrics summary
+- `GET /api/admin/providers/pending` — List pending KYC applications
+- `PATCH /api/admin/providers/:userId/verify` — Approve provider KYC application
+- `GET /api/admin/payouts` — Review provider payout requests
+- `GET /api/admin/bookings/export` — Export platform bookings report as CSV
+
+
+## Database Entity Schema
+
+The database consists of relational tables optimized with indexes:
+
+- `users`: User identity, roles (`customer`, `provider`, `admin`), email, password hash, phone, city/ward, verification status.
+- `provider_profiles`: Skill badges, hourly rates, citizenship number, KYC document URLs, rating average (`rating_avg`), total reviews, wallet balance.
+- `bookings`: Booking schedule, total price, ward, street address, landmark, emergency flag, status state machine.
+- `reviews`: Ratings (1-5 stars), text feedback, customer photo attachments, completion flags.
+- `payments`: Payment method (`esewa`, `khalti`, `cash`), transaction reference, amount, commission, escrow release status.
+- `dues_settlements`: Provider commission dues payment records and method references.
+- `messages`: Real-time chat history for active bookings.
+- `notifications`: System alerts and notification status logs.
+
+
+## Security Features & Best Practices
+
+- JWT Token Authentication: Bearer tokens with expiration for protected API endpoints.
+- Password Security: Salted password hashing using `bcryptjs`.
+- Role-Based Authorization: Middleware guards restricting endpoints to authorized roles (`customer`, `provider`, `admin`).
+- HMAC SHA-256 Signatures: Secure payment verification against eSewa API tampering.
+- Profanity Filter: Server-side validation against inappropriate text in reviews.
+- Database Transaction Security: ACID transactions (`BEGIN`/`COMMIT`/`ROLLBACK`) for review creation and rating recalculations.
+- Environment Isolation: Sensitive keys (JWT secrets, API credentials, Database passwords) stored strictly in `.env` files and never committed to version control.
+
+
+## Build & Production Deployment
+
+### Frontend Build
+
 ```bash
 cd frontend
 npm run build
-# Push to GitHub and connect to Vercel
 ```
 
-### Backend (Render)
-```bash
-# Create Render account and connect GitHub repo
-# Set environment variables in Render dashboard
-# Deploy!
-```
+Generates an optimized production build artifact in `frontend/dist`.
 
-### Database (Supabase/Render)
-```bash
-# Use managed PostgreSQL from Supabase or Render
-# Update DB_HOST, DB_USER, DB_PASSWORD in .env
-```
 
-## 🐛 Troubleshooting
+### Deployment Guidelines
 
-### Port Already in Use
-```bash
-# Linux/Mac
-lsof -i :5000           # Backend
-lsof -i :5173           # Frontend
+- Frontend: Deploy `frontend/dist` to Vercel or Netlify with single-page application (SPA) rewrite rules.
+- Backend: Deploy Node/Express server to Render, Railway, or AWS EC2.
+- Database: Host PostgreSQL on Supabase or Render Managed Postgres.
 
-# Windows
-netstat -ano | findstr :5000
-```
 
-### Database Connection Error
-- Check PostgreSQL is running
-- Verify credentials in .env
-- Ensure database exists: `createdb gharelu_sewa`
+## License & Credits
 
-### CORS Errors
-- Verify FRONTEND_URL in backend .env
-- Check Socket.IO CORS configuration
+This project is released under the MIT License.
 
-### Hot Reload Not Working
-- Restart dev server
-- Check file watcher limits (Linux)
-
-## 📖 Documentation
-
-- [Database Architecture](./docs/DATABASE.md) - ER diagrams, columns, constraints and indexes
-- [Backend Systems](./docs/BACKEND.md) - Server setup, auth tokens, sockets, and eSewa signatures
-- [Frontend Portal](./docs/FRONTEND.md) - React routing, Auth contexts, wizards, and premium dashboard
-- [System Interaction Flow](./docs/SYSTEM_FLOW.md) - Mermaids mapping booking lifecycles & transactions
-- [Viva/Defense Preparation](./docs/VIVA_QUESTIONS.md) - Examiner/viva questions & detailed answers
-- [API Documentation](./API_DOCS.md) - Detailed endpoint docs
-- [Database Schema](./SCHEMA.md) - ER diagram and tables
-- [Deployment Guide](./DEPLOYMENT.md) - Production setup
-
-## 🤝 Contributing
-
-1. Create a feature branch
-2. Commit changes
-3. Push to branch
-4. Create Pull Request
-
-## 📝 License
-
-MIT License - feel free to use this project
-
-## 💬 Support
-
-For issues or questions:
-1. Check troubleshooting section
-2. Open an issue on GitHub
-3. Contact development team
-
-## 🎯 Future Enhancements
-
-- [ ] Mobile app (React Native)
-- [x] Payment gateway integration (eSewa HMAC, Khalti)
-- [x] GPS-based provider mapping & live tracking
-- [x] Provider background & KYC identity verification
-- [x] Ward & location-based provider matching & proximity prioritization
-- [x] Comprehensive Admin Portal (Users, Bookings, KYC, Payouts)
-- [ ] AI-powered recommendations
-- [ ] Multi-language support (Nepali)
-- [ ] Premium subscription plans
-
----
-
-**Made with ❤️ by Gharelu Sewa Team**
-
-Tribhuvan University | Institute of Engineering | Paschimanchal Campus
-
-**2026 - All Rights Reserved**
+Developed for Gharelu Sewa local service platform. All rights reserved.
