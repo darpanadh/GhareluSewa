@@ -49,33 +49,6 @@ export const initializeDatabase = async () => {
       )
     `);
 
-    // Alter table to add new columns if they were created before this update
-    try {
-      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS citizenship_no VARCHAR(100)`);
-      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS citizenship_image_url TEXT`);
-      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS skill_badges TEXT DEFAULT ''`);
-      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS background_check_status VARCHAR(50) DEFAULT 'pending'`);
-      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS negative_since TIMESTAMP DEFAULT NULL`);
-      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS is_frozen BOOLEAN DEFAULT FALSE`);
-      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS service_wards TEXT DEFAULT ''`);
-      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS photo_url TEXT`);
-      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS completion_status VARCHAR(100) DEFAULT 'completed_on_time'`);
-      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_repeated_customer BOOLEAN DEFAULT FALSE`);
-      await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_price DECIMAL(10, 2) DEFAULT 650`);
-      await query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`);
-      await query(`ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'accepted', 'in_progress', 'awaiting_payment', 'completed', 'cancelled'))`);
-
-      // Sync background_check_status for existing verified providers
-      await query(`
-        UPDATE provider_profiles
-        SET background_check_status = 'approved'
-        WHERE user_id IN (SELECT id FROM users WHERE is_verified = TRUE AND role = 'provider')
-          AND (background_check_status IS NULL OR background_check_status = 'pending')
-      `);
-    } catch (e) {
-      console.log('Columns already exist or error adding them:', e.message);
-    }
-
     // Create bookings table
     await query(`
       CREATE TABLE IF NOT EXISTS bookings (
@@ -102,9 +75,39 @@ export const initializeDatabase = async () => {
         provider_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         rating INTEGER CHECK (rating >= 1 AND rating <= 5) NOT NULL,
         comment TEXT,
+        photo_url TEXT,
+        completion_status VARCHAR(100) DEFAULT 'completed_on_time',
+        is_repeated_customer BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Ensure all optional / new columns exist on provider_profiles, reviews, and bookings tables
+    try {
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS citizenship_no VARCHAR(100)`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS citizenship_image_url TEXT`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS skill_badges TEXT DEFAULT ''`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS background_check_status VARCHAR(50) DEFAULT 'pending'`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS negative_since TIMESTAMP DEFAULT NULL`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS is_frozen BOOLEAN DEFAULT FALSE`);
+      await query(`ALTER TABLE provider_profiles ADD COLUMN IF NOT EXISTS service_wards TEXT DEFAULT ''`);
+      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS photo_url TEXT`);
+      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS completion_status VARCHAR(100) DEFAULT 'completed_on_time'`);
+      await query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS is_repeated_customer BOOLEAN DEFAULT FALSE`);
+      await query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS total_price DECIMAL(10, 2) DEFAULT 650`);
+      await query(`ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check`);
+      await query(`ALTER TABLE bookings ADD CONSTRAINT bookings_status_check CHECK (status IN ('pending', 'accepted', 'in_progress', 'awaiting_payment', 'completed', 'cancelled'))`);
+
+      // Sync background_check_status for existing verified providers
+      await query(`
+        UPDATE provider_profiles
+        SET background_check_status = 'approved'
+        WHERE user_id IN (SELECT id FROM users WHERE is_verified = TRUE AND role = 'provider')
+          AND (background_check_status IS NULL OR background_check_status = 'pending')
+      `);
+    } catch (e) {
+      console.log('Columns already exist or error adding them:', e.message);
+    }
 
     // Create messages table
     await query(`

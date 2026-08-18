@@ -101,7 +101,7 @@ export const createReview = async (req, res) => {
 
     // 2. Re-calculate mathematical average of all customer ratings for this provider
     const avgRating = await client.query(
-      `SELECT ROUND(AVG(rating)::numeric, 2) as avg_rating, COUNT(*) as total_reviews FROM reviews WHERE provider_id = $1`,
+      `SELECT COALESCE(ROUND(AVG(rating)::numeric, 2), 0) as avg_rating, COUNT(*)::int as total_reviews FROM reviews WHERE provider_id = $1`,
       [booking.provider_id]
     );
 
@@ -109,7 +109,7 @@ export const createReview = async (req, res) => {
 
     // 3. Atomically persist recalculated average rating into provider_profiles table
     await client.query(
-      `UPDATE provider_profiles SET rating_avg = COALESCE($1, 0), total_reviews = $2 WHERE user_id = $3`,
+      `UPDATE provider_profiles SET rating_avg = $1, total_reviews = $2 WHERE user_id = $3`,
       [ratingData.avg_rating, ratingData.total_reviews, booking.provider_id]
     );
 
@@ -120,27 +120,33 @@ export const createReview = async (req, res) => {
     const customerName = customerResult.rows[0]?.name || 'A customer';
 
     // Notify Provider
-    await sendNotification(
-      booking.provider_id, booking_id,
-      `⭐ ${customerName} gave you a ${rating}-star review!${comment ? ` "${comment.substring(0, 60)}..."` : ''}`,
-      'review'
-    );
+    try {
+      await sendNotification(
+        booking.provider_id, booking_id,
+        `⭐ ${customerName} gave you a ${rating}-star review!${comment ? ` "${comment.substring(0, 60)}..."` : ''}`,
+        'review'
+      );
 
-    // Notify All Admins
-    await notifyAllAdmins(
-      booking_id,
-      `⭐ New review: ${customerName} rated booking #${booking_id} ${rating}/5 stars`,
-      'admin_new_review'
-    );
+      // Notify All Admins
+      await notifyAllAdmins(
+        booking_id,
+        `⭐ New review: ${customerName} rated booking #${booking_id} ${rating}/5 stars`,
+        'admin_new_review'
+      );
+    } catch (notifErr) {
+      console.error('Notification error on review creation:', notifErr);
+    }
 
     res.status(201).json({
       message: 'Review created successfully',
       review: result.rows[0],
+      rating_avg: ratingData.avg_rating,
+      total_reviews: ratingData.total_reviews
     });
   } catch (error) {
     if (client) await client.query('ROLLBACK');
     console.error('Create review error:', error);
-    res.status(500).json({ error: 'Failed to create review' });
+    res.status(500).json({ error: error.message || 'Failed to create review' });
   } finally {
     if (client) client.release();
   }
@@ -210,14 +216,14 @@ export const deleteReview = async (req, res) => {
 
     // Recalculate provider average rating
     const avgRating = await client.query(
-      `SELECT ROUND(AVG(rating)::numeric, 2) as avg_rating, COUNT(*) as total_reviews FROM reviews WHERE provider_id = $1`,
+      `SELECT COALESCE(ROUND(AVG(rating)::numeric, 2), 0) as avg_rating, COUNT(*)::int as total_reviews FROM reviews WHERE provider_id = $1`,
       [providerId]
     );
 
     const ratingData = avgRating.rows[0];
     await client.query(
-      `UPDATE provider_profiles SET rating_avg = COALESCE($1, 0), total_reviews = $2 WHERE user_id = $3`,
-      [ratingData.avg_rating || 0, ratingData.total_reviews || 0, providerId]
+      `UPDATE provider_profiles SET rating_avg = $1, total_reviews = $2 WHERE user_id = $3`,
+      [ratingData.avg_rating, ratingData.total_reviews, providerId]
     );
 
     await client.query('COMMIT');
@@ -226,7 +232,7 @@ export const deleteReview = async (req, res) => {
   } catch (error) {
     if (client) await client.query('ROLLBACK');
     console.error('Delete review error:', error);
-    res.status(500).json({ error: 'Failed to delete review' });
+    res.status(500).json({ error: error.message || 'Failed to delete review' });
   } finally {
     if (client) client.release();
   }
